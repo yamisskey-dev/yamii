@@ -148,9 +148,9 @@ class UserSettingsManager:
             logger.error(f"Failed to get user settings: {e}")
             return None
     
-    def save_custom_prompt(self, user_id: str, name: str, prompt_text: str, 
+    def save_custom_prompt(self, user_id: str, name: str, prompt_text: str,
                           description: str = "", tags: List[str] = None) -> bool:
-        """Save encrypted custom prompt"""
+        """Save user's single custom prompt (replaces any existing one)"""
         try:
             prompt_data = {
                 "prompt_text": prompt_text,
@@ -163,40 +163,50 @@ class UserSettingsManager:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
             
+            # Delete any existing custom prompt for this user
+            cursor.execute('DELETE FROM custom_prompts WHERE user_id = ?', (user_id,))
+            
+            # Insert the new custom prompt
             cursor.execute('''
-                INSERT OR REPLACE INTO custom_prompts 
+                INSERT INTO custom_prompts
                 (user_id, name, encrypted_prompt, description, tags, data_hash, updated_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
-            ''', (user_id, name, encrypted_prompt, description, 
+            ''', (user_id, name, encrypted_prompt, description,
                   json.dumps(tags or []), data_hash, datetime.now().isoformat()))
             
             conn.commit()
             conn.close()
             
-            logger.info(f"Custom prompt '{name}' saved for user: {user_id}")
+            logger.info(f"Custom prompt '{name}' saved for user: {user_id} (replaced any existing)")
             return True
             
         except Exception as e:
             logger.error(f"Failed to save custom prompt: {e}")
             return False
     
-    def get_custom_prompt(self, user_id: str, name: str) -> Optional[Dict[str, Any]]:
-        """Get decrypted custom prompt"""
+    def get_custom_prompt(self, user_id: str) -> Optional[Dict[str, Any]]:
+        """Get user's single custom prompt"""
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
             
             cursor.execute('''
-                SELECT encrypted_prompt, data_hash FROM custom_prompts 
-                WHERE user_id = ? AND name = ?
-            ''', (user_id, name))
+                SELECT name, encrypted_prompt, description, tags, data_hash FROM custom_prompts
+                WHERE user_id = ? LIMIT 1
+            ''', (user_id,))
             
             result = cursor.fetchone()
             conn.close()
             
             if result:
-                encrypted_prompt, data_hash = result
-                return self._decrypt_data(encrypted_prompt, data_hash)
+                name, encrypted_prompt, description, tags_json, data_hash = result
+                prompt_data = self._decrypt_data(encrypted_prompt, data_hash)
+                return {
+                    "name": name,
+                    "prompt_text": prompt_data["prompt_text"],
+                    "description": description or prompt_data.get("description", ""),
+                    "tags": json.loads(tags_json) if tags_json else prompt_data.get("tags", [])
+                }
             
             return None
             
@@ -204,62 +214,39 @@ class UserSettingsManager:
             logger.error(f"Failed to get custom prompt: {e}")
             return None
     
-    def list_custom_prompts(self, user_id: str) -> List[Dict[str, Any]]:
-        """List all custom prompts for a user"""
+    def has_custom_prompt(self, user_id: str) -> bool:
+        """Check if user has a custom prompt"""
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
             
-            cursor.execute('''
-                SELECT name, encrypted_prompt, description, tags, data_hash, created_at 
-                FROM custom_prompts WHERE user_id = ? ORDER BY created_at DESC
-            ''', (user_id,))
-            
-            results = cursor.fetchall()
+            cursor.execute('SELECT 1 FROM custom_prompts WHERE user_id = ? LIMIT 1', (user_id,))
+            result = cursor.fetchone()
             conn.close()
             
-            prompts = []
-            for row in results:
-                name, encrypted_prompt, description, tags_json, data_hash, created_at = row
-                
-                try:
-                    prompt_data = self._decrypt_data(encrypted_prompt, data_hash)
-                    prompts.append({
-                        "name": name,
-                        "prompt_text": prompt_data["prompt_text"],
-                        "description": description or prompt_data.get("description", ""),
-                        "tags": json.loads(tags_json) if tags_json else prompt_data.get("tags", []),
-                        "created_at": created_at
-                    })
-                except Exception as e:
-                    logger.error(f"Failed to decrypt prompt '{name}': {e}")
-                    continue
-            
-            return prompts
+            return result is not None
             
         except Exception as e:
-            logger.error(f"Failed to list custom prompts: {e}")
-            return []
+            logger.error(f"Failed to check custom prompt: {e}")
+            return False
     
-    def delete_custom_prompt(self, user_id: str, name: str) -> bool:
-        """Delete a custom prompt"""
+    def delete_custom_prompt(self, user_id: str) -> bool:
+        """Delete user's custom prompt"""
         try:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
             
-            cursor.execute('''
-                DELETE FROM custom_prompts WHERE user_id = ? AND name = ?
-            ''', (user_id, name))
+            cursor.execute('DELETE FROM custom_prompts WHERE user_id = ?', (user_id,))
             
             deleted_count = cursor.rowcount
             conn.commit()
             conn.close()
             
             if deleted_count > 0:
-                logger.info(f"Custom prompt '{name}' deleted for user: {user_id}")
+                logger.info(f"Custom prompt deleted for user: {user_id}")
                 return True
             else:
-                logger.warning(f"Custom prompt '{name}' not found for user: {user_id}")
+                logger.warning(f"No custom prompt found for user: {user_id}")
                 return False
                 
         except Exception as e:

@@ -236,33 +236,27 @@ class CounselingService:
             )
     
     def _get_prompt_for_request(self, request: CounselingRequest) -> str:
-        """リクエストに応じたプロンプトを取得（プロファイル優先）"""
+        """リクエストに応じたプロンプトを取得（user_idベースでカスタムプロンプト自動適用）"""
         
         print(f"[DEBUG] _get_prompt_for_request called for user {request.user_id}")
         print(f"[DEBUG] custom_prompt_id: {request.custom_prompt_id}")
         print(f"[DEBUG] prompt_id: {getattr(request, 'prompt_id', None)}")
         
-        # カスタムプロンプトが指定されている場合（暗号化DBベース）
-        if request.custom_prompt_id:
-            print(f"[DEBUG] Trying to get custom prompt with ID: {request.custom_prompt_id}")
-            
-            # 暗号化データベースから直接取得（settings_managerを使用）
-            from .user_settings import settings_manager
-            try:
-                custom_prompts = settings_manager.list_custom_prompts(request.user_id)
-                print(f"[DEBUG] Found {len(custom_prompts)} custom prompts for user")
-                
-                # IDで該当するカスタムプロンプトを検索
-                for prompt in custom_prompts:
-                    if prompt.get('id') == request.custom_prompt_id:
-                        print(f"[DEBUG] Found matching custom prompt: {prompt['name']}")
-                        return prompt['prompt_text']
+        # 暗号化データベースから直接取得（settings_managerを使用）
+        from .user_settings import settings_manager
+        try:
+            # ユーザーの単一カスタムプロンプトを取得
+            custom_prompt = settings_manager.get_custom_prompt(request.user_id)
+            if custom_prompt:
+                print(f"[DEBUG] Using user's custom prompt: {custom_prompt['name']}")
+                return custom_prompt['prompt_text']
+            else:
+                print(f"[DEBUG] No custom prompt found for user")
                         
-                print(f"[DEBUG] No matching custom prompt found with ID: {request.custom_prompt_id}")
-            except Exception as e:
-                print(f"[DEBUG] Error getting custom prompt: {e}")
+        except Exception as e:
+            print(f"[DEBUG] Error getting custom prompt: {e}")
         
-        # プロンプトIDが指定されている場合（NAVI.mdベース）
+        # カスタムプロンプトがない場合、プロンプトIDが指定されている場合（NAVI.mdベース）
         if hasattr(request, 'prompt_id') and request.prompt_id:
             print(f"[DEBUG] Using NAVI.md prompt: {request.prompt_id}")
             return self.prompt_loader.get_prompt_text(request.prompt_id)

@@ -362,101 +362,43 @@ async def create_custom_prompt(
         raise HTTPException(status_code=500, detail=f"Failed to create custom prompt: {str(e)}")
 
 @app.get("/custom-prompts", response_model=dict)
-async def list_user_custom_prompts(user_id: str):
-    """ユーザーのカスタムプロンプト一覧を取得（暗号化データベースから）"""
+async def get_user_custom_prompt(user_id: str):
+    """ユーザーの単一カスタムプロンプトを取得（暗号化データベースから）"""
     try:
-        prompts = settings_manager.list_custom_prompts(user_id)
+        prompt = settings_manager.get_custom_prompt(user_id)
         
-        return {
-            "message": "Custom prompts retrieved successfully",
-            "user_id": user_id,
-            "prompts": prompts,
-            "total_count": len(prompts)
-        }
+        if prompt:
+            return {
+                "message": "Custom prompt retrieved successfully",
+                "user_id": user_id,
+                "prompt": prompt,
+                "has_custom_prompt": True
+            }
+        else:
+            return {
+                "message": "No custom prompt found",
+                "user_id": user_id,
+                "prompt": None,
+                "has_custom_prompt": False
+            }
         
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch custom prompts: {str(e)}")
-
-@app.get("/custom-prompts/{prompt_name}", response_model=dict)
-async def get_custom_prompt(prompt_name: str, user_id: str):
-    """特定のカスタムプロンプトを取得（暗号化データベースから）"""
-    try:
-        prompt = settings_manager.get_custom_prompt(user_id, prompt_name)
-        
-        if not prompt:
-            raise HTTPException(status_code=404, detail="Custom prompt not found")
-        
-        return {
-            "message": "Custom prompt retrieved successfully",
-            "user_id": user_id,
-            "name": prompt_name,
-            "prompt": prompt
-        }
-        
-    except HTTPException:
-        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch custom prompt: {str(e)}")
 
-@app.put("/custom-prompts/{prompt_name}", response_model=dict)
-async def update_custom_prompt(
-    prompt_name: str,
-    user_id: str,
-    request: CustomPromptUpdateRequest
-):
-    """カスタムプロンプトを更新（暗号化データベースで）"""
-    try:
-        # 既存のプロンプトを取得
-        existing_prompt = settings_manager.get_custom_prompt(user_id, prompt_name)
-        if not existing_prompt:
-            raise HTTPException(status_code=404, detail="Custom prompt not found")
-        
-        # 更新用のデータを準備
-        updated_name = request.name if request.name is not None else prompt_name
-        updated_prompt_text = request.prompt_text if request.prompt_text is not None else existing_prompt["prompt_text"]
-        updated_description = request.description if request.description is not None else existing_prompt.get("description", "")
-        updated_tags = request.tags if request.tags is not None else existing_prompt.get("tags", [])
-        
-        # 既存のプロンプトを削除（名前が変わる場合）
-        if updated_name != prompt_name:
-            settings_manager.delete_custom_prompt(user_id, prompt_name)
-        
-        # 新しいデータで保存
-        success = settings_manager.save_custom_prompt(
-            user_id=user_id,
-            name=updated_name,
-            prompt_text=updated_prompt_text,
-            description=updated_description,
-            tags=updated_tags
-        )
-        
-        if not success:
-            raise HTTPException(status_code=500, detail="Failed to update custom prompt")
-        
-        return {
-            "message": "Custom prompt updated successfully",
-            "user_id": user_id,
-            "name": updated_name
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to update custom prompt: {str(e)}")
 
-@app.delete("/custom-prompts/{prompt_name}", response_model=dict)
-async def delete_custom_prompt(prompt_name: str, user_id: str):
-    """カスタムプロンプトを削除（暗号化データベースから）"""
+
+@app.delete("/custom-prompts", response_model=dict)
+async def delete_custom_prompt(user_id: str):
+    """ユーザーのカスタムプロンプトを削除（暗号化データベースから）"""
     try:
-        success = settings_manager.delete_custom_prompt(user_id, prompt_name)
+        success = settings_manager.delete_custom_prompt(user_id)
         
         if not success:
             raise HTTPException(status_code=404, detail="Custom prompt not found")
         
         return {
             "message": "Custom prompt deleted successfully",
-            "user_id": user_id,
-            "name": prompt_name
+            "user_id": user_id
         }
         
     except HTTPException:
