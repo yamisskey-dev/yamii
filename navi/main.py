@@ -525,9 +525,10 @@ async def create_prompt_from_template(
 
 # NAVI.mdプロンプト管理エンドポイント
 @app.get("/prompts", response_model=dict)
-async def list_available_prompts():
+async def get_available_prompts():
     """利用可能なNAVI.mdプロンプト一覧を取得"""
     try:
+        from .markdown_prompt_loader import list_available_prompts
         prompts = list_available_prompts()
         return {
             "message": "Available prompts from NAVI.md",
@@ -540,6 +541,7 @@ async def list_available_prompts():
 async def reload_navi_prompts():
     """NAVI.mdプロンプトをリロード"""
     try:
+        from .markdown_prompt_loader import reload_prompts, list_available_prompts
         reload_prompts()
         prompts = list_available_prompts()
         return {
