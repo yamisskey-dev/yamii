@@ -237,21 +237,43 @@ class CounselingService:
     
     def _get_prompt_for_request(self, request: CounselingRequest) -> str:
         """リクエストに応じたプロンプトを取得（プロファイル優先）"""
-        # カスタムプロンプトが指定されている場合（JSONベース）
-        if request.custom_prompt_id and self.custom_prompt_manager:
-            custom_prompt = self.custom_prompt_manager.get_custom_prompt(request.custom_prompt_id)
-            if custom_prompt and custom_prompt['user_id'] == request.user_id:
-                return custom_prompt['prompt_text']
+        
+        print(f"[DEBUG] _get_prompt_for_request called for user {request.user_id}")
+        print(f"[DEBUG] custom_prompt_id: {request.custom_prompt_id}")
+        print(f"[DEBUG] prompt_id: {getattr(request, 'prompt_id', None)}")
+        
+        # カスタムプロンプトが指定されている場合（暗号化DBベース）
+        if request.custom_prompt_id:
+            print(f"[DEBUG] Trying to get custom prompt with ID: {request.custom_prompt_id}")
+            
+            # 暗号化データベースから直接取得（settings_managerを使用）
+            from .user_settings import settings_manager
+            try:
+                custom_prompts = settings_manager.list_custom_prompts(request.user_id)
+                print(f"[DEBUG] Found {len(custom_prompts)} custom prompts for user")
+                
+                # IDで該当するカスタムプロンプトを検索
+                for prompt in custom_prompts:
+                    if prompt.get('id') == request.custom_prompt_id:
+                        print(f"[DEBUG] Found matching custom prompt: {prompt['name']}")
+                        return prompt['prompt_text']
+                        
+                print(f"[DEBUG] No matching custom prompt found with ID: {request.custom_prompt_id}")
+            except Exception as e:
+                print(f"[DEBUG] Error getting custom prompt: {e}")
         
         # プロンプトIDが指定されている場合（NAVI.mdベース）
         if hasattr(request, 'prompt_id') and request.prompt_id:
+            print(f"[DEBUG] Using NAVI.md prompt: {request.prompt_id}")
             return self.prompt_loader.get_prompt_text(request.prompt_id)
         
         # ユーザープロファイルがある場合、動的プロンプトを生成
         if self.user_profile_manager:
             profile = self.user_profile_manager.get_user_profile(request.user_id)
             if profile:
+                print(f"[DEBUG] Using user profile prompt")
                 return self.user_profile_manager.generate_prompt_from_profile(request.user_id)
         
         # デフォルトプロンプトをNAVI.mdから取得
+        print(f"[DEBUG] Using default prompt: {self.default_prompt_id}")
         return self.prompt_loader.get_prompt_text(self.default_prompt_id)

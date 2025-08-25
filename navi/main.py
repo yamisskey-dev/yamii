@@ -14,10 +14,9 @@ from pydantic import BaseModel
 
 from .counseling_service import CounselingService, CounselingRequest, CounselingResponse
 from .memory import MemorySystem
-from .custom_prompt import CustomPromptManager, DEFAULT_PROMPT_TEMPLATES
 from .markdown_prompt_loader import get_prompt_loader, list_available_prompts, reload_prompts
 from .user_profile import UserProfileManager, PERSONALITY_OPTIONS, CHARACTERISTIC_OPTIONS
-from .user_settings import settings_manager
+from .user_settings import settings_manager, DEFAULT_PROMPT_TEMPLATES
 
 # FastAPI アプリケーション作成
 app = FastAPI(
@@ -37,7 +36,6 @@ app.add_middleware(
 
 # サービス初期化
 memory_system = MemorySystem()
-custom_prompt_manager = CustomPromptManager()
 user_profile_manager = UserProfileManager()
 counseling_service = None  # 初期化時に設定
 
@@ -128,13 +126,10 @@ def get_counseling_service() -> CounselingService:
         api_key = os.getenv("GEMINI_API_KEY")
         if not api_key:
             raise HTTPException(status_code=500, detail="GEMINI_API_KEY not configured")
-        counseling_service = CounselingService(api_key, custom_prompt_manager, user_profile_manager)
+        counseling_service = CounselingService(api_key, None, user_profile_manager)
     
     return counseling_service
 
-def get_custom_prompt_manager() -> CustomPromptManager:
-    """カスタムプロンプト管理サービスを取得"""
-    return custom_prompt_manager
 
 def get_user_profile_manager() -> UserProfileManager:
     """ユーザープロファイル管理サービスを取得"""
@@ -481,8 +476,7 @@ async def get_default_prompt_templates():
 async def create_prompt_from_template(
     user_id: str,
     template_name: str,
-    custom_name: Optional[str] = None,
-    manager: CustomPromptManager = Depends(get_custom_prompt_manager)
+    custom_name: Optional[str] = None
 ):
     """テンプレートからカスタムプロンプトを作成"""
     try:
@@ -491,7 +485,7 @@ async def create_prompt_from_template(
         
         template = DEFAULT_PROMPT_TEMPLATES[template_name]
         
-        prompt_id = manager.create_custom_prompt(
+        success = settings_manager.save_custom_prompt(
             user_id=user_id,
             name=custom_name or template['name'],
             prompt_text=template['prompt_text'],
@@ -499,16 +493,20 @@ async def create_prompt_from_template(
             tags=template['tags']
         )
         
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to create custom prompt from template")
+        
         return {
             "message": "Custom prompt created from template",
-            "prompt_id": prompt_id,
-            "template_name": template_name
+            "template_name": template_name,
+            "name": custom_name or template['name']
         }
         
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to create prompt from template: {str(e)}")
+
 
 # NAVI.mdプロンプト管理エンドポイント
 @app.get("/prompts", response_model=dict)
