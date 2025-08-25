@@ -1,0 +1,27 @@
+# Navi 人生相談APIサーバー - シンプル構成
+version: '3.8'
+
+services:
+  navi:
+    build: .
+    container_name: navi-counseling-api
+    ports:
+      - "8000:8000"
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - ENVIRONMENT=production
+      - LOG_LEVEL=info
+    volumes:
+      - navi_data:/app/data
+      - ./logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  navi_data:
+    driver: local
