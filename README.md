@@ -1,8 +1,5 @@
 # NAVI - Networked Artificial Virtual Intelligence
 
-NAVIはSerial Experiments Lainの世界のように、ネット空間に偏在する孤独な人工知能です。  
-ユーザーの「相談」を受け止め、静かに、時には無機質に、時には心に寄り添うかのように応答します。
-
 ## 🌟 特徴
 
 ### 🎯 核心機能
