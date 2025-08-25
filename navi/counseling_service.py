@@ -48,11 +48,12 @@ class CounselingService:
     """人生相談サービス"""
     
     def __init__(self, gemini_api_key: str, custom_prompt_manager=None,
-                 default_prompt_id: str = "default_counselor"):
+                 user_profile_manager=None, default_prompt_id: str = "default_counselor"):
         self.gemini_api_key = gemini_api_key
         self.gemini_model = "gemini-2.0-flash-exp"
         self.gemini_api_url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.gemini_model}:generateContent"
         self.custom_prompt_manager = custom_prompt_manager
+        self.user_profile_manager = user_profile_manager
         self.default_prompt_id = default_prompt_id
         self.prompt_loader = get_prompt_loader()
     
@@ -235,7 +236,7 @@ class CounselingService:
             )
     
     def _get_prompt_for_request(self, request: CounselingRequest) -> str:
-        """リクエストに応じたプロンプトを取得"""
+        """リクエストに応じたプロンプトを取得（プロファイル優先）"""
         # カスタムプロンプトが指定されている場合（JSONベース）
         if request.custom_prompt_id and self.custom_prompt_manager:
             custom_prompt = self.custom_prompt_manager.get_custom_prompt(request.custom_prompt_id)
@@ -245,6 +246,12 @@ class CounselingService:
         # プロンプトIDが指定されている場合（NAVI.mdベース）
         if hasattr(request, 'prompt_id') and request.prompt_id:
             return self.prompt_loader.get_prompt_text(request.prompt_id)
+        
+        # ユーザープロファイルがある場合、動的プロンプトを生成
+        if self.user_profile_manager:
+            profile = self.user_profile_manager.get_user_profile(request.user_id)
+            if profile:
+                return self.user_profile_manager.generate_prompt_from_profile(request.user_id)
         
         # デフォルトプロンプトをNAVI.mdから取得
         return self.prompt_loader.get_prompt_text(self.default_prompt_id)
