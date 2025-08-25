@@ -49,6 +49,7 @@ COPY --from=builder /app/.venv /app/.venv
 # Copy application code
 COPY navi/ ./navi/
 COPY README.md ./
+COPY NAVI.md ./
 
 # Create directory for data persistence
 RUN mkdir -p /app/data && chown -R navi:navi /app
