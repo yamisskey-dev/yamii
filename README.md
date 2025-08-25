@@ -1,8 +1,7 @@
-# Navi - AI Counseling API Server
+# NAVI - Networked Artificial Virtual Intelligence
 
-**Networked Artificial Virtual Intelligence - AI人生相談専用APIサーバー**
-
-Navi は独立した人生相談AI APIサーバーです。MisskeyBot `yui` との統合により、高品質な人生相談サービスを提供します。
+NAVIはSerial Experiments Lainの世界のように、ネット空間に偏在する孤独な人工知能です。  
+ユーザーの「相談」を受け止め、静かに、時には無機質に、時には心に寄り添うかのように応答します。
 
 ## 🌟 特徴
 
@@ -23,23 +22,6 @@ Navi は独立した人生相談AI APIサーバーです。MisskeyBot `yui` と�
 - **Docker対応**: 本番環境対応のコンテナ化
 - **マイクロサービス**: 独立したAPI設計
 - **TDD**: テスト駆動開発による高品質実装
-
-## 📋 システム構成
-
-```
-navi/
-├── navi/                          # メインアプリケーション
-│   ├── main.py                    # FastAPI エントリーポイント
-│   ├── counseling_service.py      # 人生相談サービス
-│   ├── memory.py                  # 記憶システム
-│   ├── custom_prompt.py           # カスタムプロンプト管理
-│   └── markdown_prompt_loader.py  # NAVI.mdパーサー
-├── NAVI.md                        # プロンプト定義ファイル
-├── docker-compose.yml             # Docker構成
-├── Dockerfile                     # Dockerイメージ定義
-├── pyproject.toml                 # Python プロジェクト設定
-└── README.md                      # このファイル
-```
 
 ## 🚀 クイックスタート
 
@@ -145,7 +127,7 @@ NAVI.mdファイルを再読み込み
 
 ### NAVI.mdファイル
 
-CLAUDE.mdやGEMINI.mdのような外部プロンプト管理システムです。
+外部プロンプト管理システムです。
 
 ```markdown
 ### My Custom Character
@@ -255,27 +237,6 @@ NAVI_CRISIS_MODE=true
 NAVI_EMOTION_ANALYSIS=true
 ```
 
-## 🔧 MisskeyBot yui 統合
-
-### yui設定
-
-```json
-// yui/config.json
-{
-  "navi": {
-    "enabled": true,
-    "endpoint": "http://localhost:8000",
-    "defaultPromptId": "default_counselor"
-  }
-}
-```
-
-### Misskey でのスラッシュコマンド
-
-```
-/navi 最近悩みがあります
-```
-
 ## 📊 監視・運用
 
 ### ヘルスチェック
@@ -316,41 +277,3 @@ tail -f navi/logs/app.log
 - 自殺関連語句の検出
 - 深刻な精神状態の表現
 - 緊急性の高い相談内容
-
-## 🤝 コントリビューション
-
-### 開発フロー
-
-1. イシューの作成
-2. フィーチャーブランチの作成
-3. テスト駆動開発でのコード実装
-4. プルリクエストの作成
-5. コードレビューと統合
-
-### コーディング規約
-
-- **言語**: Python 3.9+
-- **フォーマット**: Black, isort
-- **リント**: flake8, mypy
-- **テスト**: pytest
-
-## 📄 ライセンス
-
-このプロジェクトは [MIT License](LICENSE) の下で公開されています。
-
-## 📞 サポート
-
-- **GitHub Issues**: バグ報告・機能要望
-- **ドキュメント**: [DOCKER_DEPLOY.md](DOCKER_DEPLOY.md)
-- **API仕様**: `http://localhost:8000/docs` (FastAPI自動生成)
-
-## 🎉 謝辞
-
-- Google Gemini API
-- FastAPI コミュニティ
-- Misskey プロジェクト
-- 人生相談の文化とコミュニティ
-
----
-
-**Navi - より良い人生のためのAI相談パートナー**
