@@ -293,7 +293,7 @@ class TestAiChatAPI:
     """AIチャットAPIのテストクラス"""
     
     @pytest.fixture
-    async def client(self):
+    def client(self):
         """テスト用のFastAPIクライアント"""
         from fastapi.testclient import TestClient
         from navi.main import app
