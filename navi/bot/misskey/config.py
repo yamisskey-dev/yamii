@@ -7,27 +7,47 @@ import os
 from typing import Optional
 from dataclasses import dataclass
 
-from ..common.base_bot import BaseBotConfig
-
 
 @dataclass
-class NaviMisskeyBotConfig(BaseBotConfig):
-    """Navi Misskeyボット設定クラス（共通設定を継承）"""
+class NaviMisskeyBotConfig:
+    """Navi Misskeyボット設定クラス（独立設計）"""
+    
+    # Navi API設定
+    navi_api_url: str = "http://localhost:8000"
+    navi_api_timeout: int = 30
+    
+    # ボット基本設定
+    bot_name: str = "navi"
+    bot_username: str = "navi"
+    
+    # セッション設定
+    session_timeout: int = 3600  # 1時間
+    
+    # ログ設定
+    log_level: str = "INFO"
+    log_file: Optional[str] = None
+    
+    # 機能設定
+    enable_dm: bool = True
+    enable_mentions: bool = True
+    enable_timeline: bool = False
+    enable_global_timeline: bool = False
+    
+    # 危機対応設定
+    crisis_hotlines: list = None
     
     # Misskey固有設定
     misskey_instance_url: str = ""
     misskey_access_token: str = ""
     misskey_bot_user_id: str = ""
     
-    # 機能設定（共通設定をオーバーライド）
-    enable_dm: bool = True
-    enable_mentions: bool = True
-    enable_timeline: bool = False
-    enable_global_timeline: bool = False
-    
     def __post_init__(self):
         """設定の後処理"""
-        super().__post_init__()
+        if self.crisis_hotlines is None:
+            self.crisis_hotlines = [
+                "いのちの電話: 0570-783-556",
+                "こころの健康相談統一ダイヤル: 0570-064-556"
+            ]
         
         # Misskey固有の検証
         if not self.misskey_instance_url:
@@ -36,6 +56,11 @@ class NaviMisskeyBotConfig(BaseBotConfig):
             raise ValueError("misskey_access_token is required")
         if not self.misskey_bot_user_id:
             raise ValueError("misskey_bot_user_id is required")
+    
+    @property
+    def crisis_hotline_numbers(self):
+        """危機対応ホットライン番号リスト"""
+        return self.crisis_hotlines
 
 
 def load_config() -> NaviMisskeyBotConfig:
