@@ -5,6 +5,7 @@ Navi - 人生相談専用APIサーバー
 """
 
 import os
+import asyncio
 from datetime import datetime
 from typing import List, Optional
 
@@ -28,6 +29,42 @@ NaviLogger.configure(
     log_level=os.getenv("LOG_LEVEL", "INFO"),
     log_file=os.getenv("LOG_FILE")
 )
+
+# Misskeyボットの統合
+_bot_task = None
+_bot_enabled = os.getenv("ENABLE_MISSKEY_BOT", "false").lower() == "true"
+
+async def start_misskey_bot():
+    """Misskeyボットを開始する"""
+    global _bot_task
+    if _bot_enabled and _bot_task is None:
+        try:
+            from .bot.misskey.config import is_bot_enabled
+            from .bot.misskey.navi_bot import NaviBot
+            
+            if is_bot_enabled():
+                logger.info("Misskeyボットを開始中...")
+                bot = NaviBot()
+                _bot_task = asyncio.create_task(bot.start())
+                logger.info("Misskeyボット開始完了")
+            else:
+                logger.warning("Misskeyボットが有効化されていますが、必要な設定が不足しています")
+        except ImportError as e:
+            logger.error(f"Misskeyボットモジュールの読み込みに失敗しました: {e}")
+        except Exception as e:
+            logger.error(f"Misskeyボットの開始中にエラーが発生しました: {e}")
+
+async def stop_misskey_bot():
+    """Misskeyボットを停止する"""
+    global _bot_task
+    if _bot_task and not _bot_task.done():
+        _bot_task.cancel()
+        try:
+            await _bot_task
+        except asyncio.CancelledError:
+            pass
+        _bot_task = None
+        logger.info("Misskeyボットを停止しました")
 
 # FastAPI アプリケーション作成
 app = FastAPI(
@@ -126,14 +163,19 @@ async def root():
             "emotion_analysis": True,
             "crisis_detection": True,
             "custom_prompts": True,
-            "user_profiles": True
+            "user_profiles": True,
+            "misskey_bot": _bot_enabled
         },
         "endpoints": [
             "/counseling - 人生相談メインエンドポイント",
             "/health - ヘルスチェック",
             "/custom-prompts - カスタムプロンプト管理",
             "/profile - ユーザープロファイル管理"
-        ]
+        ],
+        "bot_status": {
+            "enabled": _bot_enabled,
+            "running": _bot_task is not None and not _bot_task.done() if _bot_task else False
+        }
     }
 
 @app.get("/health", response_model=HealthCheckResponse)
@@ -143,6 +185,14 @@ async def health_check():
         # 依存関係の健全性チェック
         memory_system = get_memory_system()
         settings_manager = get_settings_manager()
+        
+        # ボット状態チェック
+        bot_status = "disabled"
+        if _bot_enabled:
+            if _bot_task and not _bot_task.done():
+                bot_status = "running"
+            else:
+                bot_status = "enabled_but_stopped"
         
         return HealthCheckResponse(
             status="healthy",
@@ -350,6 +400,62 @@ async def delete_user_profile(
         log_error(logger, e)
         raise HTTPException(status_code=500, detail=f"Failed to delete profile: {str(e)}")
 
+
+# アプリケーション起動・終了時の処理
+@app.on_event("startup")
+async def startup_event():
+    """アプリケーション起動時処理"""
+    logger.info("Navi APIサーバーを起動中...")
+    await start_misskey_bot()
+    logger.info("Navi APIサーバー起動完了")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """アプリケーション終了時処理"""
+    logger.info("Navi APIサーバーを終了中...")
+    await stop_misskey_bot()
+    logger.info("Navi APIサーバー終了完了")
+
+# ボット管理エンドポイント
+@app.post("/bot/start", response_model=dict)
+async def start_bot():
+    """Misskeyボットを手動開始"""
+    global _bot_enabled
+    if not _bot_enabled:
+        raise HTTPException(status_code=400, detail="Misskeyボットが無効になっています。環境変数ENABLE_MISSKEY_BOTをtrueに設定してください。")
+    
+    if _bot_task and not _bot_task.done():
+        return {"message": "Misskeyボットは既に実行中です", "status": "running"}
+    
+    try:
+        await start_misskey_bot()
+        return {"message": "Misskeyボットを開始しました", "status": "started"}
+    except Exception as e:
+        logger.error(f"ボット開始エラー: {e}")
+        raise HTTPException(status_code=500, detail=f"ボットの開始に失敗しました: {str(e)}")
+
+@app.post("/bot/stop", response_model=dict)
+async def stop_bot():
+    """Misskeyボットを手動停止"""
+    if not _bot_task or _bot_task.done():
+        return {"message": "Misskeyボットは停止中です", "status": "stopped"}
+    
+    try:
+        await stop_misskey_bot()
+        return {"message": "Misskeyボットを停止しました", "status": "stopped"}
+    except Exception as e:
+        logger.error(f"ボット停止エラー: {e}")
+        raise HTTPException(status_code=500, detail=f"ボットの停止に失敗しました: {str(e)}")
+
+@app.get("/bot/status", response_model=dict)
+async def get_bot_status():
+    """Misskeyボットの状態を取得"""
+    return {
+        "enabled": _bot_enabled,
+        "running": _bot_task is not None and not _bot_task.done() if _bot_task else False,
+        "task_done": _bot_task.done() if _bot_task else True,
+        "message": "ボット状態を取得しました"
+    }
 
 if __name__ == "__main__":
     import uvicorn

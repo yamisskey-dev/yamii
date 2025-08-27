@@ -4,13 +4,13 @@ version: '3.8'
 services:
   navi:
     build: .
-    container_name: navi-counseling-api
+    container_name: navi
     ports:
       - "8000:8000"
+    env_file:
+      - .env
     environment:
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
       - ENVIRONMENT=production
-      - LOG_LEVEL=info
     volumes:
       - navi_data:/app/data
       - ./logs:/app/logs

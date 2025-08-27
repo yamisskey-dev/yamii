@@ -48,6 +48,7 @@ COPY --from=builder /app/.venv /app/.venv
 
 # Copy application code
 COPY navi/ ./navi/
+COPY start_navi.py ./
 COPY README.md ./
 COPY NAVI.md ./
 
@@ -64,5 +65,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 # Expose port
 EXPOSE 8000
 
-# Run the application
-CMD ["python", "-m", "uvicorn", "navi.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Run the application with integrated bot support
+CMD ["python", "start_navi.py"]
