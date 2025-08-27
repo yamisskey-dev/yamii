@@ -439,6 +439,34 @@ async def get_user_profile(
         log_error(logger, e)
         raise HTTPException(status_code=500, detail=f"Failed to get profile: {str(e)}")
 
+# プロンプト管理エンドポイント
+@app.get("/prompts", response_model=dict)
+async def list_prompts():
+    """利用可能なプロンプト一覧を取得"""
+    try:
+        from .core.prompt_store import get_prompt_store
+        prompt_store = get_prompt_store()
+        prompts = prompt_store.list_prompts(category="counseling")
+        
+        return {
+            "message": "Available prompts retrieved successfully",
+            "prompts": [
+                {
+                    "id": p.id,
+                    "title": p.name,
+                    "name": p.name,
+                    "description": p.description,
+                    "tags": p.tags,
+                    "found": True
+                }
+                for p in prompts
+            ]
+        }
+        
+    except Exception as e:
+        log_error(logger, e)
+        raise HTTPException(status_code=500, detail=f"Failed to list prompts: {str(e)}")
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
