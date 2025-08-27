@@ -18,6 +18,8 @@ from ..memory import MemorySystem
 from ..user_profile import UserProfileManager
 from ..user_settings import UserSettingsManager
 from ..core.prompt_store import PromptStore, get_prompt_store
+from ..core.secure_prompt_store import SecurePromptStore, get_secure_prompt_store
+from ..core.encryption import get_e2ee_crypto, get_key_manager
 
 
 @dataclass
@@ -182,12 +184,14 @@ class CounselingService:
     def __init__(self, api_key: str, memory_system: MemorySystem,
                  user_profile_manager: UserProfileManager,
                  settings_manager: UserSettingsManager,
-                 prompt_store: PromptStore = None):
+                 secure_prompt_store: SecurePromptStore = None):
         self.api_key = api_key
         self.memory_system = memory_system
         self.user_profile_manager = user_profile_manager
         self.settings_manager = settings_manager
-        self.prompt_store = prompt_store or get_prompt_store()
+        self.secure_prompt_store = secure_prompt_store
+        self.e2ee_crypto = get_e2ee_crypto()
+        self.key_manager = get_key_manager()
         
         # サービス依存関係
         self.emotion_service = EmotionAnalysisService()
@@ -281,10 +285,10 @@ class CounselingService:
                 base_prompt = custom_prompt['prompt_text']
                 self.logger.info(f"Using custom prompt for user {request.user_id}")
             
-            # 指定プロンプトIDからの取得
+            # 指定プロンプトIDからのE2EE取得
             elif request.prompt_id:
-                base_prompt = self.prompt_store.get_prompt_text(request.prompt_id)
-                self.logger.info(f"Using specified prompt: {request.prompt_id}")
+                base_prompt = await self._get_encrypted_prompt(request.user_id, request.prompt_id)
+                self.logger.info(f"Using specified encrypted prompt: {request.prompt_id}")
             
             # ユーザープロファイルからの動的プロンプト
             else:
@@ -295,12 +299,12 @@ class CounselingService:
                     )
                     self.logger.info(f"Using profile-based prompt for user {request.user_id}")
                 else:
-                    base_prompt = self.prompt_store.get_prompt_text("default_counselor")
-                    self.logger.info("Using default counselor prompt")
+                    base_prompt = await self._get_encrypted_prompt(request.user_id, "default_counselor")
+                    self.logger.info("Using default encrypted counselor prompt")
             
         except Exception as e:
-            self.logger.warning(f"Failed to get custom prompt: {e}, using default")
-            base_prompt = self.prompt_store.get_prompt_text("default_counselor")
+            self.logger.warning(f"Failed to get encrypted prompt: {e}, using default")
+            base_prompt = await self._get_encrypted_prompt(request.user_id, "default_counselor")
         
         # 現在時刻と文脈情報を追加
         now = datetime.now().strftime('%Y年%m月%d日 %H:%M')
@@ -420,3 +424,105 @@ class CounselingService:
             advice_type='general_support',
             follow_up_questions=['他に何かお手伝いできることはありますか？']
         )
+    async def _get_encrypted_prompt(self, user_id: str, prompt_id: str) -> str:
+        """
+        E2EE暗号化プロンプトを取得・復号
+        
+        Args:
+            user_id: ユーザーID
+            prompt_id: プロンプトID
+            
+        Returns:
+            str: 復号されたプロンプトテキスト
+        """
+        try:
+            if not self.secure_prompt_store:
+                self.secure_prompt_store = await get_secure_prompt_store()
+            
+            # ユーザーのキーペアを取得
+            keys = self.key_manager.load_keys(user_id)
+            if not keys:
+                # キーが存在しない場合は生成
+                public_key_b64, private_key_b64 = self.key_manager.generate_and_save_keys(user_id)
+                private_key = self.e2ee_crypto.key_from_base64(private_key_b64)
+                
+                # デフォルトプロンプトを作成
+                await self._ensure_default_prompts(user_id)
+            else:
+                _, private_key_b64 = keys
+                private_key = self.e2ee_crypto.key_from_base64(private_key_b64)
+            
+            # 暗号化プロンプトを取得・復号
+            decrypted_json = await self.secure_prompt_store.get_prompt(user_id, prompt_id, private_key)
+            
+            if decrypted_json:
+                import json
+                prompt_data = json.loads(decrypted_json)
+                return prompt_data.get('prompt_text', '')
+            
+            # フォールバック: デフォルトプロンプトテキスト
+            return """あなたは経験豊富で共感力の高い人生相談カウンセラーです。
+相談者の気持ちに寄り添い、実践的で心に響くアドバイスを提供してください。
+
+対応方針:
+1. まず相談者の感情を理解し、共感を示す
+2. 問題の本質を見極める
+3. 具体的で実行可能な解決策を提案する
+4. 相談者を励まし、前向きな気持ちになれるよう支援する
+5. 必要に応じて専門機関への相談も提案する
+
+絵文字は控えめに使用し、温かみのある文章を心がけてください。
+深刻な問題（自殺願望など）の場合は、専門機関への相談を強く推奨してください。"""
+            
+        except Exception as e:
+            self.logger.error(f"E2EE プロンプト取得エラー: {e}")
+            # フォールバック
+            return """あなたは人生相談に対応するAIアシスタントです。
+相談者の気持ちに寄り添い、建設的なアドバイスを提供してください。"""
+    
+    async def _ensure_default_prompts(self, user_id: str) -> None:
+        """
+        ユーザーのデフォルトプロンプトが存在することを確認
+        
+        Args:
+            user_id: ユーザーID
+        """
+        try:
+            # ユーザーの公開鍵を取得
+            keys = self.key_manager.load_keys(user_id)
+            if keys:
+                public_key_b64, _ = keys
+                public_key = self.e2ee_crypto.key_from_base64(public_key_b64)
+                
+                # デフォルトプロンプトを作成
+                default_prompt = {
+                    "id": "default_counselor",
+                    "title": "人生相談カウンセラー",
+                    "description": "標準的なカウンセリング対応",
+                    "prompt_text": """あなたは経験豊富で共感力の高い人生相談カウンセラーです。
+相談者の気持ちに寄り添い、実践的で心に響くアドバイスを提供してください。
+
+対応方針:
+1. まず相談者の感情を理解し、共感を示す
+2. 問題の本質を見極める
+3. 具体的で実行可能な解決策を提案する
+4. 相談者を励まし、前向きな気持ちになれるよう支援する
+5. 必要に応じて専門機関への相談も提案する
+
+絵文字は控えめに使用し、温かみのある文章を心がけてください。
+深刻な問題（自殺願望など）の場合は、専門機関への相談を強く推奨してください。""",
+                    "tags": ["カウンセラー", "標準", "人生相談"]
+                }
+                
+                await self.secure_prompt_store.store_prompt(
+                    user_id=user_id,
+                    prompt_data=default_prompt,
+                    public_key=public_key,
+                    title=default_prompt["title"],
+                    description=default_prompt["description"]
+                )
+                
+                self.logger.info(f"デフォルトプロンプトを作成: user={user_id}")
+                
+        except Exception as e:
+            self.logger.error(f"デフォルトプロンプト作成エラー: {e}")

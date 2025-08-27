@@ -22,6 +22,21 @@ services:
       retries: 3
       start_period: 40s
 
+  db:
+    image: postgres:15
+    container_name: navi-postgres
+    environment:
+      - POSTGRES_DB=navi
+      - POSTGRES_USER=navi_user
+      - POSTGRES_PASSWORD=your_secure_password_here
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
 volumes:
   navi_data:
+    driver: local
+  postgres_data:
     driver: local

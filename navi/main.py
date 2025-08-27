@@ -14,7 +14,7 @@ from pydantic import BaseModel
 
 from .core.dependencies import (
     get_memory_system, get_user_profile_manager, get_settings_manager,
-    get_prompt_store, get_counseling_service
+    get_secure_prompt_store_dependency, get_counseling_service
 )
 from .core.logging import NaviLogger, get_logger, log_request, log_response, log_error
 from .core.exceptions import NaviException, ExternalServiceError, ValidationError
@@ -375,6 +375,22 @@ async def get_user_custom_prompt(
     except Exception as e:
         log_error(logger, e)
         raise HTTPException(status_code=500, detail=f"Failed to fetch custom prompt: {str(e)}")
+
+@app.delete("/custom-prompts", response_model=dict)
+async def delete_custom_prompt(
+    user_id: str,
+    settings_manager: UserSettingsManager = Depends(get_settings_manager)
+):
+    """カスタムプロンプトを削除"""
+    try:
+        success = settings_manager.delete_custom_prompt(user_id)
+        if success:
+            return {"message": "Custom prompt deleted successfully", "user_id": user_id}
+        else:
+            raise HTTPException(status_code=404, detail="Custom prompt not found")
+    except Exception as e:
+        log_error(logger, e)
+        raise HTTPException(status_code=500, detail=str(e))
 
 # ユーザープロファイル管理エンドポイント
 @app.post("/profile", response_model=dict)

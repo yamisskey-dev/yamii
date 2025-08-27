@@ -20,7 +20,8 @@ from navi.core.exceptions import ValidationError, ExternalServiceError
 from navi.memory import MemorySystem
 from navi.user_profile import UserProfileManager
 from navi.user_settings import UserSettingsManager
-from navi.core.prompt_store import PromptStore, get_prompt_store
+from navi.core.secure_prompt_store import SecurePromptStore, get_secure_prompt_store
+from navi.core.encryption import get_e2ee_crypto, get_key_manager
 
 
 class TestEmotionAnalysisService:

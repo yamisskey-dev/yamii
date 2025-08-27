@@ -10,7 +10,7 @@ from functools import lru_cache
 from ..user_profile import UserProfileManager
 from ..user_settings import UserSettingsManager
 from ..memory import MemorySystem
-from .prompt_store import PromptStore, get_prompt_store
+from .secure_prompt_store import SecurePromptStore, get_secure_prompt_store
 
 
 class DependencyContainer:
@@ -29,7 +29,7 @@ class DependencyContainer:
         self._instances['memory_system'] = MemorySystem()
         self._instances['user_profile_manager'] = UserProfileManager()
         self._instances['settings_manager'] = UserSettingsManager()
-        self._instances['prompt_store'] = PromptStore()
+        self._instances['secure_prompt_store'] = None  # 非同期初期化が必要
         
         # ビジネス層は遅延初期化（API keyが必要なため）
         
@@ -53,14 +53,18 @@ class DependencyContainer:
             self.initialize()
         return self._instances['settings_manager']
     
-    def get_prompt_store(self) -> PromptStore:
-        """プロンプトストアを取得"""
+    async def get_secure_prompt_store(self) -> SecurePromptStore:
+        """セキュアプロンプトストアを取得（非同期）"""
         if not self._initialized:
             self.initialize()
-        return self._instances['prompt_store']
+        
+        if self._instances['secure_prompt_store'] is None:
+            self._instances['secure_prompt_store'] = await get_secure_prompt_store()
+        
+        return self._instances['secure_prompt_store']
     
-    def get_counseling_service(self):
-        """カウンセリングサービスを取得（遅延初期化）"""
+    async def get_counseling_service(self):
+        """カウンセリングサービスを取得（遅延初期化・非同期）"""
         if 'counseling_service' not in self._instances:
             from ..services.counseling_service import CounselingService
             
@@ -74,7 +78,7 @@ class DependencyContainer:
                 memory_system=self.get_memory_system(),
                 user_profile_manager=self.get_user_profile_manager(),
                 settings_manager=self.get_settings_manager(),
-                prompt_store=self.get_prompt_store()
+                secure_prompt_store=await self.get_secure_prompt_store()
             )
         
         return self._instances['counseling_service']
@@ -108,11 +112,11 @@ def get_settings_manager() -> UserSettingsManager:
     return get_container().get_settings_manager()
 
 
-def get_prompt_store() -> PromptStore:
-    """FastAPI依存性注入: プロンプトストア"""
-    return get_container().get_prompt_store()
+async def get_secure_prompt_store_dependency() -> SecurePromptStore:
+    """FastAPI依存性注入: セキュアプロンプトストア"""
+    return await get_container().get_secure_prompt_store()
 
 
-def get_counseling_service():
-    """FastAPI依存性注入: カウンセリングサービス"""
-    return get_container().get_counseling_service()
+async def get_counseling_service():
+    """FastAPI依存性注入: カウンセリングサービス（非同期）"""
+    return await get_container().get_counseling_service()
