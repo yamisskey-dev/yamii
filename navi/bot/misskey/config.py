@@ -7,41 +7,35 @@ import os
 from typing import Optional
 from dataclasses import dataclass
 
+from ..common.base_bot import BaseBotConfig
+
 
 @dataclass
-class NaviMisskeyBotConfig:
-    """Navi Misskeyボット設定クラス"""
+class NaviMisskeyBotConfig(BaseBotConfig):
+    """Navi Misskeyボット設定クラス（共通設定を継承）"""
     
-    # Misskeyサーバー設定
-    misskey_instance_url: str
-    misskey_access_token: str
+    # Misskey固有設定
+    misskey_instance_url: str = ""
+    misskey_access_token: str = ""
+    bot_user_id: str = ""
     
-    # Naviサーバー設定
-    navi_api_url: str = "http://localhost:8000"
-    
-    # ボット動作設定
-    bot_name: str = "navi"
-    bot_display_name: str = "Navi - 人生相談AI"
-    
-    # ログ設定
-    log_level: str = "INFO"
-    log_file: Optional[str] = None
-    
-    # タイムアウト設定
-    request_timeout: int = 30
-    session_timeout: int = 30 * 60  # 30分
-    
-    # 応答設定
-    enable_crisis_support: bool = True
-    crisis_hotline_numbers: list = None
+    # 機能設定（共通設定をオーバーライド）
+    enable_dm: bool = True
+    enable_mentions: bool = True
+    enable_timeline: bool = False
+    enable_global_timeline: bool = False
     
     def __post_init__(self):
         """設定の後処理"""
-        if self.crisis_hotline_numbers is None:
-            self.crisis_hotline_numbers = [
-                "いのちの電話: 0570-783-556",
-                "こころの健康相談統一ダイヤル: 0570-064-556"
-            ]
+        super().__post_init__()
+        
+        # Misskey固有の検証
+        if not self.misskey_instance_url:
+            raise ValueError("misskey_instance_url is required")
+        if not self.misskey_access_token:
+            raise ValueError("misskey_access_token is required")
+        if not self.bot_user_id:
+            raise ValueError("bot_user_id is required")
 
 
 def load_config() -> NaviMisskeyBotConfig:
@@ -52,14 +46,24 @@ def load_config() -> NaviMisskeyBotConfig:
     if not enable_bot:
         raise ValueError("ENABLE_MISSKEY_BOT is set to false. Set it to true to enable the Misskey bot.")
     
-    misskey_instance_url = os.getenv("MISSKEY_INSTANCE_URL")
-    misskey_access_token = os.getenv("MISSKEY_ACCESS_TOKEN")
+    # 必須環境変数のチェック
+    misskey_host = os.getenv("BOT_MISSKEY_HOST")
+    misskey_access_token = os.getenv("BOT_MISSKEY_ACCESS_TOKEN")
+    bot_user_id = os.getenv("BOT_USER_ID")
     
-    if not misskey_instance_url:
-        raise ValueError("MISSKEY_INSTANCE_URL environment variable is required when ENABLE_MISSKEY_BOT=true")
-    
+    if not misskey_host:
+        raise ValueError("BOT_MISSKEY_HOST environment variable is required when ENABLE_MISSKEY_BOT=true")
     if not misskey_access_token:
-        raise ValueError("MISSKEY_ACCESS_TOKEN environment variable is required when ENABLE_MISSKEY_BOT=true")
+        raise ValueError("BOT_MISSKEY_ACCESS_TOKEN environment variable is required when ENABLE_MISSKEY_BOT=true")
+    if not bot_user_id:
+        raise ValueError("BOT_USER_ID environment variable is required when ENABLE_MISSKEY_BOT=true")
+    
+    # URLの構築
+    misskey_instance_url = f"https://{misskey_host}"
+    if not misskey_host.startswith(('http://', 'https://')):
+        misskey_instance_url = f"https://{misskey_host}"
+    else:
+        misskey_instance_url = misskey_host
     
     # カスタム緊急時相談窓口の読み込み
     crisis_hotlines = []
@@ -68,21 +72,28 @@ def load_config() -> NaviMisskeyBotConfig:
         crisis_hotlines = [line.strip() for line in hotlines_env.split(",")]
     
     config = NaviMisskeyBotConfig(
+        # 共通設定
+        navi_api_url=os.getenv("BOT_NAVI_API_URL", "http://localhost:8000"),
+        navi_api_timeout=int(os.getenv("BOT_NAVI_API_TIMEOUT", "30")),
+        bot_name=os.getenv("BOT_NAME", "navi"),
+        bot_username=os.getenv("BOT_USERNAME", "navi"),
+        session_timeout=int(os.getenv("BOT_SESSION_TIMEOUT", "3600")),
+        log_level=os.getenv("LOG_LEVEL", "INFO"),
+        log_file=os.getenv("LOG_FILE"),
+        enable_dm=os.getenv("BOT_ENABLE_DM", "true").lower() == "true",
+        enable_mentions=os.getenv("BOT_ENABLE_MENTIONS", "true").lower() == "true",
+        enable_timeline=os.getenv("BOT_ENABLE_TIMELINE", "false").lower() == "true",
+        enable_global_timeline=os.getenv("BOT_ENABLE_GLOBAL_TIMELINE", "false").lower() == "true",
+        
+        # Misskey固有設定
         misskey_instance_url=misskey_instance_url,
         misskey_access_token=misskey_access_token,
-        navi_api_url=os.getenv("NAVI_API_URL", "http://localhost:8000"),
-        bot_name=os.getenv("BOT_NAME", "navi"),
-        bot_display_name=os.getenv("BOT_DISPLAY_NAME", "Navi - 人生相談AI"),
-        log_level=os.getenv("BOT_LOG_LEVEL", "INFO"),
-        log_file=os.getenv("BOT_LOG_FILE"),
-        request_timeout=int(os.getenv("BOT_REQUEST_TIMEOUT", "30")),
-        session_timeout=int(os.getenv("BOT_SESSION_TIMEOUT", "1800")),
-        enable_crisis_support=os.getenv("BOT_ENABLE_CRISIS_SUPPORT", "true").lower() == "true"
+        bot_user_id=bot_user_id,
     )
     
     # カスタム緊急時相談窓口を設定
     if crisis_hotlines:
-        config.crisis_hotline_numbers = crisis_hotlines
+        config.crisis_hotlines = crisis_hotlines
     
     return config
 
