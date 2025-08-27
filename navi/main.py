@@ -66,12 +66,6 @@ class CounselingAPIResponse(BaseModel):
     follow_up_questions: List[str]
     is_crisis: bool
 
-class SessionStatusResponse(BaseModel):
-    session_id: str
-    user_id: str
-    conversation_count: int
-    last_interaction: datetime
-    primary_emotions: List[str]
 
 class HealthCheckResponse(BaseModel):
     status: str
@@ -147,10 +141,8 @@ async def root():
         },
         "endpoints": [
             "/counseling - 人生相談メインエンドポイント",
-            "/session/{session_id}/status - セッション状況確認",
             "/health - ヘルスチェック",
             "/custom-prompts - カスタムプロンプト管理",
-            "/prompts - プロンプト管理",
             "/profile - ユーザープロファイル管理"
         ]
     }
@@ -234,89 +226,6 @@ async def counseling_chat(
         log_error(logger, e, {"user_id": request.user_id})
         raise HTTPException(status_code=500, detail="Internal server error")
 
-@app.get("/session/{session_id}/status", response_model=SessionStatusResponse)
-async def get_session_status(
-    session_id: str,
-    memory_system: MemorySystem = Depends(get_memory_system)
-):
-    """セッション状況を確認"""
-    try:
-        session_conversations = [
-            conv for conv in memory_system.conversations 
-            if conv.get('session_id') == session_id
-        ]
-        
-        if not session_conversations:
-            raise HTTPException(status_code=404, detail="Session not found")
-        
-        latest_conv = max(session_conversations, key=lambda x: x['timestamp'])
-        
-        emotions = []
-        for conv in session_conversations[-5:]:
-            context = conv.get('context', 'general_support')
-            if context not in emotions:
-                emotions.append(context)
-        
-        return SessionStatusResponse(
-            session_id=session_id,
-            user_id=latest_conv['user_id'],
-            conversation_count=len(session_conversations),
-            last_interaction=datetime.fromtimestamp(latest_conv['timestamp']),
-            primary_emotions=emotions
-        )
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        log_error(logger, e)
-        raise HTTPException(status_code=500, detail="Status retrieval failed")
-
-@app.get("/users/{user_id}/summary")
-async def get_user_counseling_summary(
-    user_id: str,
-    memory_system: MemorySystem = Depends(get_memory_system)
-):
-    """ユーザーのカウンセリング要約を取得"""
-    try:
-        user_conversations = [
-            conv for conv in memory_system.conversations 
-            if conv['user_id'] == user_id and conv['isActive']
-        ]
-        
-        if not user_conversations:
-            return {"message": "No counseling history found", "user_id": user_id}
-        
-        advice_types = {}
-        total_importance = 0
-        crisis_count = 0
-        
-        for conv in user_conversations:
-            context = conv.get('context', 'general_support')
-            advice_types[context] = advice_types.get(context, 0) + 1
-            total_importance += conv.get('importance', 5)
-            
-            if any(word in conv['user_message'] for word in ['死にたい', '消えたい', '限界']):
-                crisis_count += 1
-        
-        avg_importance = total_importance / len(user_conversations) if user_conversations else 0
-        most_common_issue = max(advice_types, key=advice_types.get) if advice_types else 'general_support'
-        
-        return {
-            "user_id": user_id,
-            "total_conversations": len(user_conversations),
-            "average_importance": round(avg_importance, 2),
-            "most_common_issue": most_common_issue,
-            "crisis_indicators": crisis_count,
-            "issue_distribution": advice_types,
-            "last_interaction": datetime.fromtimestamp(
-                max(conv['timestamp'] for conv in user_conversations)
-            ).isoformat() if user_conversations else None,
-            "needs_attention": crisis_count > 0 or avg_importance > 7
-        }
-        
-    except Exception as e:
-        log_error(logger, e)
-        raise HTTPException(status_code=500, detail="Summary generation failed")
 
 # カスタムプロンプト管理エンドポイント
 @app.post("/custom-prompts", response_model=dict)
@@ -439,33 +348,6 @@ async def get_user_profile(
         log_error(logger, e)
         raise HTTPException(status_code=500, detail=f"Failed to get profile: {str(e)}")
 
-# プロンプト管理エンドポイント
-@app.get("/prompts", response_model=dict)
-async def list_prompts():
-    """利用可能なプロンプト一覧を取得"""
-    try:
-        from .core.prompt_store import get_prompt_store
-        prompt_store = get_prompt_store()
-        prompts = prompt_store.list_prompts(category="counseling")
-        
-        return {
-            "message": "Available prompts retrieved successfully",
-            "prompts": [
-                {
-                    "id": p.id,
-                    "title": p.name,
-                    "name": p.name,
-                    "description": p.description,
-                    "tags": p.tags,
-                    "found": True
-                }
-                for p in prompts
-            ]
-        }
-        
-    except Exception as e:
-        log_error(logger, e)
-        raise HTTPException(status_code=500, detail=f"Failed to list prompts: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn
