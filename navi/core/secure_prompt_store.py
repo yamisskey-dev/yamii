@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 セキュアプロンプトストア - E2EE対応プロンプト管理システム
-PostgreSQL + E2EE暗号化によるゼロナレッジアーキテクチャ
+SQLite + E2EE暗号化によるゼロナレッジアーキテクチャ
 """
 
 import json
