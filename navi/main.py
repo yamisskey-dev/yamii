@@ -74,25 +74,14 @@ class HealthCheckResponse(BaseModel):
     version: str
 
 class CustomPromptCreateRequest(BaseModel):
-    name: str
     prompt_text: str
-    description: Optional[str] = ""
-    tags: Optional[List[str]] = []
 
 class UserProfileRequest(BaseModel):
-    name: Optional[str] = None
-    occupation: Optional[str] = None
-    personality: Optional[str] = None
-    characteristics: Optional[List[str]] = None
-    additional_info: Optional[str] = None
+    profile_text: Optional[str] = None
 
 class UserProfileResponse(BaseModel):
     user_id: str
-    name: Optional[str]
-    occupation: Optional[str]
-    personality: Optional[str]
-    characteristics: List[str]
-    additional_info: Optional[str]
+    profile_text: Optional[str]
     created_at: str
     updated_at: str
 
@@ -238,16 +227,15 @@ async def create_custom_prompt(
     try:
         success = settings_manager.save_custom_prompt(
             user_id=user_id,
-            name=request.name,
+            name="custom_prompt",
             prompt_text=request.prompt_text,
-            description=request.description,
-            tags=request.tags
+            description="",
+            tags=[]
         )
         
         if success:
             return {
                 "message": "Custom prompt created successfully",
-                "name": request.name,
                 "user_id": user_id
             }
         else:
@@ -312,11 +300,7 @@ async def set_user_profile(
     try:
         success = profile_manager.set_user_profile(
             user_id=user_id,
-            name=request.name,
-            occupation=request.occupation,
-            personality=request.personality,
-            characteristics=request.characteristics,
-            additional_info=request.additional_info
+            profile_text=request.profile_text
         )
         
         if success:
@@ -347,6 +331,24 @@ async def get_user_profile(
     except Exception as e:
         log_error(logger, e)
         raise HTTPException(status_code=500, detail=f"Failed to get profile: {str(e)}")
+
+@app.delete("/profile", response_model=dict)
+async def delete_user_profile(
+    user_id: str,
+    profile_manager: UserProfileManager = Depends(get_user_profile_manager)
+):
+    """ユーザープロファイルを削除"""
+    try:
+        success = profile_manager.delete_user_profile(user_id)
+        
+        if success:
+            return {"message": "Profile deleted successfully", "user_id": user_id}
+        else:
+            raise HTTPException(status_code=404, detail="Profile not found")
+            
+    except Exception as e:
+        log_error(logger, e)
+        raise HTTPException(status_code=500, detail=f"Failed to delete profile: {str(e)}")
 
 
 if __name__ == "__main__":
