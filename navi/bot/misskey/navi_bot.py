@@ -1,6 +1,6 @@
 """
 Navi Misskey Bot
-yuiのnaviモジュールをPythonで実装したMisskeyボット
+Pythonで実装したMisskeyボット
 """
 
 import asyncio
@@ -46,23 +46,32 @@ class NaviMisskeyBot:
                 return
             
             # ストリーミング接続開始
+            self.logger.info("Starting streaming connection...")
             await self.misskey_client.start_streaming(self._on_streaming_message)
+            self.logger.info("Streaming connection established")
             
     async def _on_streaming_message(self, data: dict):
         """ストリーミングメッセージを処理"""
         try:
+            self.logger.debug(f"Received streaming message: {data.get('type')}")
             if data.get("type") == "channel" and data.get("body", {}).get("type") == "note":
                 note_data = data["body"]["body"]
+                self.logger.info(f"Processing note from streaming: {note_data.get('user', {}).get('username', 'unknown')}")
                 note = self.misskey_client._parse_note(note_data)
                 await self._handle_note(note)
+            else:
+                self.logger.debug(f"Ignoring non-note message: {data.get('type')}")
                 
         except Exception as e:
             self.logger.error(f"Error handling streaming message: {e}")
             
     async def _handle_note(self, note: MisskeyNote):
         """ノートを処理"""
+        self.logger.info(f"Handling note from @{note.user_username}: {note.text[:50]}...")
+        
         # 重複処理防止
         if note.id in self.processed_notes:
+            self.logger.debug(f"Note {note.id} already processed, skipping")
             return
         self.processed_notes.add(note.id)
         
@@ -70,12 +79,21 @@ class NaviMisskeyBot:
         if len(self.processed_notes) > 1000:
             self.processed_notes = set(list(self.processed_notes)[-500:])
             
-        # メンションチェック
-        if not self.misskey_client.is_mentioned(note):
-            return
-            
         # 自分の投稿はスキップ
         if note.user_id == self.misskey_client.bot_user_id:
+            self.logger.debug(f"Skipping own note: {note.id}")
+            return
+        
+        is_mentioned = self.misskey_client.is_mentioned(note)
+        is_direct_message = self.misskey_client.is_direct_message(note)
+        
+        self.logger.info(f"Processing note {note.id}: mentioned={is_mentioned}, dm={is_direct_message}, visibility={note.visibility}")
+        self.logger.debug(f"Bot user ID: {self.misskey_client.bot_user_id}, Note user: {note.user_id}")
+        if note.visible_user_ids:
+            self.logger.debug(f"Visible user IDs: {note.visible_user_ids}")
+        
+        if not is_mentioned and not is_direct_message:
+            self.logger.info(f"Not mentioned and not in DM for note {note.id}, skipping")
             return
             
         self.logger.info(f"Processing mention from @{note.user_username}: {note.text[:50]}...")
@@ -127,28 +145,28 @@ class NaviMisskeyBot:
         """管理コマンドを処理"""
         text_lower = text.lower().strip()
         
-        if text_lower in ["navi /help", "/help", "ヘルプ"]:
+        if text_lower in ["/help", "ヘルプ"]:
             help_text = (
                 "👁️‍🗨️ **NAVI 人生相談AI - ヘルプ**\n\n"
                 "**📝 基本的な相談方法:**\n"
-                "• `@navi <相談内容>` - 人生相談を開始\n"
+                "• `<相談内容>` - 人生相談を開始\n"
                 "• `終了` - 相談を終了\n\n"
                 "**📝 カスタムプロンプト:**\n"
-                "• `navi /custom set <プロンプト内容>` - カスタムプロンプト設定\n"
-                "• `navi /custom show` - カスタムプロンプト表示\n"
-                "• `navi /custom delete` - カスタムプロンプト削除\n\n"
+                "• `/custom set <プロンプト内容>` - カスタムプロンプト設定\n"
+                "• `/custom show` - カスタムプロンプト表示\n"
+                "• `/custom delete` - カスタムプロンプト削除\n\n"
                 "**👤 プロファイル管理:**\n"
-                "• `navi /profile set <プロファイル情報>` - プロファイル設定\n"
-                "• `navi /profile show` - プロファイル表示\n"
-                "• `navi /profile delete` - プロファイル削除\n\n"
+                "• `/profile set <プロファイル情報>` - プロファイル設定\n"
+                "• `/profile show` - プロファイル表示\n"
+                "• `/profile delete` - プロファイル削除\n\n"
                 "**⚙️ その他のコマンド:**\n"
-                "• `navi /help` - このヘルプを表示\n"
-                "• `navi /status` - サーバー状況確認"
+                "• `/help` - このヘルプを表示\n"
+                "• `/status` - サーバー状況確認"
             )
             await self._send_reply(note, help_text)
             return True
             
-        elif text_lower in ["navi /status", "/status"]:
+        elif text_lower in ["/status"]:
             try:
                 health = await self.navi_client.health_check()
                 status_text = (
@@ -168,16 +186,16 @@ class NaviMisskeyBot:
                 await self._send_reply(note, "❌ ステータス確認でエラーが発生しました。naviサーバーが起動していることを確認してください。")
             return True
             
-        elif text_lower == "navi":
+        elif text_lower in ["navi", "/start"]:
             quick_help = (
                 "🚀 **Navi クイックスタート**\n\n"
                 "**今すぐ相談:**\n"
-                "• `@navi <相談内容>` - 人生相談を開始\n\n"
+                "• 個人チャット: `<相談内容>` / パブリック: `@navi <相談内容>`\n\n"
                 "**コマンド:**\n"
-                "• `navi /help` - 詳細ヘルプ\n"
-                "• `navi /status` - システム状況\n"
-                "• `navi /custom set <プロンプト>` - カスタムプロンプト\n"
-                "• `navi /profile set <情報>` - プロファイル設定"
+                "• `/help` - 詳細ヘルプ\n"
+                "• `/status` - システム状況\n"
+                "• `/custom set <プロンプト>` - カスタムプロンプト\n"
+                "• `/profile set <情報>` - プロファイル設定"
             )
             await self._send_reply(note, quick_help)
             return True
@@ -186,7 +204,7 @@ class NaviMisskeyBot:
         
     async def _handle_custom_prompt_commands(self, note: MisskeyNote, text: str) -> bool:
         """カスタムプロンプトコマンドを処理"""
-        if not text.lower().startswith("navi /custom"):
+        if not text.lower().startswith("/custom"):
             return False
             
         try:
@@ -246,11 +264,11 @@ class NaviMisskeyBot:
                     reply_text = (
                         "📝 **カスタムプロンプト管理:**\n\n"
                         "**作成・更新:**\n"
-                        "`navi /custom set プロンプト内容`\n\n"
+                        "`/custom set プロンプト内容`\n\n"
                         "**削除:**\n"
-                        "`navi /custom delete`\n\n"
+                        "`/custom delete`\n\n"
                         "**例:**\n"
-                        "`navi /custom set あなたは優しい先生です。分からないことがあったら丁寧に教えてください。`\n\n"
+                        "`/custom set あなたは優しい先生です。分からないことがあったら丁寧に教えてください。`\n\n"
                         "✨ カスタムプロンプトは1つのみ保存され、作成後すぐに自動適用されます。"
                     )
                     
@@ -267,7 +285,7 @@ class NaviMisskeyBot:
         """プロファイルコマンドを処理"""
         text_lower = text.lower()
         
-        if not any(keyword in text_lower for keyword in ["navi /profile", "navi profile", "navi プロファイル"]):
+        if not text_lower.startswith("/profile"):
             return False
             
         try:
@@ -279,14 +297,14 @@ class NaviMisskeyBot:
                         "👤 **あなたのプロファイル:**\n\n"
                         f"{profile['profile_text']}\n\n"
                         "⚙️ **設定変更:**\n"
-                        "設定: `navi /profile set <プロファイル情報>`\n"
-                        "削除: `navi /profile delete`"
+                        "設定: `/profile set <プロファイル情報>`\n"
+                        "削除: `/profile delete`"
                     )
                 else:
                     profile_text = (
-                        "プロファイルが設定されていません。`navi /profile set <プロファイル情報>` で"
+                        "プロファイルが設定されていません。`/profile set <プロファイル情報>` で"
                         "プロファイルを設定してください。\n\n"
-                        "例: `navi /profile set 山田太郎、無職です。趣味は読書と散歩です。`"
+                        "例: `/profile set 山田太郎、無職です。趣味は読書と散歩です。`"
                     )
                     
                 await self._send_reply(note, profile_text)
