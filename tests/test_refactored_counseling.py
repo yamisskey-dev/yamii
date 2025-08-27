@@ -20,7 +20,7 @@ from navi.core.exceptions import ValidationError, ExternalServiceError
 from navi.memory import MemorySystem
 from navi.user_profile import UserProfileManager
 from navi.user_settings import UserSettingsManager
-from navi.markdown_prompt_loader import MarkdownPromptLoader
+from navi.core.prompt_store import PromptStore, get_prompt_store
 
 
 class TestEmotionAnalysisService:
@@ -138,7 +138,7 @@ class TestCounselingService:
         self.memory_system = MemorySystem()
         self.user_profile_manager = UserProfileManager(self.test_dir)
         self.settings_manager = UserSettingsManager(self.test_db, self.test_key)
-        self.prompt_loader = MarkdownPromptLoader()
+        self.prompt_store = get_prompt_store()
         
         # カウンセリングサービス
         self.counseling_service = CounselingService(
@@ -146,7 +146,7 @@ class TestCounselingService:
             memory_system=self.memory_system,
             user_profile_manager=self.user_profile_manager,
             settings_manager=self.settings_manager,
-            prompt_loader=self.prompt_loader
+            prompt_store=self.prompt_store
         )
     
     def teardown_method(self):

@@ -17,7 +17,7 @@ from .emotion_service import EmotionAnalysisService, EmotionType
 from ..memory import MemorySystem
 from ..user_profile import UserProfileManager
 from ..user_settings import UserSettingsManager
-from ..markdown_prompt_loader import MarkdownPromptLoader
+from ..core.prompt_store import PromptStore, get_prompt_store
 
 
 @dataclass
@@ -182,12 +182,12 @@ class CounselingService:
     def __init__(self, api_key: str, memory_system: MemorySystem,
                  user_profile_manager: UserProfileManager,
                  settings_manager: UserSettingsManager,
-                 prompt_loader: MarkdownPromptLoader):
+                 prompt_store: PromptStore = None):
         self.api_key = api_key
         self.memory_system = memory_system
         self.user_profile_manager = user_profile_manager
         self.settings_manager = settings_manager
-        self.prompt_loader = prompt_loader
+        self.prompt_store = prompt_store or get_prompt_store()
         
         # サービス依存関係
         self.emotion_service = EmotionAnalysisService()
@@ -283,7 +283,7 @@ class CounselingService:
             
             # 指定プロンプトIDからの取得
             elif request.prompt_id:
-                base_prompt = self.prompt_loader.get_prompt_text(request.prompt_id)
+                base_prompt = self.prompt_store.get_prompt_text(request.prompt_id)
                 self.logger.info(f"Using specified prompt: {request.prompt_id}")
             
             # ユーザープロファイルからの動的プロンプト
@@ -295,12 +295,12 @@ class CounselingService:
                     )
                     self.logger.info(f"Using profile-based prompt for user {request.user_id}")
                 else:
-                    base_prompt = self.prompt_loader.get_prompt_text("default_counselor")
+                    base_prompt = self.prompt_store.get_prompt_text("default_counselor")
                     self.logger.info("Using default counselor prompt")
             
         except Exception as e:
             self.logger.warning(f"Failed to get custom prompt: {e}, using default")
-            base_prompt = self.prompt_loader.get_prompt_text("default_counselor")
+            base_prompt = self.prompt_store.get_prompt_text("default_counselor")
         
         # 現在時刻と文脈情報を追加
         now = datetime.now().strftime('%Y年%m月%d日 %H:%M')

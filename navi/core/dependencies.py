@@ -10,7 +10,7 @@ from functools import lru_cache
 from ..user_profile import UserProfileManager
 from ..user_settings import UserSettingsManager
 from ..memory import MemorySystem
-from ..markdown_prompt_loader import MarkdownPromptLoader
+from .prompt_store import PromptStore, get_prompt_store
 
 
 class DependencyContainer:
@@ -29,7 +29,7 @@ class DependencyContainer:
         self._instances['memory_system'] = MemorySystem()
         self._instances['user_profile_manager'] = UserProfileManager()
         self._instances['settings_manager'] = UserSettingsManager()
-        self._instances['prompt_loader'] = MarkdownPromptLoader()
+        self._instances['prompt_store'] = PromptStore()
         
         # ビジネス層は遅延初期化（API keyが必要なため）
         
@@ -53,11 +53,11 @@ class DependencyContainer:
             self.initialize()
         return self._instances['settings_manager']
     
-    def get_prompt_loader(self) -> MarkdownPromptLoader:
-        """プロンプトローダーを取得"""
+    def get_prompt_store(self) -> PromptStore:
+        """プロンプトストアを取得"""
         if not self._initialized:
             self.initialize()
-        return self._instances['prompt_loader']
+        return self._instances['prompt_store']
     
     def get_counseling_service(self):
         """カウンセリングサービスを取得（遅延初期化）"""
@@ -74,7 +74,7 @@ class DependencyContainer:
                 memory_system=self.get_memory_system(),
                 user_profile_manager=self.get_user_profile_manager(),
                 settings_manager=self.get_settings_manager(),
-                prompt_loader=self.get_prompt_loader()
+                prompt_store=self.get_prompt_store()
             )
         
         return self._instances['counseling_service']
@@ -108,9 +108,9 @@ def get_settings_manager() -> UserSettingsManager:
     return get_container().get_settings_manager()
 
 
-def get_prompt_loader() -> MarkdownPromptLoader:
-    """FastAPI依存性注入: プロンプトローダー"""
-    return get_container().get_prompt_loader()
+def get_prompt_store() -> PromptStore:
+    """FastAPI依存性注入: プロンプトストア"""
+    return get_container().get_prompt_store()
 
 
 def get_counseling_service():

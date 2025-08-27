@@ -171,8 +171,8 @@ python test_aichat.py
 # カスタムプロンプトテスト
 python test_custom_prompts.py
 
-# NAVI.mdローダーテスト
-python -c "from navi.markdown_prompt_loader import MarkdownPromptLoader; loader = MarkdownPromptLoader(); print('Loaded prompts:', len(loader.list_prompts()))"
+# NAVI.mdローダーテスト（新しいmarkdown-it版）
+python -c "from navi.core.markdown_loader import get_navi_loader; loader = get_navi_loader(); print('Loaded prompts:', len(loader.prompts))"
 ```
 
 ### 統合テスト
