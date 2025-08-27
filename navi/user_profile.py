@@ -59,20 +59,14 @@ class UserProfileManager:
         with open(self.profiles_file, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
     
-    def set_user_profile(self, user_id: str, name: Optional[str] = None, 
-                        occupation: Optional[str] = None, personality: Optional[str] = None,
-                        characteristics: List[str] = None, additional_info: Optional[str] = None) -> bool:
-        """ユーザープロファイルを設定"""
+    def set_user_profile(self, user_id: str, profile_text: Optional[str] = None) -> bool:
+        """ユーザープロファイルを設定（統合版）"""
         data = self._load_profiles_data()
         
         if user_id not in data["profiles"]:
             data["profiles"][user_id] = {
                 "user_id": user_id,
-                "name": None,
-                "occupation": None,
-                "personality": None,
-                "characteristics": [],
-                "additional_info": None,
+                "profile_text": None,
                 "created_at": datetime.now().isoformat(),
                 "updated_at": datetime.now().isoformat()
             }
@@ -80,16 +74,8 @@ class UserProfileManager:
         profile = data["profiles"][user_id]
         
         # プロファイル情報を更新
-        if name is not None:
-            profile["name"] = name
-        if occupation is not None:
-            profile["occupation"] = occupation
-        if personality is not None:
-            profile["personality"] = personality
-        if characteristics is not None:
-            profile["characteristics"] = characteristics
-        if additional_info is not None:
-            profile["additional_info"] = additional_info
+        if profile_text is not None:
+            profile["profile_text"] = profile_text
         
         profile["updated_at"] = datetime.now().isoformat()
         
@@ -116,7 +102,7 @@ class UserProfileManager:
         """プロファイルから動的プロンプトを生成"""
         profile = self.get_user_profile(user_id)
         
-        if not profile:
+        if not profile or not profile.get("profile_text"):
             # デフォルトプロンプト
             return self._get_default_counseling_prompt()
         
@@ -127,37 +113,16 @@ class UserProfileManager:
         prompt_parts.append("あなたは経験豊富で共感力の高い人生相談カウンセラーです。")
         
         # ユーザー情報を考慮した対応方針
-        if profile.get("name"):
-            prompt_parts.append(f"相談者の名前は「{profile['name']}」です。")
-        
-        if profile.get("occupation"):
-            prompt_parts.append(f"相談者の職業・状況: {profile['occupation']}")
-        
-        if profile.get("personality"):
-            prompt_parts.append(f"相談者が求める性格・対応スタイル: {profile['personality']}")
-            
-            # 性格に応じた対応調整
-            personality = profile['personality'].lower()
-            if "聞き役" in personality:
-                prompt_parts.append("特に傾聴を重視し、相談者の話をじっくりと聞く姿勢を大切にしてください。")
-            elif "励まし" in personality:
-                prompt_parts.append("前向きな励ましとサポートを中心としたアプローチを取ってください。")
-            elif "率直" in personality:
-                prompt_parts.append("率直で建設的なアドバイスを提供し、必要に応じて厳しい現実も伝えてください。")
-        
-        if profile.get("characteristics"):
-            char_str = "、".join(profile['characteristics'])
-            prompt_parts.append(f"相談者の特徴・要望: {char_str}")
-        
-        if profile.get("additional_info"):
-            prompt_parts.append(f"追加情報: {profile['additional_info']}")
+        profile_text = profile.get("profile_text")
+        if profile_text:
+            prompt_parts.append(f"相談者について: {profile_text}")
         
         # 共通の対応方針
         prompt_parts.extend([
             "",
             "対応方針:",
             "1. 相談者の個人的背景と特徴を理解し、それに適した対応を行う",
-            "2. 相談者の感情に共感し、受容的な態度を維持する", 
+            "2. 相談者の感情に共感し、受容的な態度を維持する",
             "3. 相談者の価値観や生活スタイルを尊重する",
             "4. 具体的で実践的なアドバイスを、相談者の状況に合わせて提供する",
             "5. 必要に応じて専門機関への相談を提案する",

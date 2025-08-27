@@ -23,6 +23,7 @@ dependencies = [
     "sqlalchemy==2.0.43",
     "typer==0.16.1",
     "urllib3==2.5.0",
+    "psycopg2-binary==2.9.10",
     "uvicorn[standard]==0.24.0",
     "fastapi==0.104.1",
     "cryptography==41.0.0",
