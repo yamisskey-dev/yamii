@@ -17,7 +17,7 @@ class NaviMisskeyBotConfig(BaseBotConfig):
     # Misskey固有設定
     misskey_instance_url: str = ""
     misskey_access_token: str = ""
-    bot_user_id: str = ""
+    misskey_bot_user_id: str = ""
     
     # 機能設定（共通設定をオーバーライド）
     enable_dm: bool = True
@@ -34,8 +34,8 @@ class NaviMisskeyBotConfig(BaseBotConfig):
             raise ValueError("misskey_instance_url is required")
         if not self.misskey_access_token:
             raise ValueError("misskey_access_token is required")
-        if not self.bot_user_id:
-            raise ValueError("bot_user_id is required")
+        if not self.misskey_bot_user_id:
+            raise ValueError("misskey_bot_user_id is required")
 
 
 def load_config() -> NaviMisskeyBotConfig:
@@ -47,23 +47,20 @@ def load_config() -> NaviMisskeyBotConfig:
         raise ValueError("ENABLE_MISSKEY_BOT is set to false. Set it to true to enable the Misskey bot.")
     
     # 必須環境変数のチェック
-    misskey_host = os.getenv("BOT_MISSKEY_HOST")
-    misskey_access_token = os.getenv("BOT_MISSKEY_ACCESS_TOKEN")
-    bot_user_id = os.getenv("BOT_USER_ID")
+    misskey_instance_url = os.getenv("MISSKEY_INSTANCE_URL")
+    misskey_access_token = os.getenv("MISSKEY_ACCESS_TOKEN")
+    misskey_bot_user_id = os.getenv("MISSKEY_BOT_USER_ID")
     
-    if not misskey_host:
-        raise ValueError("BOT_MISSKEY_HOST environment variable is required when ENABLE_MISSKEY_BOT=true")
+    if not misskey_instance_url:
+        raise ValueError("MISSKEY_INSTANCE_URL environment variable is required when ENABLE_MISSKEY_BOT=true")
     if not misskey_access_token:
-        raise ValueError("BOT_MISSKEY_ACCESS_TOKEN environment variable is required when ENABLE_MISSKEY_BOT=true")
-    if not bot_user_id:
-        raise ValueError("BOT_USER_ID environment variable is required when ENABLE_MISSKEY_BOT=true")
+        raise ValueError("MISSKEY_ACCESS_TOKEN environment variable is required when ENABLE_MISSKEY_BOT=true")
+    if not misskey_bot_user_id:
+        raise ValueError("MISSKEY_BOT_USER_ID environment variable is required when ENABLE_MISSKEY_BOT=true")
     
-    # URLの構築
-    misskey_instance_url = f"https://{misskey_host}"
-    if not misskey_host.startswith(('http://', 'https://')):
-        misskey_instance_url = f"https://{misskey_host}"
-    else:
-        misskey_instance_url = misskey_host
+    # URLの正規化
+    if not misskey_instance_url.startswith(('http://', 'https://')):
+        misskey_instance_url = f"https://{misskey_instance_url}"
     
     # カスタム緊急時相談窓口の読み込み
     crisis_hotlines = []
@@ -72,9 +69,9 @@ def load_config() -> NaviMisskeyBotConfig:
         crisis_hotlines = [line.strip() for line in hotlines_env.split(",")]
     
     config = NaviMisskeyBotConfig(
-        # 共通設定
-        navi_api_url=os.getenv("BOT_NAVI_API_URL", "http://localhost:8000"),
-        navi_api_timeout=int(os.getenv("BOT_NAVI_API_TIMEOUT", "30")),
+        # 共通設定（ベースクラス）
+        navi_api_url=os.getenv("NAVI_API_URL", "http://localhost:8000"),
+        navi_api_timeout=int(os.getenv("NAVI_API_TIMEOUT", "30")),
         bot_name=os.getenv("BOT_NAME", "navi"),
         bot_username=os.getenv("BOT_USERNAME", "navi"),
         session_timeout=int(os.getenv("BOT_SESSION_TIMEOUT", "3600")),
@@ -88,7 +85,7 @@ def load_config() -> NaviMisskeyBotConfig:
         # Misskey固有設定
         misskey_instance_url=misskey_instance_url,
         misskey_access_token=misskey_access_token,
-        bot_user_id=bot_user_id,
+        misskey_bot_user_id=misskey_bot_user_id,
     )
     
     # カスタム緊急時相談窓口を設定

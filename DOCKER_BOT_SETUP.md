@@ -18,20 +18,30 @@ GEMINI_API_KEY=your_gemini_api_key_here
 
 # Misskeyボット設定
 ENABLE_MISSKEY_BOT=true
-BOT_MISSKEY_HOST=your-misskey-instance.com
-BOT_MISSKEY_ACCESS_TOKEN=your_misskey_access_token
-BOT_USER_ID=your_bot_user_id
-BOT_USERNAME=navi
+MISSKEY_INSTANCE_URL=https://your-misskey-instance.com
+MISSKEY_ACCESS_TOKEN=your_misskey_access_token
+MISSKEY_BOT_USER_ID=your_bot_user_id
 
-# オプション設定
+# Navi API設定（共通）
+NAVI_API_URL=http://localhost:8000
+NAVI_API_TIMEOUT=30
+
+# ボット基本設定（共通）
+BOT_NAME=navi
+BOT_USERNAME=navi
+BOT_SESSION_TIMEOUT=3600
+
+# 機能有効化（プラットフォーム固有）
 BOT_ENABLE_DM=true
 BOT_ENABLE_MENTIONS=true
 BOT_ENABLE_TIMELINE=false
 BOT_ENABLE_GLOBAL_TIMELINE=false
-BOT_SESSION_TIMEOUT=3600
-BOT_NAVI_API_URL=http://localhost:8000
-BOT_NAVI_API_TIMEOUT=30
+
+# 緊急時相談窓口設定
 BOT_CRISIS_HOTLINES=いのちの電話: 0570-783-556, こころの健康相談統一ダイヤル: 0570-064-556
+
+# ログ設定
+LOG_LEVEL=INFO
 ```
 
 ### 2. 設定ファイルのコピー（初回のみ）
@@ -143,21 +153,41 @@ Misskeyでボットをメンションしてテストします：
 
 ## 設定項目詳細
 
+### 共通設定（NAVI_*プレフィックス）
+
 | 環境変数 | 必須 | デフォルト値 | 説明 |
 |---------|------|------------|------|
-| `ENABLE_MISSKEY_BOT` | ✅ | `false` | ボット機能の有効/無効 |
-| `BOT_MISSKEY_HOST` | ✅ | - | MisskeyインスタンスのHost |
-| `BOT_MISSKEY_ACCESS_TOKEN` | ✅ | - | ボットのアクセストークン |
-| `BOT_USER_ID` | ✅ | - | ボットのユーザーID |
+| `NAVI_API_URL` | | `http://localhost:8000` | Navi APIのURL |
+| `NAVI_API_TIMEOUT` | | `30` | API通信タイムアウト（秒） |
+
+### ボット共通設定（BOT_*プレフィックス）
+
+| 環境変数 | 必須 | デフォルト値 | 説明 |
+|---------|------|------------|------|
+| `BOT_NAME` | | `navi` | ボット名 |
 | `BOT_USERNAME` | | `navi` | ボットのユーザー名 |
+| `BOT_SESSION_TIMEOUT` | | `3600` | セッションタイムアウト（秒） |
 | `BOT_ENABLE_DM` | | `true` | DM機能の有効/無効 |
 | `BOT_ENABLE_MENTIONS` | | `true` | メンション機能の有効/無効 |
 | `BOT_ENABLE_TIMELINE` | | `false` | ローカルタイムライン監視 |
 | `BOT_ENABLE_GLOBAL_TIMELINE` | | `false` | グローバルタイムライン監視 |
-| `BOT_SESSION_TIMEOUT` | | `3600` | セッションタイムアウト（秒） |
-| `BOT_NAVI_API_URL` | | `http://localhost:8000` | Navi APIのURL |
-| `BOT_NAVI_API_TIMEOUT` | | `30` | API通信タイムアウト（秒） |
 | `BOT_CRISIS_HOTLINES` | | - | 危機対応ホットライン情報 |
+
+### Misskey固有設定
+
+| 環境変数 | 必須 | デフォルト値 | 説明 |
+|---------|------|------------|------|
+| `ENABLE_MISSKEY_BOT` | ✅ | `false` | ボット機能の有効/無効 |
+| `MISSKEY_INSTANCE_URL` | ✅ | - | MisskeyインスタンスのURL |
+| `MISSKEY_ACCESS_TOKEN` | ✅ | - | ボットのアクセストークン |
+| `MISSKEY_BOT_USER_ID` | ✅ | - | ボットのユーザーID |
+
+### ログ設定
+
+| 環境変数 | 必須 | デフォルト値 | 説明 |
+|---------|------|------------|------|
+| `LOG_LEVEL` | | `INFO` | ログレベル (DEBUG/INFO/WARNING/ERROR) |
+| `LOG_FILE` | | - | ログファイルパス |
 
 ## ログ出力例
 
@@ -188,9 +218,9 @@ GEMINI_API_KEY=your_gemini_api_key
 
 # ボット設定
 ENABLE_MISSKEY_BOT=true
-BOT_MISSKEY_HOST=misskey.dev
-BOT_MISSKEY_ACCESS_TOKEN=your_test_token
-BOT_USER_ID=test_bot_id
+MISSKEY_INSTANCE_URL=https://misskey.dev
+MISSKEY_ACCESS_TOKEN=your_test_token
+MISSKEY_BOT_USER_ID=test_bot_id
 ```
 
 ### 本番設定（本番環境の.env）
@@ -201,20 +231,24 @@ GEMINI_API_KEY=prod_gemini_api_key
 
 # Bot Configuration
 ENABLE_MISSKEY_BOT=true
-BOT_MISSKEY_HOST=misskey.yourinstance.com
-BOT_MISSKEY_ACCESS_TOKEN=prod_misskey_token
-BOT_USER_ID=prod_bot_user_id
+MISSKEY_INSTANCE_URL=https://misskey.yourinstance.com
+MISSKEY_ACCESS_TOKEN=prod_misskey_token
+MISSKEY_BOT_USER_ID=prod_bot_user_id
+
+# Common Bot Settings
+BOT_NAME=navi
 BOT_USERNAME=navi
+BOT_SESSION_TIMEOUT=7200
+
+# Navi API Settings
+NAVI_API_URL=http://localhost:8000
+NAVI_API_TIMEOUT=45
 
 # Feature Flags
 BOT_ENABLE_DM=true
 BOT_ENABLE_MENTIONS=true
 BOT_ENABLE_TIMELINE=false
 BOT_ENABLE_GLOBAL_TIMELINE=false
-
-# Timeouts
-BOT_SESSION_TIMEOUT=7200
-BOT_NAVI_API_TIMEOUT=45
 
 # Crisis Support
 BOT_CRISIS_HOTLINES=いのちの電話: 0570-783-556, こころの健康相談統一ダイヤル: 0570-064-556

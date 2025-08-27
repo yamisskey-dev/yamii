@@ -16,6 +16,25 @@ sys.path.insert(0, str(project_root))
 
 from navi.core.logging import NaviLogger, get_logger
 
+# テスト用環境変数の設定（統一された命名規則）
+os.environ.update({
+    'GEMINI_API_KEY': 'test_key_12345',
+    'ENABLE_MISSKEY_BOT': 'true',
+    'MISSKEY_INSTANCE_URL': 'https://test.misskey.example',
+    'MISSKEY_ACCESS_TOKEN': 'test_token_67890',
+    'MISSKEY_BOT_USER_ID': 'test_bot_user_123',
+    'BOT_NAME': 'navi_test',
+    'BOT_USERNAME': 'navi_test',
+    'NAVI_API_URL': 'http://localhost:8000',
+    'NAVI_API_TIMEOUT': '30',
+    'BOT_SESSION_TIMEOUT': '3600',
+    'LOG_LEVEL': 'DEBUG',
+    'BOT_ENABLE_DM': 'true',
+    'BOT_ENABLE_MENTIONS': 'true',
+    'BOT_ENABLE_TIMELINE': 'false',
+    'BOT_ENABLE_GLOBAL_TIMELINE': 'false',
+})
+
 class NaviIntegrationTester:
     """Navi統合テスター"""
     
