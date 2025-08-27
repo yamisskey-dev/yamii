@@ -84,12 +84,24 @@ class NaviLogger:
         
         # ファイルハンドラー（指定された場合）
         if log_file:
-            log_path = Path(log_file)
-            log_path.parent.mkdir(parents=True, exist_ok=True)
-            
-            file_handler = logging.FileHandler(log_file, encoding='utf-8')
-            file_handler.setFormatter(StructuredFormatter())
-            root_logger.addHandler(file_handler)
+            try:
+                log_path = Path(log_file)
+                log_path.parent.mkdir(parents=True, exist_ok=True)
+                
+                file_handler = logging.FileHandler(log_file, encoding='utf-8')
+                file_handler.setFormatter(StructuredFormatter())
+                root_logger.addHandler(file_handler)
+            except (PermissionError, OSError) as e:
+                # ファイルログに失敗した場合は警告を出してコンソールログのみ続行
+                console_handler.handle(logging.LogRecord(
+                    name="navi.logging",
+                    level=logging.WARNING,
+                    pathname=__file__,
+                    lineno=0,
+                    msg=f"ログファイル '{log_file}' への書き込みに失敗しました。コンソールログのみ使用します: {e}",
+                    args=(),
+                    exc_info=None
+                ))
         
         cls._configured = True
     
