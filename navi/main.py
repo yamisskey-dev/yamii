@@ -1,10 +1,10 @@
 """
 Navi - 人生相談専用APIサーバー
-独立したサーバーとして設計され、外部（yui等）から呼び出される
+プラットフォーム非依存の独立APIサーバー
+クリーンアーキテクチャとレイヤード設計を採用
 """
 
 import os
-import uuid
 from datetime import datetime
 from typing import List, Optional
 
@@ -12,32 +12,41 @@ from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from .counseling_service import CounselingService, CounselingRequest, CounselingResponse
+from .core.dependencies import (
+    get_memory_system, get_user_profile_manager, get_settings_manager,
+    get_prompt_loader, get_counseling_service
+)
+from .core.logging import NaviLogger, get_logger, log_request, log_response, log_error
+from .core.exceptions import NaviException, ExternalServiceError, ValidationError
+from .services.counseling_service import CounselingRequest, CounselingResponse
 from .memory import MemorySystem
-from .markdown_prompt_loader import get_prompt_loader, list_available_prompts, reload_prompts
 from .user_profile import UserProfileManager, PERSONALITY_OPTIONS, CHARACTERISTIC_OPTIONS
-from .user_settings import settings_manager, DEFAULT_PROMPT_TEMPLATES
+from .user_settings import UserSettingsManager, DEFAULT_PROMPT_TEMPLATES
+from .markdown_prompt_loader import MarkdownPromptLoader
+
+# ログシステムを初期化
+NaviLogger.configure(
+    log_level=os.getenv("LOG_LEVEL", "INFO"),
+    log_file=os.getenv("LOG_FILE")
+)
 
 # FastAPI アプリケーション作成
 app = FastAPI(
     title="Navi - 人生相談APIサーバー",
-    description="独立した人生相談AI サーバー。外部サービスから利用可能。",
-    version="0.1.0"
+    description="プラットフォーム非依存の独立人生相談AIサーバー",
+    version="1.0.0"
 )
 
-# CORS設定
+# CORS設定 - 任意のオリジンを許可（本番環境では適切に制限してください）
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 本番環境では適切に設定
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["*"],
 )
 
-# サービス初期化
-memory_system = MemorySystem()
-user_profile_manager = UserProfileManager()
-counseling_service = None  # 初期化時に設定
+logger = get_logger("main")
 
 # リクエスト/レスポンスモデル
 class CounselingAPIRequest(BaseModel):
@@ -69,37 +78,14 @@ class HealthCheckResponse(BaseModel):
     status: str
     timestamp: datetime
     service: str
+    version: str
 
-# カスタムプロンプト関連モデル
 class CustomPromptCreateRequest(BaseModel):
     name: str
     prompt_text: str
     description: Optional[str] = ""
     tags: Optional[List[str]] = []
 
-class CustomPromptUpdateRequest(BaseModel):
-    name: Optional[str] = None
-    prompt_text: Optional[str] = None
-    description: Optional[str] = None
-    tags: Optional[List[str]] = None
-
-class CustomPromptResponse(BaseModel):
-    id: str
-    name: str
-    prompt_text: str
-    description: str
-    tags: List[str]
-    user_id: str
-    created_at: datetime
-    updated_at: datetime
-    usage_count: int
-    is_active: bool
-
-class CustomPromptListResponse(BaseModel):
-    prompts: List[CustomPromptResponse]
-    total_count: int
-
-# ユーザープロファイル関連モデル
 class UserProfileRequest(BaseModel):
     name: Optional[str] = None
     occupation: Optional[str] = None
@@ -117,23 +103,30 @@ class UserProfileResponse(BaseModel):
     created_at: str
     updated_at: str
 
-# 依存関数
-def get_counseling_service() -> CounselingService:
-    """カウンセリングサービスを取得"""
-    global counseling_service
-    
-    if counseling_service is None:
-        api_key = os.getenv("GEMINI_API_KEY")
-        if not api_key:
-            raise HTTPException(status_code=500, detail="GEMINI_API_KEY not configured")
-        counseling_service = CounselingService(api_key, None, user_profile_manager)
-    
-    return counseling_service
+# エラーハンドラー
+@app.exception_handler(NaviException)
+async def navi_exception_handler(request, exc: NaviException):
+    log_error(logger, exc, {"endpoint": str(request.url)})
+    return HTTPException(
+        status_code=400 if isinstance(exc, ValidationError) else 500,
+        detail={
+            "error_code": exc.error_code,
+            "message": exc.message,
+            "details": exc.details
+        }
+    )
 
-
-def get_user_profile_manager() -> UserProfileManager:
-    """ユーザープロファイル管理サービスを取得"""
-    return user_profile_manager
+@app.exception_handler(ExternalServiceError)
+async def external_service_exception_handler(request, exc: ExternalServiceError):
+    log_error(logger, exc, {"endpoint": str(request.url)})
+    return HTTPException(
+        status_code=503,
+        detail={
+            "error_code": exc.error_code,
+            "message": "外部サービスで問題が発生しています。しばらく時間を置いてからお試しください。",
+            "details": exc.details
+        }
+    )
 
 # エンドポイント定義
 @app.get("/", response_model=dict)
@@ -141,47 +134,69 @@ async def root():
     """ルートエンドポイント"""
     return {
         "service": "Navi - 人生相談APIサーバー",
-        "version": "0.1.0",
-        "description": "独立した人生相談AIサーバー",
+        "version": "1.0.0",
+        "description": "プラットフォーム非依存の独立人生相談AIサーバー",
         "status": "running",
+        "features": {
+            "clean_architecture": True,
+            "dependency_injection": True,
+            "structured_logging": True,
+            "emotion_analysis": True,
+            "crisis_detection": True,
+            "custom_prompts": True,
+            "user_profiles": True
+        },
         "endpoints": [
             "/counseling - 人生相談メインエンドポイント",
             "/session/{session_id}/status - セッション状況確認",
             "/health - ヘルスチェック",
             "/custom-prompts - カスタムプロンプト管理",
-            "/custom-prompts/templates - デフォルトテンプレート取得",
-            "/prompts - NAVI.mdプロンプト管理",
-            "/prompts/reload - プロンプト再読み込み"
+            "/prompts - プロンプト管理",
+            "/profile - ユーザープロファイル管理"
         ]
     }
 
 @app.get("/health", response_model=HealthCheckResponse)
 async def health_check():
     """ヘルスチェック"""
-    return HealthCheckResponse(
-        status="healthy",
-        timestamp=datetime.now(),
-        service="Navi Counseling API"
-    )
+    try:
+        # 依存関係の健全性チェック
+        memory_system = get_memory_system()
+        settings_manager = get_settings_manager()
+        
+        return HealthCheckResponse(
+            status="healthy",
+            timestamp=datetime.now(),
+            service="Navi Counseling API",
+            version="1.0.0"
+        )
+    except Exception as e:
+        log_error(logger, e)
+        raise HTTPException(status_code=503, detail={
+            "status": "unhealthy",
+            "error": str(e)
+        })
 
 @app.post("/counseling", response_model=CounselingAPIResponse)
 async def counseling_chat(
     request: CounselingAPIRequest,
-    service: CounselingService = Depends(get_counseling_service)
+    counseling_service = Depends(get_counseling_service),
+    memory_system: MemorySystem = Depends(get_memory_system)
 ):
     """
     人生相談メインエンドポイント
-    外部サービス（yui等）からの相談リクエストを処理
+    任意のクライアントアプリケーションからの相談リクエストを処理
     """
+    start_time = datetime.now()
+    log_request(logger, request.user_id, "/counseling", "POST", 
+               message_length=len(request.message))
+    
     try:
-        # セッションIDの生成または使用
-        session_id = request.session_id or str(uuid.uuid4())
-        
-        # CounselingRequestオブジェクトの作成
+        # リクエストを内部形式に変換
         counseling_request = CounselingRequest(
             message=request.message,
             user_id=request.user_id,
-            session_id=session_id,
+            session_id=request.session_id,
             user_name=request.user_name,
             context=request.context,
             custom_prompt_id=request.custom_prompt_id,
@@ -189,35 +204,44 @@ async def counseling_chat(
         )
         
         # カウンセリングレスポンス生成
-        counseling_response = await service.generate_counseling_response(counseling_request)
-        
-        # 記憶システムに会話を保存
-        memory_system.add_conversation(
-            user_id=request.user_id,
-            user_message=request.message,
-            ai_response=counseling_response.response,
-            importance=counseling_response.emotion_analysis.get('intensity', 5),
-            context=counseling_response.advice_type
+        counseling_response = await counseling_service.generate_counseling_response(
+            counseling_request
         )
         
-        return CounselingAPIResponse(
+        # APIレスポンス形式に変換
+        api_response = CounselingAPIResponse(
             response=counseling_response.response,
             session_id=counseling_response.session_id,
             timestamp=datetime.now(),
             emotion_analysis=counseling_response.emotion_analysis,
             advice_type=counseling_response.advice_type,
             follow_up_questions=counseling_response.follow_up_questions,
-            is_crisis=counseling_response.emotion_analysis.get('is_crisis', False)
+            is_crisis=counseling_response.is_crisis
         )
         
+        # レスポンスログ
+        duration_ms = (datetime.now() - start_time).total_seconds() * 1000
+        log_response(logger, request.user_id, "/counseling", 200, duration_ms,
+                    advice_type=counseling_response.advice_type,
+                    is_crisis=counseling_response.is_crisis)
+        
+        return api_response
+        
+    except ValidationError as e:
+        raise HTTPException(status_code=400, detail=e.message)
+    except ExternalServiceError as e:
+        raise HTTPException(status_code=503, detail=e.message)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Counseling processing failed: {str(e)}")
+        log_error(logger, e, {"user_id": request.user_id})
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 @app.get("/session/{session_id}/status", response_model=SessionStatusResponse)
-async def get_session_status(session_id: str):
+async def get_session_status(
+    session_id: str,
+    memory_system: MemorySystem = Depends(get_memory_system)
+):
     """セッション状況を確認"""
     try:
-        # セッションに関連する会話を検索
         session_conversations = [
             conv for conv in memory_system.conversations 
             if conv.get('session_id') == session_id
@@ -226,12 +250,10 @@ async def get_session_status(session_id: str):
         if not session_conversations:
             raise HTTPException(status_code=404, detail="Session not found")
         
-        # 最新の会話から情報を取得
         latest_conv = max(session_conversations, key=lambda x: x['timestamp'])
         
-        # 主要感情を分析
         emotions = []
-        for conv in session_conversations[-5:]:  # 最近5件
+        for conv in session_conversations[-5:]:
             context = conv.get('context', 'general_support')
             if context not in emotions:
                 emotions.append(context)
@@ -247,10 +269,14 @@ async def get_session_status(session_id: str):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Status retrieval failed: {str(e)}")
+        log_error(logger, e)
+        raise HTTPException(status_code=500, detail="Status retrieval failed")
 
 @app.get("/users/{user_id}/summary")
-async def get_user_counseling_summary(user_id: str):
+async def get_user_counseling_summary(
+    user_id: str,
+    memory_system: MemorySystem = Depends(get_memory_system)
+):
     """ユーザーのカウンセリング要約を取得"""
     try:
         user_conversations = [
@@ -261,7 +287,6 @@ async def get_user_counseling_summary(user_id: str):
         if not user_conversations:
             return {"message": "No counseling history found", "user_id": user_id}
         
-        # 統計情報を計算
         advice_types = {}
         total_importance = 0
         crisis_count = 0
@@ -271,7 +296,6 @@ async def get_user_counseling_summary(user_id: str):
             advice_types[context] = advice_types.get(context, 0) + 1
             total_importance += conv.get('importance', 5)
             
-            # 危機的状況の検出（簡易版）
             if any(word in conv['user_message'] for word in ['死にたい', '消えたい', '限界']):
                 crisis_count += 1
         
@@ -292,54 +316,17 @@ async def get_user_counseling_summary(user_id: str):
         }
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Summary generation failed: {str(e)}")
+        log_error(logger, e)
+        raise HTTPException(status_code=500, detail="Summary generation failed")
 
-@app.delete("/session/{session_id}")
-async def delete_session(session_id: str):
-    """セッションを削除（プライバシー保護）"""
-    try:
-        # セッション関連の会話を非アクティブ化
-        deleted_count = 0
-        for conv in memory_system.conversations:
-            if conv.get('session_id') == session_id:
-                conv['isActive'] = False
-                deleted_count += 1
-        
-        return {
-            "message": f"Session deleted successfully",
-            "session_id": session_id,
-            "conversations_deleted": deleted_count
-        }
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Session deletion failed: {str(e)}")
-
-@app.post("/admin/cleanup")
-async def cleanup_old_data():
-    """古いデータのクリーンアップ（管理者用）"""
-    try:
-        memory_system.cleanup_old_memories(days_to_keep=30)
-        
-        active_count = sum(1 for conv in memory_system.conversations if conv['isActive'])
-        total_count = len(memory_system.conversations)
-        
-        return {
-            "message": "Cleanup completed",
-            "active_conversations": active_count,
-            "total_conversations": total_count,
-            "cleaned_conversations": total_count - active_count
-        }
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Cleanup failed: {str(e)}")
-
-# カスタムプロンプト管理エンドポイント（暗号化データベース使用）
+# カスタムプロンプト管理エンドポイント
 @app.post("/custom-prompts", response_model=dict)
 async def create_custom_prompt(
     request: CustomPromptCreateRequest,
-    user_id: str
+    user_id: str,
+    settings_manager: UserSettingsManager = Depends(get_settings_manager)
 ):
-    """カスタムプロンプトを作成（暗号化データベースに保存）"""
+    """カスタムプロンプトを作成"""
     try:
         success = settings_manager.save_custom_prompt(
             user_id=user_id,
@@ -359,11 +346,15 @@ async def create_custom_prompt(
             raise HTTPException(status_code=500, detail="Failed to save custom prompt")
         
     except Exception as e:
+        log_error(logger, e)
         raise HTTPException(status_code=500, detail=f"Failed to create custom prompt: {str(e)}")
 
 @app.get("/custom-prompts", response_model=dict)
-async def get_user_custom_prompt(user_id: str):
-    """ユーザーの単一カスタムプロンプトを取得（暗号化データベースから）"""
+async def get_user_custom_prompt(
+    user_id: str,
+    settings_manager: UserSettingsManager = Depends(get_settings_manager)
+):
+    """ユーザーのカスタムプロンプトを取得"""
     try:
         prompt = settings_manager.get_custom_prompt(user_id)
         
@@ -383,132 +374,19 @@ async def get_user_custom_prompt(user_id: str):
             }
         
     except Exception as e:
+        log_error(logger, e)
         raise HTTPException(status_code=500, detail=f"Failed to fetch custom prompt: {str(e)}")
-
-
-
-@app.delete("/custom-prompts", response_model=dict)
-async def delete_custom_prompt(user_id: str):
-    """ユーザーのカスタムプロンプトを削除（暗号化データベースから）"""
-    try:
-        success = settings_manager.delete_custom_prompt(user_id)
-        
-        if not success:
-            raise HTTPException(status_code=404, detail="Custom prompt not found")
-        
-        return {
-            "message": "Custom prompt deleted successfully",
-            "user_id": user_id
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to delete custom prompt: {str(e)}")
-
-@app.get("/custom-prompts/templates/default", response_model=dict)
-async def get_default_prompt_templates():
-    """デフォルトプロンプトテンプレートを取得"""
-    return {
-        "message": "Default prompt templates",
-        "templates": DEFAULT_PROMPT_TEMPLATES
-    }
-
-@app.post("/custom-prompts/from-template", response_model=dict)
-async def create_prompt_from_template(
-    user_id: str,
-    template_name: str,
-    custom_name: Optional[str] = None
-):
-    """テンプレートからカスタムプロンプトを作成"""
-    try:
-        if template_name not in DEFAULT_PROMPT_TEMPLATES:
-            raise HTTPException(status_code=404, detail="Template not found")
-        
-        template = DEFAULT_PROMPT_TEMPLATES[template_name]
-        
-        success = settings_manager.save_custom_prompt(
-            user_id=user_id,
-            name=custom_name or template['name'],
-            prompt_text=template['prompt_text'],
-            description=template['description'],
-            tags=template['tags']
-        )
-        
-        if not success:
-            raise HTTPException(status_code=500, detail="Failed to create custom prompt from template")
-        
-        return {
-            "message": "Custom prompt created from template",
-            "template_name": template_name,
-            "name": custom_name or template['name']
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to create prompt from template: {str(e)}")
-
-
-# NAVI.mdプロンプト管理エンドポイント
-@app.get("/prompts", response_model=dict)
-async def get_available_prompts():
-    """利用可能なNAVI.mdプロンプト一覧を取得"""
-    try:
-        from .markdown_prompt_loader import list_available_prompts
-        prompts = list_available_prompts()
-        return {
-            "message": "Available prompts from NAVI.md",
-            "prompts": prompts
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to list prompts: {str(e)}")
-
-@app.post("/prompts/reload", response_model=dict)
-async def reload_navi_prompts():
-    """NAVI.mdプロンプトをリロード"""
-    try:
-        from .markdown_prompt_loader import reload_prompts, list_available_prompts
-        reload_prompts()
-        prompts = list_available_prompts()
-        return {
-            "message": "NAVI.md prompts reloaded successfully",
-            "total_prompts": len(prompts)
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to reload prompts: {str(e)}")
-
-@app.get("/prompts/{prompt_id}", response_model=dict)
-async def get_prompt_info(prompt_id: str):
-    """特定のプロンプト情報を取得"""
-    try:
-        from .markdown_prompt_loader import get_prompt_loader
-        
-        loader = get_prompt_loader()
-        prompt_info = loader.get_prompt_info(prompt_id)
-        
-        if not prompt_info['found']:
-            raise HTTPException(status_code=404, detail="Prompt not found")
-        
-        return {
-            "message": "Prompt information",
-            "prompt": prompt_info
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get prompt info: {str(e)}")
 
 # ユーザープロファイル管理エンドポイント
 @app.post("/profile", response_model=dict)
 async def set_user_profile(
     request: UserProfileRequest,
     user_id: str,
-    manager: UserProfileManager = Depends(get_user_profile_manager)
+    profile_manager: UserProfileManager = Depends(get_user_profile_manager)
 ):
     """ユーザープロファイルを設定"""
     try:
-        success = manager.set_user_profile(
+        success = profile_manager.set_user_profile(
             user_id=user_id,
             name=request.name,
             occupation=request.occupation,
@@ -523,16 +401,17 @@ async def set_user_profile(
             raise HTTPException(status_code=500, detail="Failed to update profile")
             
     except Exception as e:
+        log_error(logger, e)
         raise HTTPException(status_code=500, detail=f"Failed to set profile: {str(e)}")
 
 @app.get("/profile", response_model=UserProfileResponse)
 async def get_user_profile(
     user_id: str,
-    manager: UserProfileManager = Depends(get_user_profile_manager)
+    profile_manager: UserProfileManager = Depends(get_user_profile_manager)
 ):
     """ユーザープロファイルを取得"""
     try:
-        profile = manager.get_user_profile(user_id)
+        profile = profile_manager.get_user_profile(user_id)
         
         if not profile:
             raise HTTPException(status_code=404, detail="Profile not found")
@@ -542,141 +421,8 @@ async def get_user_profile(
     except HTTPException:
         raise
     except Exception as e:
+        log_error(logger, e)
         raise HTTPException(status_code=500, detail=f"Failed to get profile: {str(e)}")
-
-@app.delete("/profile", response_model=dict)
-async def delete_user_profile(
-    user_id: str,
-    manager: UserProfileManager = Depends(get_user_profile_manager)
-):
-    """ユーザープロファイルを削除"""
-    try:
-        success = manager.delete_user_profile(user_id)
-        
-        if success:
-            return {"message": "Profile deleted successfully", "user_id": user_id}
-        else:
-            raise HTTPException(status_code=404, detail="Profile not found")
-            
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to delete profile: {str(e)}")
-
-@app.get("/profile/options", response_model=dict)
-async def get_profile_options():
-    """プロファイル設定用の選択肢を取得"""
-    return {
-        "personalities": PERSONALITY_OPTIONS,
-        "characteristics": CHARACTERISTIC_OPTIONS
-    }
-
-@app.get("/profile/{user_id}/prompt", response_model=dict)
-async def get_user_dynamic_prompt(
-    user_id: str,
-    manager: UserProfileManager = Depends(get_user_profile_manager)
-):
-    """ユーザープロファイルから生成された動的プロンプトを取得"""
-    try:
-        prompt = manager.generate_prompt_from_profile(user_id)
-        profile = manager.get_user_profile(user_id)
-        
-        return {
-            "user_id": user_id,
-            "prompt": prompt,
-            "has_profile": profile is not None,
-            "profile_complete": bool(profile and profile.get("name") and profile.get("occupation") and profile.get("personality"))
-        }
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to generate prompt: {str(e)}")
-
-# ユーザー設定管理エンドポイント（暗号化データベース使用）
-@app.post("/user-settings", response_model=dict)
-async def save_user_settings(user_id: str, settings: dict):
-    """ユーザー設定を保存（暗号化データベースに）"""
-    try:
-        success = settings_manager.save_user_settings(user_id, settings)
-        
-        if success:
-            return {"message": "User settings saved successfully", "user_id": user_id}
-        else:
-            raise HTTPException(status_code=500, detail="Failed to save user settings")
-            
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to save settings: {str(e)}")
-
-@app.get("/user-settings", response_model=dict)
-async def get_user_settings(user_id: str):
-    """ユーザー設定を取得（暗号化データベースから）"""
-    try:
-        settings = settings_manager.get_user_settings(user_id)
-        
-        if settings is None:
-            # デフォルト設定を返す
-            return {
-                "user_id": user_id,
-                "settings": {
-                    "prompt_preference": {"prompt_id": None, "custom_prompt_name": None},
-                    "ui_preferences": {},
-                    "notification_settings": {}
-                }
-            }
-        
-        return {"user_id": user_id, "settings": settings}
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get settings: {str(e)}")
-
-@app.get("/user-settings/prompt-preference", response_model=dict)
-async def get_user_prompt_preference(user_id: str):
-    """ユーザーのプロンプト設定を取得"""
-    try:
-        settings = settings_manager.get_user_settings(user_id)
-        
-        if settings and "prompt_preference" in settings:
-            preferences = settings["prompt_preference"]
-            return {
-                "user_id": user_id,
-                "prompt_id": preferences.get("prompt_id"),
-                "custom_prompt_name": preferences.get("custom_prompt_name")
-            }
-        
-        return {
-            "user_id": user_id,
-            "prompt_id": None,
-            "custom_prompt_name": None
-        }
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get prompt preference: {str(e)}")
-
-@app.post("/user-settings/prompt-preference", response_model=dict)
-async def set_user_prompt_preference(
-    user_id: str,
-    prompt_id: Optional[str] = None,
-    custom_prompt_name: Optional[str] = None
-):
-    """ユーザーのプロンプト設定を保存"""
-    try:
-        # 既存の設定を取得
-        existing_settings = settings_manager.get_user_settings(user_id) or {}
-        
-        # プロンプト設定を更新
-        existing_settings["prompt_preference"] = {
-            "prompt_id": prompt_id,
-            "custom_prompt_name": custom_prompt_name
-        }
-        
-        success = settings_manager.save_user_settings(user_id, existing_settings)
-        
-        if success:
-            return {"message": "Prompt preference saved successfully", "user_id": user_id}
-        else:
-            raise HTTPException(status_code=500, detail="Failed to save prompt preference")
-            
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to save prompt preference: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn
