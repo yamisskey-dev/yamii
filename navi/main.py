@@ -39,16 +39,21 @@ async def start_misskey_bot():
     global _bot_task
     if _bot_enabled and _bot_task is None:
         try:
-            from .bot.misskey.config import is_bot_enabled
-            from .bot.misskey.navi_bot import NaviBot
+            # 環境変数を直接チェックして循環インポートを回避
+            import os
+            enable_bot = os.getenv("ENABLE_MISSKEY_BOT", "false").lower() == "true"
             
-            if is_bot_enabled():
+            if enable_bot:
                 logger.info("Misskeyボットを開始中...")
-                bot = NaviBot()
+                # 遅延インポートで循環参照を完全に回避
+                from .bot.misskey.navi_bot import NaviMisskeyBot, load_config
+                
+                bot_config = load_config()
+                bot = NaviMisskeyBot(bot_config)
                 _bot_task = asyncio.create_task(bot.start())
                 logger.info("Misskeyボット開始完了")
             else:
-                logger.warning("Misskeyボットが有効化されていますが、必要な設定が不足しています")
+                logger.info("Misskeyボットは無効になっています")
         except ImportError as e:
             logger.error(f"Misskeyボットモジュールの読み込みに失敗しました: {e}")
         except Exception as e:
