@@ -20,8 +20,8 @@ from .core.logging import NaviLogger, get_logger, log_request, log_response, log
 from .core.exceptions import NaviException, ExternalServiceError, ValidationError
 from .services.counseling_service import CounselingRequest, CounselingResponse
 from .memory import MemorySystem
-from .user_profile import UserProfileManager, PERSONALITY_OPTIONS, CHARACTERISTIC_OPTIONS
-from .user_settings import UserSettingsManager, DEFAULT_PROMPT_TEMPLATES
+from .user_profile import UserProfileManager
+from .user_settings import UserSettingsManager
 
 # ログシステムを初期化
 NaviLogger.configure(
