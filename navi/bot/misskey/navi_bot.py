@@ -61,8 +61,9 @@ class NaviMisskeyBot:
             # ストリーミング接続開始
             self.logger.info("Starting streaming connection...")
             try:
-                await self.misskey_client.start_streaming(self._on_streaming_message)
-                self.logger.info("Streaming connection established successfully")
+                # 受信ループをバックグラウンドタスクで起動
+                asyncio.create_task(self.misskey_client.start_streaming(self._on_streaming_message))
+                self.logger.info("Streaming connection task started")
             except Exception as e:
                 self.logger.error(f"Failed to establish streaming connection: {e}")
                 # 詳細なエラー情報をログ出力
