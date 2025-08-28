@@ -35,20 +35,53 @@ class NaviMisskeyBot:
     async def start(self):
         """ボットを開始"""
         self.logger.info("Starting Navi Misskey Bot...")
+        self.logger.info(f"Navi API URL: {self.config.navi_api_url}")
+        self.logger.info(f"Misskey Instance: {self.config.misskey_instance_url}")
         
-        async with self.misskey_client, self.navi_client:
+        # まずMisskeyクライアントとNaviクライアントを初期化
+        try:
+            self.logger.info("Initializing Misskey client...")
+            await self.misskey_client.__aenter__()
+            self.logger.info("Misskey client initialized successfully")
+            
+            self.logger.info("Initializing Navi client...")
+            await self.navi_client.__aenter__()
+            self.logger.info("Navi client initialized successfully")
+            
             # naviサーバーの健全性チェック
             try:
+                self.logger.info("Checking Navi server health...")
                 health = await self.navi_client.health_check()
                 self.logger.info(f"Navi server status: {health.get('status')}")
             except Exception as e:
                 self.logger.error(f"Navi server health check failed: {e}")
-                return
+                self.logger.error(f"Navi API URL being used: {self.config.navi_api_url}")
+                # ヘルスチェックに失敗してもストリーミング接続は試行する
             
             # ストリーミング接続開始
             self.logger.info("Starting streaming connection...")
-            await self.misskey_client.start_streaming(self._on_streaming_message)
-            self.logger.info("Streaming connection established")
+            try:
+                await self.misskey_client.start_streaming(self._on_streaming_message)
+                self.logger.info("Streaming connection established successfully")
+            except Exception as e:
+                self.logger.error(f"Failed to establish streaming connection: {e}")
+                # 詳細なエラー情報をログ出力
+                import traceback
+                self.logger.error(f"Streaming error traceback: {traceback.format_exc()}")
+                raise
+                
+        except Exception as e:
+            self.logger.error(f"Critical error in bot startup: {e}")
+            import traceback
+            self.logger.error(f"Startup error traceback: {traceback.format_exc()}")
+            raise
+        finally:
+            # リソースクリーンアップ
+            try:
+                await self.misskey_client.__aexit__(None, None, None)
+                await self.navi_client.__aexit__(None, None, None)
+            except Exception as cleanup_error:
+                self.logger.error(f"Error during cleanup: {cleanup_error}")
             
     async def _on_streaming_message(self, data: dict):
         """ストリーミングメッセージを処理"""

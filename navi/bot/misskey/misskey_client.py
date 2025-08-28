@@ -154,41 +154,34 @@ class MisskeyClient:
         )
         
     async def start_streaming(self, on_message_callback):
-        """ストリーミング接続を開始"""
         import websockets
         import json
         
-        ws_url = f"{self.config.misskey_instance_url.replace('https://', 'wss://').replace('http://', 'ws://')}/streaming"
+        # yuiと同じURL形式: /streaming?i=アクセストークン
+        ws_url = f"{self.config.misskey_instance_url.replace('https://', 'wss://').replace('http://', 'ws://')}/streaming?i={self.config.misskey_access_token}"
+        
+        self.logger.info(f"Connecting to WebSocket: {ws_url[:50]}...")
         
         try:
             async with websockets.connect(ws_url) as websocket:
-                # メインストリームに接続
-                await websocket.send(json.dumps({
+                self.logger.info("WebSocket connection established")
+                
+                connect_message = {
                     "type": "connect",
                     "body": {
                         "channel": "main",
-                        "id": "main",
-                        "params": {}
+                        "id": "main"
                     }
-                }))
-                
-                # 認証
-                await websocket.send(json.dumps({
-                    "type": "api",
-                    "body": {
-                        "id": "auth",
-                        "endpoint": "i",
-                        "data": {
-                            "i": self.config.misskey_access_token
-                        }
-                    }
-                }))
+                }
+                await websocket.send(json.dumps(connect_message))
+                self.logger.info("Sent main channel connection request")
                 
                 self.logger.info("Started streaming connection")
                 
                 async for message in websocket:
                     try:
                         data = json.loads(message)
+                        self.logger.debug(f"Received WebSocket message: {data.get('type', 'unknown')}")
                         await on_message_callback(data)
                     except json.JSONDecodeError as e:
                         self.logger.error(f"Failed to parse websocket message: {e}")
@@ -197,6 +190,7 @@ class MisskeyClient:
                         
         except Exception as e:
             self.logger.error(f"Streaming connection failed: {e}")
+            self.logger.error(f"WebSocket URL was: {ws_url[:80]}...")
             raise
             
     def is_mentioned(self, note: MisskeyNote) -> bool:
