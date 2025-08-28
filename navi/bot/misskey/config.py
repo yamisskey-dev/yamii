@@ -41,6 +41,9 @@ class NaviMisskeyBotConfig:
     misskey_access_token: str = ""
     misskey_bot_user_id: str = ""
     
+    # HTTP/WebSocket設定
+    request_timeout: int = 30
+    
     def __post_init__(self):
         """設定の後処理"""
         if self.crisis_hotlines is None:
