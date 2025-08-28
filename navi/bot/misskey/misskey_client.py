@@ -165,20 +165,24 @@ class MisskeyClient:
         try:
             async with websockets.connect(ws_url) as websocket:
                 self.logger.info("WebSocket connection established")
-                
-                connect_message = {
-                    "type": "connect",
-                    "body": {
-                        "channel": "main",
-                        "id": "main"
+
+                # mainとmessagingチャンネルのみ購読
+                channels = [
+                    {"channel": "main", "id": "main"},
+                    {"channel": "messaging", "id": self.bot_user_id}
+                ]
+                for ch in channels:
+                    connect_message = {
+                        "type": "connect",
+                        "body": ch
                     }
-                }
-                await websocket.send(json.dumps(connect_message))
-                self.logger.info("Sent main channel connection request")
-                
+                    await websocket.send(json.dumps(connect_message))
+                    self.logger.info(f"Sent channel connection request: {ch['channel']}")
+
                 self.logger.info("Started streaming connection")
-                
+
                 async for message in websocket:
+                    self.logger.debug(f"Raw WebSocket message: {message}")
                     try:
                         data = json.loads(message)
                         self.logger.debug(f"Received WebSocket message: {data.get('type', 'unknown')}")
@@ -187,7 +191,7 @@ class MisskeyClient:
                         self.logger.error(f"Failed to parse websocket message: {e}")
                     except Exception as e:
                         self.logger.error(f"Error in message callback: {e}")
-                        
+
         except Exception as e:
             self.logger.error(f"Streaming connection failed: {e}")
             self.logger.error(f"WebSocket URL was: {ws_url[:80]}...")
