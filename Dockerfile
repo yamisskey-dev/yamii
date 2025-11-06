@@ -1,4 +1,4 @@
-# Multi-stage build for production-ready navi server
+# Multi-stage build for production-ready yamii server
 FROM python:3.11-slim AS builder
 
 # Set environment variables
@@ -37,8 +37,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/* \
-    && groupadd -r navi \
-    && useradd -r -g navi navi
+    && groupadd -r yamii \
+    && useradd -r -g yamii yamii
 
 # Set work directory
 WORKDIR /app
@@ -47,16 +47,16 @@ WORKDIR /app
 COPY --from=builder /app/.venv /app/.venv
 
 # Copy application code
-COPY navi/ ./navi/
-COPY start_navi.py ./
+COPY yamii/ ./yamii/
+COPY start_yamii.py ./
 COPY README.md ./
-COPY NAVI.md ./
+COPY YAMII.md ./
 
 # Create directory for data persistence
-RUN mkdir -p /app/data && chown -R navi:navi /app
+RUN mkdir -p /app/data && chown -R yamii:yamii /app
 
 # Switch to non-root user
-USER navi
+USER yamii
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
@@ -66,4 +66,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 EXPOSE 8000
 
 # Run the application with integrated bot support
-CMD ["python", "start_navi.py"]
+CMD ["python", "start_yamii.py"]

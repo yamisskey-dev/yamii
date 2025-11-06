@@ -171,3 +171,6 @@ Thumbs.db
 *.swp
 *.swo
 *~
+
+# Claude
+.claude/

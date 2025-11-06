@@ -3,9 +3,9 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "navi"
+name = "yamii"
 version = "0.1.0"
-description = "Networked Artificial Virtual Intelligence - AI Chat Service"
+description = "Yamii - AI Chat Service"
 requires-python = ">=3.10"
 dependencies = [
     "alembic==1.16.4",
@@ -31,10 +31,10 @@ dependencies = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["navi"]
+packages = ["yamii"]
 
 [project.scripts]
-navi-bot = "navi.cli_bot:main"
+yamii-bot = "yamii.cli_bot:main"
 
 [project.optional-dependencies]
 test = [

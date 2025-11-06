@@ -2,7 +2,7 @@
 
 ## 概要
 
-Docker環境でNavi APIサーバーと統合したMisskeyボット機能を有効化する手順です。
+Docker環境でYamii APIサーバーと統合したMisskeyボット機能を有効化する手順です。
 
 Docker Composeは自動的に `.env` ファイルを読み込むため、環境変数の設定が簡単になります。
 
@@ -22,13 +22,13 @@ MISSKEY_INSTANCE_URL=https://your-misskey-instance.com
 MISSKEY_ACCESS_TOKEN=your_misskey_access_token
 MISSKEY_BOT_USER_ID=your_bot_user_id
 
-# Navi API設定（共通）
-NAVI_API_URL=http://localhost:8000
-NAVI_API_TIMEOUT=30
+# Yamii API設定（共通）
+YAMII_API_URL=http://localhost:8000
+YAMII_API_TIMEOUT=30
 
 # ボット基本設定（共通）
-BOT_NAME=navi
-BOT_USERNAME=navi
+BOT_NAME=yamii
+BOT_USERNAME=yamii
 BOT_SESSION_TIMEOUT=3600
 
 # 機能有効化（プラットフォーム固有）
@@ -101,13 +101,13 @@ curl http://localhost:8000/
 Misskeyでボットをメンションしてテストします：
 
 ```
-@navi こんにちは、相談があります
+@yamii こんにちは、相談があります
 ```
 
 または
 
 ```
-@navi /help
+@yamii /help
 ```
 
 ## トラブルシューティング
@@ -153,19 +153,19 @@ Misskeyでボットをメンションしてテストします：
 
 ## 設定項目詳細
 
-### 共通設定（NAVI_*プレフィックス）
+### 共通設定（YAMII_*プレフィックス）
 
 | 環境変数 | 必須 | デフォルト値 | 説明 |
 |---------|------|------------|------|
-| `NAVI_API_URL` | | `http://localhost:8000` | Navi APIのURL |
-| `NAVI_API_TIMEOUT` | | `30` | API通信タイムアウト（秒） |
+| `YAMII_API_URL` | | `http://localhost:8000` | Yamii APIのURL |
+| `YAMII_API_TIMEOUT` | | `30` | API通信タイムアウト（秒） |
 
 ### ボット共通設定（BOT_*プレフィックス）
 
 | 環境変数 | 必須 | デフォルト値 | 説明 |
 |---------|------|------------|------|
-| `BOT_NAME` | | `navi` | ボット名 |
-| `BOT_USERNAME` | | `navi` | ボットのユーザー名 |
+| `BOT_NAME` | | `yamii` | ボット名 |
+| `BOT_USERNAME` | | `yamii` | ボットのユーザー名 |
 | `BOT_SESSION_TIMEOUT` | | `3600` | セッションタイムアウト（秒） |
 | `BOT_ENABLE_DM` | | `true` | DM機能の有効/無効 |
 | `BOT_ENABLE_MENTIONS` | | `true` | メンション機能の有効/無効 |
@@ -194,11 +194,11 @@ Misskeyでボットをメンションしてテストします：
 正常な起動ログ例：
 
 ```
-navi-counseling-api  | {"timestamp":"2025-08-27T22:46:35.056Z","level":"INFO","logger":"navi.main","message":"Navi APIサーバーを起動中..."}
-navi-counseling-api  | {"timestamp":"2025-08-27T22:46:35.100Z","level":"INFO","logger":"navi.main","message":"Misskeyボットを開始中..."}
-navi-counseling-api  | {"timestamp":"2025-08-27T22:46:35.200Z","level":"INFO","logger":"navi.bot.misskey.navi_bot","message":"NaviBot開始しました"}
-navi-counseling-api  | {"timestamp":"2025-08-27T22:46:35.250Z","level":"INFO","logger":"navi.main","message":"Misskeyボット開始完了"}
-navi-counseling-api  | {"timestamp":"2025-08-27T22:46:35.300Z","level":"INFO","logger":"navi.main","message":"Navi APIサーバー起動完了"}
+yamii-counseling-api  | {"timestamp":"2025-08-27T22:46:35.056Z","level":"INFO","logger":"yamii.main","message":"Yamii APIサーバーを起動中..."}
+yamii-counseling-api  | {"timestamp":"2025-08-27T22:46:35.100Z","level":"INFO","logger":"yamii.main","message":"Misskeyボットを開始中..."}
+yamii-counseling-api  | {"timestamp":"2025-08-27T22:46:35.200Z","level":"INFO","logger":"yamii.bot.misskey.yamii_bot","message":"YamiiBot開始しました"}
+yamii-counseling-api  | {"timestamp":"2025-08-27T22:46:35.250Z","level":"INFO","logger":"yamii.main","message":"Misskeyボット開始完了"}
+yamii-counseling-api  | {"timestamp":"2025-08-27T22:46:35.300Z","level":"INFO","logger":"yamii.main","message":"Yamii APIサーバー起動完了"}
 ```
 
 ## セキュリティ注意事項
@@ -236,13 +236,13 @@ MISSKEY_ACCESS_TOKEN=prod_misskey_token
 MISSKEY_BOT_USER_ID=prod_bot_user_id
 
 # Common Bot Settings
-BOT_NAME=navi
-BOT_USERNAME=navi
+BOT_NAME=yamii
+BOT_USERNAME=yamii
 BOT_SESSION_TIMEOUT=7200
 
-# Navi API Settings
-NAVI_API_URL=http://localhost:8000
-NAVI_API_TIMEOUT=45
+# Yamii API Settings
+YAMII_API_URL=http://localhost:8000
+YAMII_API_TIMEOUT=45
 
 # Feature Flags
 BOT_ENABLE_DM=true
@@ -255,7 +255,7 @@ BOT_CRISIS_HOTLINES=いのちの電話: 0570-783-556, こころの健康相談�
 
 # Logging
 LOG_LEVEL=WARNING
-LOG_FILE=logs/navi_prod.log
+LOG_FILE=logs/yamii_prod.log
 ```
 
 ## 重要な注意点

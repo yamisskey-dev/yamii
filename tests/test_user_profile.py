@@ -12,7 +12,7 @@ import tempfile
 import shutil
 from pathlib import Path
 
-from navi.user_profile import UserProfileManager, PERSONALITY_OPTIONS, CHARACTERISTIC_OPTIONS
+from yamii.user_profile import UserProfileManager, PERSONALITY_OPTIONS, CHARACTERISTIC_OPTIONS
 
 
 class TestUserProfileManager:

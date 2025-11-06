@@ -1,4 +1,4 @@
 """
-Navi Test Suite
+Yamii Test Suite
 テスト用パッケージ
 """

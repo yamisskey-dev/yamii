@@ -1,10 +1,10 @@
-# Navi 人生相談APIサーバー - シンプル構成（SQLite使用）
+# Yamii 人生相談APIサーバー - シンプル構成（SQLite使用）
 version: '3.8'
 
 services:
-  navi:
+  yamii:
     build: .
-    container_name: navi
+    container_name: yamii
     ports:
       - "8000:8000"
     env_file:
@@ -12,7 +12,7 @@ services:
     environment:
       - ENVIRONMENT=production
     volumes:
-      - navi_data:/app/data
+      - yamii_data:/app/data
       - ./logs:/app/logs
     restart: unless-stopped
     healthcheck:
@@ -23,5 +23,5 @@ services:
       start_period: 40s
 
 volumes:
-  navi_data:
+  yamii_data:
     driver: local

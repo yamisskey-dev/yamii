@@ -11,17 +11,17 @@ from unittest.mock import Mock, AsyncMock, patch
 from datetime import datetime
 from pathlib import Path
 
-from navi.services.emotion_service import EmotionAnalysisService, EmotionType
-from navi.services.counseling_service import (
+from yamii.services.emotion_service import EmotionAnalysisService, EmotionType
+from yamii.services.counseling_service import (
     CounselingService, CounselingRequest, CounselingResponse,
     AdviceTypeClassifier, FollowUpGenerator
 )
-from navi.core.exceptions import ValidationError, ExternalServiceError
-from navi.memory import MemorySystem
-from navi.user_profile import UserProfileManager
-from navi.user_settings import UserSettingsManager
-from navi.core.secure_prompt_store import SecurePromptStore, get_secure_prompt_store
-from navi.core.encryption import get_e2ee_crypto, get_key_manager
+from yamii.core.exceptions import ValidationError, ExternalServiceError
+from yamii.memory import MemorySystem
+from yamii.user_profile import UserProfileManager
+from yamii.user_settings import UserSettingsManager
+from yamii.core.secure_prompt_store import SecurePromptStore, get_secure_prompt_store
+from yamii.core.encryption import get_e2ee_crypto, get_key_manager
 
 
 class TestEmotionAnalysisService:
@@ -270,7 +270,7 @@ class TestIntegrationWithAPI:
     def test_fastapi_integration(self):
         """FastAPI統合のテスト"""
         from fastapi.testclient import TestClient
-        from navi.main import app
+        from yamii.main import app
         
         client = TestClient(app)
         
@@ -285,7 +285,7 @@ class TestIntegrationWithAPI:
     def test_error_handling_integration(self):
         """エラーハンドリング統合テスト"""
         from fastapi.testclient import TestClient
-        from navi.main import app
+        from yamii.main import app
         
         client = TestClient(app)
         

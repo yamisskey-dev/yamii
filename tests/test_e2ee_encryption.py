@@ -10,9 +10,9 @@ from typing import Dict, Any
 from unittest.mock import AsyncMock, patch
 
 # テスト対象のモジュール（まだ存在しないが、テストファースト）
-from navi.core.encryption import E2EECrypto, EncryptedData
-from navi.core.database import AsyncDatabase, DatabaseConfig
-from navi.core.secure_prompt_store import SecurePromptStore
+from yamii.core.encryption import E2EECrypto, EncryptedData
+from yamii.core.database import AsyncDatabase, DatabaseConfig
+from yamii.core.secure_prompt_store import SecurePromptStore
 
 
 class TestE2EECrypto:
@@ -95,8 +95,8 @@ class TestAsyncDatabase:
         db_config = DatabaseConfig(
             host="localhost",
             port=5432,
-            database="navi_test",
-            user="navi_user",
+            database="yamii_test",
+            user="yamii_user",
             password="test_password"
         )
         
@@ -105,7 +105,7 @@ class TestAsyncDatabase:
         
         # Then: 正しく初期化される
         assert async_db.config.host == "localhost"
-        assert async_db.config.database == "navi_test"
+        assert async_db.config.database == "yamii_test"
         assert not async_db.is_connected()  # まだ初期化されていない
     
     @pytest.mark.asyncio

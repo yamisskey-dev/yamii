@@ -1,5 +1,5 @@
 """
-Tests for Navi Misskey Bot
+Tests for Yamii Misskey Bot
 naviのMisskeyボットのテスト
 """
 
@@ -8,7 +8,7 @@ import asyncio
 from unittest.mock import Mock, AsyncMock, patch
 from datetime import datetime
 
-from navi.navi.bot.misskey import NaviMisskeyBot, NaviMisskeyBotConfig, MisskeyNote, NaviResponse
+from yamii.navi.bot.misskey import NaviMisskeyBot, NaviMisskeyBotConfig, MisskeyNote, NaviResponse
 
 
 @pytest.fixture
@@ -17,7 +17,7 @@ def mock_config():
     return NaviMisskeyBotConfig(
         misskey_instance_url="https://test.misskey.io",
         misskey_access_token="test_token",
-        navi_api_url="http://localhost:8000",
+        yamii_api_url="http://localhost:8000",
         bot_name="test_navi",
         enable_crisis_support=True
     )
@@ -41,7 +41,7 @@ def sample_note():
 
 
 @pytest.fixture
-def sample_navi_response():
+def sample_yamii_response():
     """テスト用のnaviレスポンスを作成"""
     return NaviResponse(
         response="あなたの気持ちをお聞かせください。どのようなことでお悩みでしょうか？",
@@ -73,7 +73,7 @@ class TestNaviMisskeyBot:
         assert isinstance(bot.processed_notes, set)
     
     @pytest.mark.asyncio
-    async def test_handle_mention_basic(self, mock_config, sample_note, sample_navi_response):
+    async def test_handle_mention_basic(self, mock_config, sample_note, sample_yamii_response):
         """基本的なメンション処理をテスト"""
         bot = NaviMisskeyBot(mock_config)
         
@@ -84,8 +84,8 @@ class TestNaviMisskeyBot:
         bot.misskey_client.extract_message_from_note.return_value = "こんにちは、悩みがあります"
         
         # Naviクライアントをモック
-        bot.navi_client = AsyncMock()
-        bot.navi_client.send_counseling_request.return_value = sample_navi_response
+        bot.yamii_client = AsyncMock()
+        bot.yamii_client.send_counseling_request.return_value = sample_yamii_response
         
         # _send_replyメソッドをモック
         bot._send_reply = AsyncMock()
@@ -99,7 +99,7 @@ class TestNaviMisskeyBot:
         assert "あなたの気持ちをお聞かせください" in call_args[0][1]  # 応答テキスト
         
         # セッションが記録されたことを確認
-        assert bot.user_sessions[sample_note.user_id] == sample_navi_response.session_id
+        assert bot.user_sessions[sample_note.user_id] == sample_yamii_response.session_id
     
     @pytest.mark.asyncio
     async def test_handle_crisis_response(self, mock_config, sample_note):
@@ -123,8 +123,8 @@ class TestNaviMisskeyBot:
         bot.misskey_client.bot_user_id = "bot123"
         bot.misskey_client.extract_message_from_note.return_value = "もう疲れました"
         
-        bot.navi_client = AsyncMock()
-        bot.navi_client.send_counseling_request.return_value = crisis_response
+        bot.yamii_client = AsyncMock()
+        bot.yamii_client.send_counseling_request.return_value = crisis_response
         
         bot._send_reply = AsyncMock()
         
@@ -177,7 +177,7 @@ class TestNaviMisskeyBot:
         assert "カスタムプロンプト" in response_text
     
     @pytest.mark.asyncio
-    async def test_session_management(self, mock_config, sample_note, sample_navi_response):
+    async def test_session_management(self, mock_config, sample_note, sample_yamii_response):
         """セッション管理をテスト"""
         bot = NaviMisskeyBot(mock_config)
         
@@ -187,15 +187,15 @@ class TestNaviMisskeyBot:
         bot.misskey_client.bot_user_id = "bot123"
         bot.misskey_client.extract_message_from_note.return_value = "悩みがあります"
         
-        bot.navi_client = AsyncMock()
-        bot.navi_client.send_counseling_request.return_value = sample_navi_response
+        bot.yamii_client = AsyncMock()
+        bot.yamii_client.send_counseling_request.return_value = sample_yamii_response
         bot._send_reply = AsyncMock()
         
         await bot._handle_note(sample_note)
         
         # セッションが開始されたことを確認
         assert sample_note.user_id in bot.user_sessions
-        assert bot.user_sessions[sample_note.user_id] == sample_navi_response.session_id
+        assert bot.user_sessions[sample_note.user_id] == sample_yamii_response.session_id
         
         # 継続的な会話
         continue_note = MisskeyNote(
@@ -216,10 +216,10 @@ class TestNaviMisskeyBot:
         await bot._handle_note(continue_note)
         
         # 2回目のリクエストでセッションIDが渡されたことを確認
-        calls = bot.navi_client.send_counseling_request.call_args_list
+        calls = bot.yamii_client.send_counseling_request.call_args_list
         second_call = calls[1]
         request_obj = second_call[0][0]
-        assert request_obj.session_id == sample_navi_response.session_id
+        assert request_obj.session_id == sample_yamii_response.session_id
     
     @pytest.mark.asyncio
     async def test_session_termination(self, mock_config, sample_note):
@@ -272,7 +272,7 @@ class TestNaviMisskeyBot:
             text="テスト投稿",
             user_id="bot123",  # ボット自身のID
             user_username="test_navi",
-            user_name="Navi Bot",
+            user_name="Yamii Bot",
             created_at=datetime.now(),
             visibility="home",
             mentions=[],

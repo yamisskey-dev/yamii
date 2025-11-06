@@ -1,4 +1,4 @@
-# Navi 人生相談APIサーバー - Docker運用ガイド
+# Yamii 人生相談APIサーバー - Docker運用ガイド
 
 ## 🚀 シンプル本番環境デプロイ手順
 
@@ -35,12 +35,12 @@ LOG_LEVEL=info
 
 #### ディレクトリ構成確認
 ```bash
-navi/
+yamii/
 ├── docker-compose.yml
 ├── Dockerfile  
 ├── .env
 ├── logs/              # ログ出力用（自動作成）
-└── navi/             # アプリケーションコード
+└── yamii/             # アプリケーションコード
 ```
 
 ### 3. デプロイ
@@ -51,7 +51,7 @@ navi/
 docker-compose up -d --build
 
 # ログ確認
-docker-compose logs -f navi
+docker-compose logs -f yamii
 ```
 
 ### 4. 動作確認
@@ -90,7 +90,7 @@ docker-compose restart
 docker-compose ps
 
 # ログ確認
-docker-compose logs -f navi
+docker-compose logs -f yamii
 ```
 
 #### アップデート手順
@@ -105,10 +105,10 @@ docker-compose up -d --force-recreate
 #### データ管理
 ```bash
 # データバックアップ
-docker run --rm -v navi_navi_data:/data -v $(pwd):/backup alpine tar czf /backup/navi-backup.tar.gz -C /data .
+docker run --rm -v yamii_yamii_data:/data -v $(pwd):/backup alpine tar czf /backup/yamii-backup.tar.gz -C /data .
 
 # データリストア
-docker run --rm -v navi_navi_data:/data -v $(pwd):/backup alpine tar xzf /backup/navi-backup.tar.gz -C /data
+docker run --rm -v yamii_yamii_data:/data -v $(pwd):/backup alpine tar xzf /backup/yamii-backup.tar.gz -C /data
 ```
 
 ### 6. 監視とメンテナンス
@@ -119,13 +119,13 @@ docker run --rm -v navi_navi_data:/data -v $(pwd):/backup alpine tar xzf /backup
 docker-compose logs -f --tail=100
 
 # エラーログのみ表示
-docker-compose logs navi 2>&1 | grep ERROR
+docker-compose logs yamii 2>&1 | grep ERROR
 ```
 
 #### パフォーマンス監視
 ```bash
 # コンテナリソース使用状況
-docker stats navi-counseling-api
+docker stats yamii-counseling-api
 ```
 
 #### ディスク使用量管理
@@ -154,7 +154,7 @@ sudo ufw allow 8000/tcp
 **問題1: コンテナが起動しない**
 ```bash
 # 詳細ログ確認
-docker-compose logs navi
+docker-compose logs yamii
 
 # 設定ファイル構文チェック
 docker-compose config
@@ -163,10 +163,10 @@ docker-compose config
 **問題2: APIが応答しない**
 ```bash
 # コンテナ内部確認
-docker exec -it navi-counseling-api /bin/bash
+docker exec -it yamii-counseling-api /bin/bash
 
 # プロセス確認
-docker exec navi-counseling-api ps aux
+docker exec yamii-counseling-api ps aux
 ```
 
 **問題3: Gemini API エラー**
@@ -179,7 +179,7 @@ docker exec navi-counseling-api ps aux
 #### 開発用コマンド
 ```bash
 # 開発モードで起動（ホットリロード）
-docker-compose run --rm -p 8000:8000 -e DEBUG=true navi python -m uvicorn navi.main:app --host 0.0.0.0 --reload
+docker-compose run --rm -p 8000:8000 -e DEBUG=true yamii python -m uvicorn yamii.main:app --host 0.0.0.0 --reload
 ```
 
 ### 10. バックアップ戦略
@@ -189,9 +189,9 @@ docker-compose run --rm -p 8000:8000 -e DEBUG=true navi python -m uvicorn navi.m
 #!/bin/bash
 # backup.sh
 DATE=$(date +%Y%m%d_%H%M%S)
-docker run --rm -v navi_navi_data:/data -v $(pwd)/backups:/backup alpine \
-  tar czf /backup/navi_backup_$DATE.tar.gz -C /data .
-find ./backups -name "navi_backup_*.tar.gz" -mtime +7 -delete
+docker run --rm -v yamii_yamii_data:/data -v $(pwd)/backups:/backup alpine \
+  tar czf /backup/yamii_backup_$DATE.tar.gz -C /data .
+find ./backups -name "yamii_backup_*.tar.gz" -mtime +7 -delete
 ```
 
 ### 11. 外部アクセス設定
@@ -237,7 +237,7 @@ server {
 ```bash
 # 1. リポジトリクローン
 git clone <repository-url>
-cd navi
+cd yamii
 
 # 2. 環境設定
 cp .env.example .env

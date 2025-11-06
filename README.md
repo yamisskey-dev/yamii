@@ -1,4 +1,4 @@
-# NAVI - Networked Artificial Virtual Intelligence
+# YAMII - Networked Artificial Virtual Intelligence
 
 ## 🌟 特徴
 
@@ -10,7 +10,7 @@
 - **記憶システム**: ユーザー毎の会話記録
 
 ### 🎨 カスタマイズ機能
-- **NAVI.mdプロンプト**: 外部マークダウンファイルでプロンプト管理
+- **YAMII.mdプロンプト**: 外部マークダウンファイルでプロンプト管理
 - **カスタムプロンプト**: ユーザー独自のキャラクター設定
 - **テンプレートシステム**: 事前定義されたプロンプトテンプレート
 
@@ -27,7 +27,7 @@
 ```bash
 # リポジトリクローン
 git clone <repository-url>
-cd navi
+cd yamii
 
 # 環境変数設定
 cp .env.example .env
@@ -101,7 +101,7 @@ curl -X POST "http://localhost:8000/counseling" \
 特定プロンプトの詳細取得
 
 #### `POST /prompts/reload`
-NAVI.mdファイルを再読み込み
+YAMII.mdファイルを再読み込み
 
 #### `GET /prompts/search/{query}`
 プロンプト検索
@@ -122,7 +122,7 @@ NAVI.mdファイルを再読み込み
 
 ## 🎨 プロンプト管理
 
-### NAVI.mdファイル
+### YAMII.mdファイル
 
 外部プロンプト管理システムです。
 
@@ -171,15 +171,15 @@ python test_aichat.py
 # カスタムプロンプトテスト
 python test_custom_prompts.py
 
-# NAVI.mdローダーテスト（新しいmarkdown-it版）
-python -c "from navi.core.markdown_loader import get_navi_loader; loader = get_navi_loader(); print('Loaded prompts:', len(loader.prompts))"
+# YAMII.mdローダーテスト（新しいmarkdown-it版）
+python -c "from yamii.core.markdown_loader import get_yamii_loader; loader = get_yamii_loader(); print('Loaded prompts:', len(loader.prompts))"
 ```
 
 ### 統合テスト
 
 ```bash
 # yui統合テスト
-node yui/test_navi_integration.js
+node yui/test_yamii_integration.js
 ```
 
 ## 🏗️ 開発環境
@@ -195,7 +195,7 @@ source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 
 # 開発サーバー起動
-uvicorn navi.main:app --reload --host 0.0.0.0 --port 8000
+uvicorn yamii.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 ### 依存関係
@@ -219,7 +219,7 @@ docker-compose -f docker-compose.yml up -d
 docker-compose logs -f
 
 # スケールアップ
-docker-compose up --scale navi=3
+docker-compose up --scale yamii=3
 ```
 
 ### 設定オプション
@@ -229,9 +229,9 @@ docker-compose up --scale navi=3
 ```bash
 # .env ファイル
 GEMINI_API_KEY=your_api_key_here
-NAVI_DEFAULT_PROMPT=default_counselor
-NAVI_CRISIS_MODE=true
-NAVI_EMOTION_ANALYSIS=true
+YAMII_DEFAULT_PROMPT=default_counselor
+YAMII_CRISIS_MODE=true
+YAMII_EMOTION_ANALYSIS=true
 ```
 
 ## 📊 監視・運用
@@ -246,10 +246,10 @@ curl http://localhost:8000/health
 
 ```bash
 # Docker ログ
-docker-compose logs -f navi
+docker-compose logs -f yamii
 
 # アプリケーションログ
-tail -f navi/logs/app.log
+tail -f yamii/logs/app.log
 ```
 
 ### メトリクス

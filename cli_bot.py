@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Navi Misskey Bot CLI
+Yamii Misskey Bot CLI
 naviのMisskeyボットを起動するためのCLIツール
 """
 
@@ -13,26 +13,26 @@ from pathlib import Path
 # naviパッケージのパスを追加
 sys.path.insert(0, str(Path(__file__).parent))
 
-from navi.bot.misskey import NaviMisskeyBot, load_config, setup_logging
+from yamii.bot.misskey import NaviMisskeyBot, load_config, setup_logging
 
 
 def create_env_file():
     """環境設定ファイルのテンプレートを作成"""
-    env_template = """# Navi Misskey Bot Configuration
+    env_template = """# Yamii Misskey Bot Configuration
 # 必須設定
 MISSKEY_INSTANCE_URL=https://your-misskey-instance.com
 MISSKEY_ACCESS_TOKEN=your_misskey_access_token_here
 
-# Navi API設定
-NAVI_API_URL=http://localhost:8000
+# Yamii API設定
+YAMII_API_URL=http://localhost:8000
 
 # ボット設定
 BOT_NAME=navi
-BOT_DISPLAY_NAME=Navi - 人生相談AI
+BOT_DISPLAY_NAME=Yamii - 人生相談AI
 
 # ログ設定
 LOG_LEVEL=INFO
-LOG_FILE=logs/navi_bot.log
+LOG_FILE=logs/yamii_bot.log
 
 # タイムアウト設定
 REQUEST_TIMEOUT=30
@@ -62,9 +62,9 @@ async def run_bot():
         config = load_config()
         setup_logging(config)
         
-        print("🚀 Starting Navi Misskey Bot...")
+        print("🚀 Starting Yamii Misskey Bot...")
         print(f"   Instance: {config.misskey_instance_url}")
-        print(f"   Navi API: {config.navi_api_url}")
+        print(f"   Yamii API: {config.yamii_api_url}")
         print(f"   Bot Name: @{config.bot_name}")
         
         bot = NaviMisskeyBot(config)
@@ -84,7 +84,7 @@ async def run_bot():
 def main():
     """メイン関数"""
     parser = argparse.ArgumentParser(
-        description="Navi Misskey Bot - 人生相談AIボット",
+        description="Yamii Misskey Bot - 人生相談AIボット",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -107,7 +107,7 @@ Configuration:
     parser.add_argument(
         "--version",
         action="version",
-        version="Navi Misskey Bot v1.0.0"
+        version="Yamii Misskey Bot v1.0.0"
     )
     
     args = parser.parse_args()
