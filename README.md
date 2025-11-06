@@ -1,4 +1,4 @@
-# YAMII - Networked Artificial Virtual Intelligence
+# yamii
 
 ## 🌟 特徴
 
