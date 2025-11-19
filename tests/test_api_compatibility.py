@@ -7,7 +7,7 @@ import pytest
 from datetime import datetime
 from typing import Literal, Optional, Dict, Any, List
 from pydantic import BaseModel, ValidationError as PydanticValidationError
-from fastapi.testclient import TestClient
+import httpx
 
 
 class TestPlatformContextMetadata:
@@ -226,26 +226,30 @@ class TestCounselingRequestContextValidation:
 class TestAPIVersioning:
     """APIバージョニングのテスト"""
 
-    def test_api_version_in_response_header(self):
+    @pytest.mark.asyncio
+    async def test_api_version_in_response_header(self):
         """レスポンスヘッダーにAPIバージョンが含まれる"""
         from yamii.main import app
 
-        client = TestClient(app)
-        response = client.get("/health")
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.get("/health")
 
-        assert "X-API-Version" in response.headers
-        assert response.headers["X-API-Version"] == "1.0.0"
+            assert "x-api-version" in response.headers
+            assert response.headers["x-api-version"] == "1.0.0"
 
-    def test_api_version_in_response_body(self):
+    @pytest.mark.asyncio
+    async def test_api_version_in_response_body(self):
         """レスポンスボディにAPIバージョンが含まれる"""
         from yamii.main import app
 
-        client = TestClient(app)
-        response = client.get("/")
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.get("/")
 
-        data = response.json()
-        assert "api_version" in data
-        assert data["api_version"] == "1.0.0"
+            data = response.json()
+            assert "api_version" in data
+            assert data["api_version"] == "1.0.0"
 
 
 class TestYuiCompatibility:
@@ -332,52 +336,60 @@ class TestSessionManagement:
 class TestHealthCheckEnhanced:
     """拡張ヘルスチェックのテスト"""
 
-    def test_health_check_includes_dependencies_status(self):
+    @pytest.mark.asyncio
+    async def test_health_check_includes_dependencies_status(self):
         """ヘルスチェックが依存関係の状態を含む"""
         from yamii.main import app
 
-        client = TestClient(app)
-        response = client.get("/health")
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.get("/health")
 
-        data = response.json()
-        assert data["status"] == "healthy"
-        assert "timestamp" in data
-        assert "version" in data
+            data = response.json()
+            assert data["status"] == "healthy"
+            assert "timestamp" in data
+            assert "version" in data
 
 
 # 統合テスト
 class TestEndToEndCompatibility:
     """エンドツーエンド互換性テスト"""
 
-    @pytest.fixture
-    def client(self):
-        from yamii.main import app
-        return TestClient(app)
-
-    def test_counseling_endpoint_accepts_typed_context(self, client):
+    @pytest.mark.asyncio
+    async def test_counseling_endpoint_accepts_typed_context(self):
         """カウンセリングエンドポイントが型付けコンテキストを受け入れる"""
-        request_data = {
-            "message": "テスト相談",
-            "user_id": "test_user",
-            "context": {
-                "platform": "misskey",
-                "bot_name": "yui",
-                "api_version": "1.0.0"
+        from yamii.main import app
+
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            request_data = {
+                "message": "テスト相談",
+                "user_id": "test_user",
+                "context": {
+                    "platform": "misskey",
+                    "bot_name": "yui",
+                    "api_version": "1.0.0"
+                }
             }
-        }
 
-        response = client.post("/counseling", json=request_data)
+            response = await client.post("/counseling", json=request_data)
 
-        # ステータスコードは200または503（外部サービス依存）
-        # テストでは形式の検証に焦点
-        if response.status_code == 200:
-            data = response.json()
-            assert "response" in data
-            assert "session_id" in data
+            # ステータスコードは200または503（外部サービス依存）
+            # テストでは形式の検証に焦点
+            if response.status_code == 200:
+                data = response.json()
+                assert "response" in data
+                assert "session_id" in data
 
-    def test_v2_endpoints_available(self, client):
+    @pytest.mark.asyncio
+    async def test_v2_endpoints_available(self):
         """V2エンドポイントが利用可能"""
-        # V2ルートの存在確認（実装後に有効化）
-        response = client.get("/v1/health")
-        # 404でもルーティングが動作していることを確認
-        # 実装後は200を期待
+        from yamii.main import app
+
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            # V2ルートの存在確認（実装後に有効化）
+            response = await client.get("/v1/health")
+            # 404でもルーティングが動作していることを確認
+            # 実装後は200を期待
+            assert response.status_code in [200, 404]
