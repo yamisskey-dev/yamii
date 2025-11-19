@@ -9,9 +9,23 @@ import asyncio
 from datetime import datetime
 from typing import List, Optional
 
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import Response
 from pydantic import BaseModel
+
+# APIバージョン定数
+API_VERSION = "1.0.0"
+
+
+class APIVersionMiddleware(BaseHTTPMiddleware):
+    """APIバージョンをレスポンスヘッダーに追加するミドルウェア"""
+
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        response.headers["X-API-Version"] = API_VERSION
+        return response
 
 from .core.dependencies import (
     get_memory_system, get_user_profile_manager, get_settings_manager,
@@ -77,6 +91,9 @@ app = FastAPI(
     description="プラットフォーム非依存の独立人生相談AIサーバー",
     version="1.0.0"
 )
+
+# APIバージョニングミドルウェア
+app.add_middleware(APIVersionMiddleware)
 
 # CORS設定 - 任意のオリジンを許可（本番環境では適切に制限してください）
 app.add_middleware(
@@ -158,7 +175,8 @@ async def root():
     """ルートエンドポイント"""
     return {
         "service": "Yamii - 人生相談APIサーバー",
-        "version": "1.0.0",
+        "version": API_VERSION,
+        "api_version": API_VERSION,
         "description": "プラットフォーム非依存の独立人生相談AIサーバー",
         "status": "running",
         "features": {

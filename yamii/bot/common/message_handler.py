@@ -111,7 +111,7 @@ class MessageHandler:
             status_text = self._generate_status_text(health)
             await bot.send_reply(context.message_id, status_text)
         except Exception as e:
-            error_text = "❌ ステータス確認でエラーが発生しました。naviサーバーが起動していることを確認してください。"
+            error_text = "❌ ステータス確認でエラーが発生しました。yamiiサーバーが起動していることを確認してください。"
             await bot.send_reply(context.message_id, error_text)
     
     async def _handle_custom_prompt_command(
@@ -255,7 +255,7 @@ class MessageHandler:
             session = session_manager.get_session(context.user_id)
             session_id = session.session_id if session else None
             
-            # Naviリクエスト作成
+            # Yamiiリクエスト作成
             yamii_request = YamiiRequest(
                 message=command.content,
                 user_id=context.user_id,
@@ -269,7 +269,7 @@ class MessageHandler:
                 }
             )
             
-            # Naviサーバーにリクエスト送信
+            # Yamiiサーバーにリクエスト送信
             response = await yamii_client.send_counseling_request(yamii_request)
             
             if response:
@@ -315,7 +315,7 @@ class MessageHandler:
     def _generate_help_text(self) -> str:
         """ヘルプテキスト生成"""
         return (
-            "👁️‍🗨️ **NAVI 人生相談AI - ヘルプ**\n\n"
+            "👁️‍🗨️ **YAMII 人生相談AI - ヘルプ**\n\n"
             "**📝 基本的な相談方法:**\n"
             "• `<相談内容>` - 人生相談を開始\n"
             "• `終了` - 相談を終了\n\n"
@@ -341,7 +341,7 @@ class MessageHandler:
             f"• サーバーURL: {self.config.yamii_api_url}\n"
             f"• 最終確認: {datetime.now().strftime('%Y年%m月%d日 %H:%M:%S')}\n\n"
             f"**バージョン・機能情報:**\n"
-            f"• Naviボット: Python版 1.0.0\n"
+            f"• Yamiiボット: Python版 1.0.0\n"
             f"• 最終更新: 2025年8月27日\n"
             f"• 対応機能: 基本相談・カスタムプロンプト・プロファイル・感情分析・クライシス検出\n"
             f"• プラットフォーム: マルチプラットフォーム対応"
@@ -380,10 +380,10 @@ class MessageHandler:
         
         error_str = str(error).lower()
         if "connection" in error_str or "refused" in error_str:
-            error_message = "❌ naviサーバーに接続できませんでした。"
+            error_message = "❌ yamiiサーバーに接続できませんでした。"
             troubleshooting = (
                 "\n\n🔧 **トラブルシューティング:**\n"
-                "• naviサーバーが起動していることを確認\n"
+                "• yamiiサーバーが起動していることを確認\n"
                 "• ネットワーク接続を確認"
             )
         elif "timeout" in error_str:

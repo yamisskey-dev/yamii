@@ -14,7 +14,7 @@ from .base_bot import BaseBotConfig
 
 @dataclass
 class YamiiResponse:
-    """naviサーバーからの応答"""
+    """yamiiサーバーからの応答"""
     response: str
     session_id: str
     timestamp: datetime
@@ -26,7 +26,7 @@ class YamiiResponse:
 
 @dataclass 
 class YamiiRequest:
-    """naviサーバーへのリクエスト"""
+    """yamiiサーバーへのリクエスト"""
     message: str
     user_id: str
     user_name: Optional[str] = None
@@ -57,7 +57,7 @@ class YamiiAPIClient:
             await self.session.close()
     
     async def health_check(self) -> Dict[str, Any]:
-        """naviサーバーのヘルスチェック"""
+        """yamiiサーバーのヘルスチェック"""
         try:
             url = f"{self.config.yamii_api_url}/health"
             async with self.session.get(url) as response:

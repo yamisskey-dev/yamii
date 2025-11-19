@@ -1,6 +1,6 @@
 """
 データベースベースのプロンプト管理システム
-NAVI.mdに依存しない独立したプロンプトストレージ
+YAMII.mdに依存しない独立したプロンプトストレージ
 """
 
 from typing import Dict, Optional, List, Any

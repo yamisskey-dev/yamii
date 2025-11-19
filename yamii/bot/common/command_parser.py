@@ -87,7 +87,7 @@ class CommandParser:
         mention_pattern = rf"@{bot_name}\s*"
         text = re.sub(mention_pattern, "", text, flags=re.IGNORECASE)
         
-        # "navi " 形式
+        # "yamii " 形式
         if text.lower().startswith(f"{bot_name.lower()} "):
             text = text[len(bot_name) + 1:].strip()
         

@@ -1,6 +1,6 @@
 """
 Yamii Misskey Bot Package
-yuiのnaviモジュールをPythonで実装したMisskeyボット
+yuiのyamiiモジュールをPythonで実装したMisskeyボット
 """
 
 from .config import YamiiMisskeyBotConfig, load_config

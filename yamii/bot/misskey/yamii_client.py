@@ -1,6 +1,6 @@
 """
 Yamii API Client
-naviサーバーとの通信を行うクライアント
+yamiiサーバーとの通信を行うクライアント
 """
 
 import aiohttp
@@ -14,7 +14,7 @@ from .config import YamiiMisskeyBotConfig
 
 @dataclass
 class YamiiResponse:
-    """naviサーバーからの応答"""
+    """yamiiサーバーからの応答"""
     response: str
     session_id: str
     timestamp: datetime
@@ -26,7 +26,7 @@ class YamiiResponse:
 
 @dataclass
 class YamiiRequest:
-    """naviサーバーへのリクエスト"""
+    """yamiiサーバーへのリクエスト"""
     message: str
     user_id: str
     user_name: Optional[str] = None
@@ -57,7 +57,7 @@ class YamiiClient:
             await self.session.close()
             
     async def health_check(self) -> Dict[str, Any]:
-        """naviサーバーのヘルスチェック"""
+        """yamiiサーバーのヘルスチェック"""
         try:
             url = f"{self.config.yamii_api_url}/health"
             async with self.session.get(url) as response:

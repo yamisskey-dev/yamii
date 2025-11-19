@@ -1,5 +1,5 @@
 #!/bin/bash
-# Navi統合サーバー起動スクリプト
+# Yamii統合サーバー起動スクリプト
 
 set -e
 
@@ -19,7 +19,7 @@ export LOG_LEVEL=${LOG_LEVEL:-"INFO"}
 export ENABLE_MISSKEY_BOT=${ENABLE_MISSKEY_BOT:-"false"}
 export API_ONLY=${API_ONLY:-"false"}
 
-echo "=== Navi統合サーバー起動設定 ==="
+echo "=== Yamii統合サーバー起動設定 ==="
 echo "ホスト: $HOST"
 echo "ポート: $PORT"
 echo "ログレベル: $LOG_LEVEL"
@@ -41,7 +41,7 @@ echo "依存関係を確認中..."
 pip install -e . --quiet
 
 # サーバー起動
-echo "Naviサーバーを起動中..."
+echo "Yamiiサーバーを起動中..."
 python start_yamii.py
 
-echo "Naviサーバーが停止しました。"
+echo "Yamiiサーバーが停止しました。"

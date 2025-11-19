@@ -1,6 +1,6 @@
 """
 Tests for Yamii Misskey Bot
-naviのMisskeyボットのテスト
+yamiiのMisskeyボットのテスト
 """
 
 import pytest
@@ -8,17 +8,17 @@ import asyncio
 from unittest.mock import Mock, AsyncMock, patch
 from datetime import datetime
 
-from yamii.navi.bot.misskey import NaviMisskeyBot, NaviMisskeyBotConfig, MisskeyNote, NaviResponse
+from yamii.bot.misskey import YamiiMisskeyBot, YamiiMisskeyBotConfig, MisskeyNote, YamiiResponse
 
 
 @pytest.fixture
 def mock_config():
     """テスト用の設定を作成"""
-    return NaviMisskeyBotConfig(
+    return YamiiMisskeyBotConfig(
         misskey_instance_url="https://test.misskey.io",
         misskey_access_token="test_token",
         yamii_api_url="http://localhost:8000",
-        bot_name="test_navi",
+        bot_name="test_yamii",
         enable_crisis_support=True
     )
 
@@ -28,13 +28,13 @@ def sample_note():
     """テスト用のノートを作成"""
     return MisskeyNote(
         id="note123",
-        text="@test_navi こんにちは、悩みがあります",
+        text="@test_yamii こんにちは、悩みがあります",
         user_id="user123", 
         user_username="testuser",
         user_name="テストユーザー",
         created_at=datetime.now(),
         visibility="home",
-        mentions=["test_navi"],
+        mentions=["test_yamii"],
         is_reply=False,
         reply_id=None
     )
@@ -42,8 +42,8 @@ def sample_note():
 
 @pytest.fixture
 def sample_yamii_response():
-    """テスト用のnaviレスポンスを作成"""
-    return NaviResponse(
+    """テスト用のyamiiレスポンスを作成"""
+    return YamiiResponse(
         response="あなたの気持ちをお聞かせください。どのようなことでお悩みでしょうか？",
         session_id="session123",
         timestamp=datetime.now(),
@@ -59,13 +59,13 @@ def sample_yamii_response():
     )
 
 
-class TestNaviMisskeyBot:
-    """NaviMisskeyBotのテストクラス"""
+class TestYamiiMisskeyBot:
+    """YamiiMisskeyBotのテストクラス"""
     
     @pytest.mark.asyncio
     async def test_bot_initialization(self, mock_config):
         """ボットの初期化をテスト"""
-        bot = NaviMisskeyBot(mock_config)
+        bot = YamiiMisskeyBot(mock_config)
         
         assert bot.config == mock_config
         assert isinstance(bot.user_sessions, dict)
@@ -75,7 +75,7 @@ class TestNaviMisskeyBot:
     @pytest.mark.asyncio
     async def test_handle_mention_basic(self, mock_config, sample_note, sample_yamii_response):
         """基本的なメンション処理をテスト"""
-        bot = NaviMisskeyBot(mock_config)
+        bot = YamiiMisskeyBot(mock_config)
         
         # Misskeyクライアントをモック
         bot.misskey_client = AsyncMock()
@@ -83,7 +83,7 @@ class TestNaviMisskeyBot:
         bot.misskey_client.bot_user_id = "bot123"
         bot.misskey_client.extract_message_from_note.return_value = "こんにちは、悩みがあります"
         
-        # Naviクライアントをモック
+        # Yamiiクライアントをモック
         bot.yamii_client = AsyncMock()
         bot.yamii_client.send_counseling_request.return_value = sample_yamii_response
         
@@ -104,10 +104,10 @@ class TestNaviMisskeyBot:
     @pytest.mark.asyncio
     async def test_handle_crisis_response(self, mock_config, sample_note):
         """クライシス応答をテスト"""
-        bot = NaviMisskeyBot(mock_config)
+        bot = YamiiMisskeyBot(mock_config)
         
         # クライシス応答を作成
-        crisis_response = NaviResponse(
+        crisis_response = YamiiResponse(
             response="心配です。あなたの安全が大切です。",
             session_id="session123",
             timestamp=datetime.now(),
@@ -142,18 +142,18 @@ class TestNaviMisskeyBot:
     @pytest.mark.asyncio
     async def test_handle_help_command(self, mock_config, sample_note):
         """ヘルプコマンドをテスト"""
-        bot = NaviMisskeyBot(mock_config)
+        bot = YamiiMisskeyBot(mock_config)
         
         # ヘルプコマンドのノートを作成
         help_note = MisskeyNote(
             id="note456",
-            text="@test_navi navi /help",
+            text="@test_yamii yamii /help",
             user_id="user123",
             user_username="testuser", 
             user_name="テストユーザー",
             created_at=datetime.now(),
             visibility="home",
-            mentions=["test_navi"],
+            mentions=["test_yamii"],
             is_reply=False,
             reply_id=None
         )
@@ -161,7 +161,7 @@ class TestNaviMisskeyBot:
         bot.misskey_client = AsyncMock()
         bot.misskey_client.is_mentioned.return_value = True
         bot.misskey_client.bot_user_id = "bot123"
-        bot.misskey_client.extract_message_from_note.return_value = "navi /help"
+        bot.misskey_client.extract_message_from_note.return_value = "yamii /help"
         
         bot._send_reply = AsyncMock()
         
@@ -172,14 +172,14 @@ class TestNaviMisskeyBot:
         call_args = bot._send_reply.call_args
         response_text = call_args[0][1]
         
-        assert "NAVI 人生相談AI - ヘルプ" in response_text
+        assert "YAMII 人生相談AI - ヘルプ" in response_text
         assert "基本的な相談方法" in response_text
         assert "カスタムプロンプト" in response_text
     
     @pytest.mark.asyncio
     async def test_session_management(self, mock_config, sample_note, sample_yamii_response):
         """セッション管理をテスト"""
-        bot = NaviMisskeyBot(mock_config)
+        bot = YamiiMisskeyBot(mock_config)
         
         # 最初の相談
         bot.misskey_client = AsyncMock()
@@ -200,13 +200,13 @@ class TestNaviMisskeyBot:
         # 継続的な会話
         continue_note = MisskeyNote(
             id="note789",
-            text="@test_navi もう少し詳しくお聞きしたいです",
+            text="@test_yamii もう少し詳しくお聞きしたいです",
             user_id=sample_note.user_id,  # 同じユーザー
             user_username="testuser",
             user_name="テストユーザー", 
             created_at=datetime.now(),
             visibility="home",
-            mentions=["test_navi"],
+            mentions=["test_yamii"],
             is_reply=False,
             reply_id=None
         )
@@ -224,7 +224,7 @@ class TestNaviMisskeyBot:
     @pytest.mark.asyncio
     async def test_session_termination(self, mock_config, sample_note):
         """セッション終了をテスト"""
-        bot = NaviMisskeyBot(mock_config)
+        bot = YamiiMisskeyBot(mock_config)
         
         # セッションを設定
         bot.user_sessions[sample_note.user_id] = "session123"
@@ -232,13 +232,13 @@ class TestNaviMisskeyBot:
         # 終了コマンドのノートを作成
         end_note = MisskeyNote(
             id="note999",
-            text="@test_navi 終了",
+            text="@test_yamii 終了",
             user_id=sample_note.user_id,
             user_username="testuser",
             user_name="テストユーザー",
             created_at=datetime.now(),
             visibility="home", 
-            mentions=["test_navi"],
+            mentions=["test_yamii"],
             is_reply=False,
             reply_id=None
         )
@@ -264,14 +264,14 @@ class TestNaviMisskeyBot:
     @pytest.mark.asyncio
     async def test_ignore_own_posts(self, mock_config):
         """自分の投稿を無視することをテスト"""
-        bot = NaviMisskeyBot(mock_config)
+        bot = YamiiMisskeyBot(mock_config)
         
         # 自分の投稿を作成
         own_note = MisskeyNote(
             id="own_note",
             text="テスト投稿",
             user_id="bot123",  # ボット自身のID
-            user_username="test_navi",
+            user_username="test_yamii",
             user_name="Yamii Bot",
             created_at=datetime.now(),
             visibility="home",
@@ -293,7 +293,7 @@ class TestNaviMisskeyBot:
     
     def test_duplicate_note_prevention(self, mock_config, sample_note):
         """重複ノート処理防止をテスト"""
-        bot = NaviMisskeyBot(mock_config)
+        bot = YamiiMisskeyBot(mock_config)
         
         # ノートIDを処理済みに追加
         bot.processed_notes.add(sample_note.id)

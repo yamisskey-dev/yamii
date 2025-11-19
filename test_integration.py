@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Navi統合テストスクリプト
+Yamii統合テストスクリプト
 APIサーバーとMisskeyボットの統合動作を検証
 """
 
@@ -14,7 +14,7 @@ from pathlib import Path
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
-from yamii.core.logging import NaviLogger, get_logger
+from yamii.core.logging import YamiiLogger, get_logger
 
 # テスト用環境変数の設定（統一された命名規則）
 os.environ.update({
@@ -35,8 +35,8 @@ os.environ.update({
     'BOT_ENABLE_GLOBAL_TIMELINE': 'false',
 })
 
-class NaviIntegrationTester:
-    """Navi統合テスター"""
+class YamiiIntegrationTester:
+    """Yamii統合テスター"""
     
     def __init__(self, base_url: str = "http://localhost:8000"):
         self.base_url = base_url
@@ -130,7 +130,7 @@ class NaviIntegrationTester:
     
     async def run_all_tests(self) -> bool:
         """すべてのテストを実行"""
-        self.logger.info("=== Navi統合テスト開始 ===")
+        self.logger.info("=== Yamii統合テスト開始 ===")
         
         tests = [
             ("APIヘルスチェック", self.test_api_health()),
@@ -169,7 +169,7 @@ class NaviIntegrationTester:
 async def main():
     """メイン実行関数"""
     # ログシステム初期化
-    NaviLogger.configure(
+    YamiiLogger.configure(
         log_level=os.getenv("LOG_LEVEL", "INFO")
     )
     
@@ -177,7 +177,7 @@ async def main():
     base_url = os.getenv("TEST_SERVER_URL", "http://localhost:8000")
     
     # テスター実行
-    tester = NaviIntegrationTester(base_url)
+    tester = YamiiIntegrationTester(base_url)
     success = await tester.run_all_tests()
     
     # 終了コード設定

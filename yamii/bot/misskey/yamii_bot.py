@@ -38,7 +38,7 @@ class YamiiMisskeyBot:
         self.logger.info(f"Yamii API URL: {self.config.yamii_api_url}")
         self.logger.info(f"Misskey Instance: {self.config.misskey_instance_url}")
         
-        # まずMisskeyクライアントとNaviクライアントを初期化
+        # まずMisskeyクライアントとYamiiクライアントを初期化
         try:
             self.logger.info("Initializing Misskey client...")
             await self.misskey_client.__aenter__()
@@ -48,7 +48,7 @@ class YamiiMisskeyBot:
             await self.yamii_client.__aenter__()
             self.logger.info("Yamii client initialized successfully")
             
-            # naviサーバーの健全性チェック
+            # yamiiサーバーの健全性チェック
             try:
                 self.logger.info("Checking Yamii server health...")
                 health = await self.yamii_client.health_check()
@@ -158,8 +158,8 @@ class YamiiMisskeyBot:
         if await self._handle_custom_prompt_commands(note, message_text):
             return
             
-        # naviコマンドをチェック
-        if message_text.lower().startswith("navi "):
+        # yamiiコマンドをチェック
+        if message_text.lower().startswith("yamii "):
             clean_message = message_text[5:].strip()
             if not clean_message:
                 await self._send_reply(note, "人生相談をご利用いただきありがとうございます。どのようなことでお悩みでしょうか？お気軽にお話しください。")
@@ -181,7 +181,7 @@ class YamiiMisskeyBot:
         
         if text_lower in ["/help", "ヘルプ"]:
             help_text = (
-                "👁️‍🗨️ **NAVI 人生相談AI - ヘルプ**\n\n"
+                "👁️‍🗨️ **YAMII 人生相談AI - ヘルプ**\n\n"
                 "**📝 基本的な相談方法:**\n"
                 "• `<相談内容>` - 人生相談を開始\n"
                 "• `終了` - 相談を終了\n\n"
@@ -210,21 +210,21 @@ class YamiiMisskeyBot:
                     f"• サーバーURL: {self.config.yamii_api_url}\n"
                     f"• 最終確認: {datetime.now().strftime('%Y年%m月%d日 %H:%M:%S')}\n\n"
                     f"**バージョン・機能情報:**\n"
-                    f"• Naviボット: Python版 1.0.0\n"
+                    f"• Yamiiボット: Python版 1.0.0\n"
                     f"• 最終更新: 2025年8月27日\n"
                     f"• 対応機能: 基本相談・カスタムプロンプト・プロファイル・感情分析・クライシス検出\n"
                     f"• プラットフォーム: Misskey"
                 )
                 await self._send_reply(note, status_text)
             except Exception as e:
-                await self._send_reply(note, "❌ ステータス確認でエラーが発生しました。naviサーバーが起動していることを確認してください。")
+                await self._send_reply(note, "❌ ステータス確認でエラーが発生しました。yamiiサーバーが起動していることを確認してください。")
             return True
             
         elif text_lower in ["yamii", "/start"]:
             quick_help = (
                 "🚀 **Yamii クイックスタート**\n\n"
                 "**今すぐ相談:**\n"
-                "• 個人チャット: `<相談内容>` / パブリック: `@navi <相談内容>`\n\n"
+                "• 個人チャット: `<相談内容>` / パブリック: `@yamii <相談内容>`\n\n"
                 "**コマンド:**\n"
                 "• `/help` - 詳細ヘルプ\n"
                 "• `/status` - システム状況\n"
@@ -246,9 +246,9 @@ class YamiiMisskeyBot:
                 prompt_data = await self.yamii_client.get_custom_prompt(note.user_id)
                 if prompt_data.get("has_custom_prompt") and prompt_data.get("prompt"):
                     prompt = prompt_data["prompt"]
-                    reply_text = f"📝 **現在のカスタムプロンプト:**\n\n{prompt.get('prompt_text', '')}\n\n削除: `navi /custom delete`"
+                    reply_text = f"📝 **現在のカスタムプロンプト:**\n\n{prompt.get('prompt_text', '')}\n\n削除: `yamii /custom delete`"
                 else:
-                    reply_text = "📝 **カスタムプロンプト:**\n\n現在設定されているカスタムプロンプトはありません。\n\n作成: `navi /custom set <プロンプト内容>`"
+                    reply_text = "📝 **カスタムプロンプト:**\n\n現在設定されているカスタムプロンプトはありません。\n\n作成: `yamii /custom set <プロンプト内容>`"
                 await self._send_reply(note, reply_text)
                 return True
                 
@@ -272,7 +272,7 @@ class YamiiMisskeyBot:
                         prompt_text = prompt_text[1:-1]
                         
                     if not prompt_text:
-                        reply_text = "❌ プロンプトの内容を入力してください。\n例: `navi /custom set あなたは優しい先生です。丁寧に教えてください。`"
+                        reply_text = "❌ プロンプトの内容を入力してください。\n例: `yamii /custom set あなたは優しい先生です。丁寧に教えてください。`"
                     else:
                         success = await self.yamii_client.create_custom_prompt(note.user_id, prompt_text)
                         
@@ -289,7 +289,7 @@ class YamiiMisskeyBot:
                                 f"✨ **次回の相談から自動的に適用されます**\n\n"
                                 f"📝 プロンプト内容 ({len(prompt_text)}文字):\n"
                                 f"{prompt_text[:100] + '...' if len(prompt_text) > 100 else prompt_text}\n\n"
-                                f"削除: `navi /custom delete`"
+                                f"削除: `yamii /custom delete`"
                             )
                         else:
                             reply_text = "❌ カスタムプロンプトの作成に失敗しました。"
@@ -381,7 +381,7 @@ class YamiiMisskeyBot:
     async def _handle_counseling(self, note: MisskeyNote, message: str):
         """人生相談を処理"""
         try:
-            # naviリクエストを作成
+            # yamiiリクエストを作成
             session_id = self.user_sessions.get(note.user_id)
             
             yamii_request = YamiiRequest(
@@ -395,7 +395,7 @@ class YamiiMisskeyBot:
                 }
             )
             
-            # naviサーバーにリクエスト送信
+            # yamiiサーバーにリクエスト送信
             response = await self.yamii_client.send_counseling_request(yamii_request)
             
             if response:
@@ -427,10 +427,10 @@ class YamiiMisskeyBot:
             
             error_str = str(e).lower()
             if "connection" in error_str or "refused" in error_str:
-                error_message = "❌ naviサーバーに接続できませんでした。"
+                error_message = "❌ yamiiサーバーに接続できませんでした。"
                 troubleshooting = (
                     "\n\n🔧 **トラブルシューティング:**\n"
-                    "• naviサーバーが起動していることを確認\n"
+                    "• yamiiサーバーが起動していることを確認\n"
                     "• ネットワーク接続を確認"
                 )
             elif "timeout" in error_str:

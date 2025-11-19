@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Yamii Misskey Bot CLI
-naviのMisskeyボットを起動するためのCLIツール
+yamiiのMisskeyボットを起動するためのCLIツール
 """
 
 import asyncio
@@ -10,10 +10,10 @@ import sys
 import os
 from pathlib import Path
 
-# naviパッケージのパスを追加
+# yamiiパッケージのパスを追加
 sys.path.insert(0, str(Path(__file__).parent))
 
-from yamii.bot.misskey import NaviMisskeyBot, load_config, setup_logging
+from yamii.bot.misskey import YamiiMisskeyBot, load_config, setup_logging
 
 
 def create_env_file():
@@ -27,7 +27,7 @@ MISSKEY_ACCESS_TOKEN=your_misskey_access_token_here
 YAMII_API_URL=http://localhost:8000
 
 # ボット設定
-BOT_NAME=navi
+BOT_NAME=yamii
 BOT_DISPLAY_NAME=Yamii - 人生相談AI
 
 # ログ設定
@@ -67,7 +67,7 @@ async def run_bot():
         print(f"   Yamii API: {config.yamii_api_url}")
         print(f"   Bot Name: @{config.bot_name}")
         
-        bot = NaviMisskeyBot(config)
+        bot = YamiiMisskeyBot(config)
         await bot.start()
         
     except KeyboardInterrupt:

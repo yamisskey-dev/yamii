@@ -1,16 +1,16 @@
 """
 Yamii Bot Package
-naviボット機能のパッケージ
+Yamiiボット機能のパッケージ
 """
 
-from .misskey import NaviMisskeyBot, NaviMisskeyBotConfig, load_config
+from .misskey import YamiiMisskeyBot, YamiiMisskeyBotConfig, load_config
 
 __version__ = "1.0.0"
 __author__ = "Yamii Team"
 __description__ = "Bot implementations for Yamii life counseling service"
 
 __all__ = [
-    "NaviMisskeyBot",
-    "NaviMisskeyBotConfig", 
+    "YamiiMisskeyBot",
+    "YamiiMisskeyBotConfig",
     "load_config"
 ]

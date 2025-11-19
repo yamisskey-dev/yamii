@@ -47,7 +47,7 @@ def server(
     from yamii.main import app as fastapi_app
     
     uvicorn.run(
-        "navi.main:app",
+        "yamii.main:app",
         host=host,
         port=port,
         reload=reload,
@@ -132,7 +132,7 @@ def health():
         console.print(Panel(
             f"[red]❌ APIサーバーに接続できません[/red]\n"
             f"エラー: {str(e)}\n"
-            f"💡 'navi server' でサーバーを起動してください",
+            f"💡 'yamii server' でサーバーを起動してください",
             title="接続エラー",
             border_style="red"
         ))

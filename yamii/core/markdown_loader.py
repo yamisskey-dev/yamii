@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-NAVI.mdからプロンプトを読み込む軽量なマークダウンローダー
+YAMII.mdからプロンプトを読み込む軽量なマークダウンローダー
 Typerの依存関係でインストールされたmarkdown-itを活用
 """
 
@@ -13,19 +13,19 @@ logger = logging.getLogger(__name__)
 
 
 class YamiiMarkdownLoader:
-    """NAVI.mdから開発者向けプロンプトを読み込む軽量クラス"""
+    """YAMII.mdから開発者向けプロンプトを読み込む軽量クラス"""
     
-    def __init__(self, yamii_md_path: str = "NAVI.md"):
+    def __init__(self, yamii_md_path: str = "YAMII.md"):
         self.yamii_md_path = Path(yamii_md_path)
         self.prompts: Dict[str, Dict[str, Any]] = {}
         self.md_parser = MarkdownIt()
         self._load_prompts()
     
     def _load_prompts(self):
-        """NAVI.mdファイルを読み込んでプロンプトを解析"""
+        """YAMII.mdファイルを読み込んでプロンプトを解析"""
         try:
             if not self.yamii_md_path.exists():
-                logger.warning(f"NAVI.md file not found at {self.yamii_md_path}")
+                logger.warning(f"YAMII.md file not found at {self.yamii_md_path}")
                 self._create_fallback_prompts()
                 return
             
@@ -35,10 +35,10 @@ class YamiiMarkdownLoader:
             # markdown-itでパース
             tokens = self.md_parser.parse(content)
             self._parse_tokens(tokens)
-            logger.info(f"Loaded {len(self.prompts)} prompts from NAVI.md")
+            logger.info(f"Loaded {len(self.prompts)} prompts from YAMII.md")
             
         except Exception as e:
-            logger.error(f"Failed to load NAVI.md: {e}")
+            logger.error(f"Failed to load YAMII.md: {e}")
             self._create_fallback_prompts()
     
     def _parse_tokens(self, tokens):
@@ -110,7 +110,7 @@ class YamiiMarkdownLoader:
                 self.prompts[current_prompt['id']] = current_prompt
     
     def _create_fallback_prompts(self):
-        """NAVI.mdが見つからない場合のフォールバックプロンプト"""
+        """YAMII.mdが見つからない場合のフォールバックプロンプト"""
         logger.info("Creating fallback CLI prompts")
         
         self.prompts = {

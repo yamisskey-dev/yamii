@@ -1,6 +1,6 @@
 """
 Yamii Misskey Bot Configuration
-naviのMisskeyボット設定
+yamiiのMisskeyボット設定
 """
 
 import os
