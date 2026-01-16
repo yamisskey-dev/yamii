@@ -1,0 +1,114 @@
+"""
+感情モデル
+統合された感情分類と分析結果
+"""
+
+from typing import Dict, Any
+from dataclasses import dataclass
+from enum import Enum
+
+
+class EmotionType(Enum):
+    """
+    感情タイプ
+    統一された感情分類（複数システムから統合）
+    """
+    HAPPINESS = "happiness"       # 喜び・幸福感
+    SADNESS = "sadness"          # 悲しみ・落胆
+    ANXIETY = "anxiety"          # 不安・心配
+    ANGER = "anger"              # 怒り・イライラ
+    LONELINESS = "loneliness"    # 孤独感・寂しさ
+    DEPRESSION = "depression"    # うつ・絶望感（危機指標）
+    STRESS = "stress"            # ストレス・疲労
+    CONFUSION = "confusion"      # 混乱・迷い
+    HOPE = "hope"                # 希望・前向きさ
+    NEUTRAL = "neutral"          # 中性・平常
+
+
+@dataclass
+class EmotionAnalysis:
+    """
+    感情分析結果
+    単一の分析結果構造（複数システムから統合）
+    """
+    primary_emotion: EmotionType
+    intensity: float  # 0.0-1.0（正規化）
+    stability: float  # 0.0-1.0（感情の安定性）
+    is_crisis: bool
+    all_emotions: Dict[str, float]
+    confidence: float  # 0.0-1.0
+
+    def to_dict(self) -> Dict[str, Any]:
+        """辞書形式に変換"""
+        return {
+            "primary_emotion": self.primary_emotion.value,
+            "intensity": self.intensity,
+            "stability": self.stability,
+            "is_crisis": self.is_crisis,
+            "all_emotions": self.all_emotions,
+            "confidence": self.confidence,
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "EmotionAnalysis":
+        """辞書から生成"""
+        return cls(
+            primary_emotion=EmotionType(data.get("primary_emotion", "neutral")),
+            intensity=data.get("intensity", 0.5),
+            stability=data.get("stability", 0.5),
+            is_crisis=data.get("is_crisis", False),
+            all_emotions=data.get("all_emotions", {}),
+            confidence=data.get("confidence", 0.0),
+        )
+
+    @classmethod
+    def neutral(cls) -> "EmotionAnalysis":
+        """中性の分析結果を生成"""
+        return cls(
+            primary_emotion=EmotionType.NEUTRAL,
+            intensity=0.0,
+            stability=1.0,
+            is_crisis=False,
+            all_emotions={},
+            confidence=1.0,
+        )
+
+
+# 感情タイプの説明
+EMOTION_DESCRIPTIONS = {
+    EmotionType.HAPPINESS: "喜び・幸福感",
+    EmotionType.SADNESS: "悲しみ・落胆",
+    EmotionType.ANXIETY: "不安・心配",
+    EmotionType.ANGER: "怒り・イライラ",
+    EmotionType.LONELINESS: "孤独感・寂しさ",
+    EmotionType.DEPRESSION: "うつ・絶望感",
+    EmotionType.STRESS: "ストレス・疲労",
+    EmotionType.CONFUSION: "混乱・迷い",
+    EmotionType.HOPE: "希望・前向きさ",
+    EmotionType.NEUTRAL: "中性・平常",
+}
+
+
+def get_emotion_description(emotion_type: EmotionType) -> str:
+    """感情タイプの説明を取得"""
+    return EMOTION_DESCRIPTIONS.get(emotion_type, "不明")
+
+
+# 危機指標となる感情
+CRISIS_EMOTIONS = {EmotionType.DEPRESSION}
+
+# ネガティブ感情
+NEGATIVE_EMOTIONS = {
+    EmotionType.SADNESS,
+    EmotionType.ANXIETY,
+    EmotionType.ANGER,
+    EmotionType.LONELINESS,
+    EmotionType.DEPRESSION,
+    EmotionType.STRESS,
+}
+
+# ポジティブ感情
+POSITIVE_EMOTIONS = {
+    EmotionType.HAPPINESS,
+    EmotionType.HOPE,
+}

@@ -1,125 +1,102 @@
 """
-Yamii - Networked Artificial Virtual Intelligence
-AI Chat Service
+Yamii - メンタルヘルス特化AI相談システム
+
+あなたがいる場所に寄り添い、成長を見守り、必要な時に先に声をかける。
+
+ChatGPT/Claude/Gemini WebUIやAwarefy/Ubieが提供できない独自価値:
+1. プロアクティブケア: ユーザーが連絡しなくても、パターン検出でBotから先にチェックイン
+2. 継続的関係性構築: STRANGER→TRUSTEDフェーズで深い信頼関係を構築
+3. プライバシーファースト: E2EE完全対応でデータは暗号化
 """
 
-__version__ = "0.1.0"
+__version__ = "2.0.0"
 
-# 基本モジュール
-from .memory import MemorySystem
-from .user_profile import UserProfile, UserProfileManager
-
-# 高度な機能
-from .conversation_summary import (
-    ConversationSummary,
-    ConversationSummarizer,
-    ConversationSummaryStore,
-    SentimentType,
-    UserMention,
-    MentionType,
-)
-from .context_awareness import (
+# ===== Domain Models =====
+from .domain.models import (
+    # 関係性
+    RelationshipPhase,
+    ToneLevel,
+    DepthLevel,
+    PhaseTransition,
+    TopicAffinity,
+    # 会話
+    EpisodeType,
+    Episode,
+    Message,
     ConversationContext,
-    ContextAwareResponseGenerator,
-    ContextAwareResponse,
-    EmotionalState,
-    ConversationPhase,
-    TopicTransition,
+    # ユーザー
+    UserState,
+    ProactiveSettings,
+    # 感情
+    EmotionType,
+    EmotionAnalysis,
 )
-from .user_learning import (
-    EnhancedUserProfile,
-    UserLearningManager,
-    UserPreferences,
-    UserLearningData,
-    CommunicationStyle,
-    ResponseLength,
-    TechnicalLevel,
+
+# ===== Domain Services =====
+from .domain.services import (
+    EmotionService,
+    CounselingService,
+    ProactiveOutreachService,
 )
-from .intelligent_search import (
-    IntelligentSearchEngine,
-    KnowledgeGraph,
-    SearchResult,
-    ParsedQuery,
+
+# ===== Ports (Interfaces) =====
+from .domain.ports import (
+    IStorage,
+    IAIProvider,
+    IPlatformAdapter,
 )
-from .analytics import (
-    AnalyticsEngine,
-    UserAnalytics,
-    GlobalAnalytics,
-    TopicAnalysis,
-    SentimentAnalysis,
-    Recommendation,
-)
-from .persona import (
-    Persona,
-    PersonaStore,
-    PersonaAnalyzer,
-    PersonaSourceType,
-    PersonalityProfile,
-    PersonalityTrait,
-    SpeechPattern,
-    BackgroundStory,
-    ResponseBehavior,
-    CommunicationTone,
-    get_persona_store,
-    get_persona_analyzer,
-    get_persona_prompt,
-    list_available_personas,
-)
+
+# ===== Adapters (lazy import) =====
+# アダプターは依存関係が多いため遅延インポート
+def get_gemini_adapter():
+    from .adapters.ai.gemini import GeminiAdapter
+    return GeminiAdapter
+
+def get_file_storage_adapter():
+    from .adapters.storage.file import FileStorageAdapter
+    return FileStorageAdapter
+
+# ===== API (lazy import) =====
+def get_app():
+    from .api import app
+    return app
+
+def create_app():
+    from .api import create_app as _create_app
+    return _create_app()
 
 __all__ = [
     # Version
     "__version__",
-    # 基本
-    "MemorySystem",
-    "UserProfile",
-    "UserProfileManager",
-    # 会話サマリー
-    "ConversationSummary",
-    "ConversationSummarizer",
-    "ConversationSummaryStore",
-    "SentimentType",
-    "UserMention",
-    "MentionType",
-    # コンテキスト認識
+    # Domain Models - 関係性
+    "RelationshipPhase",
+    "ToneLevel",
+    "DepthLevel",
+    "PhaseTransition",
+    "TopicAffinity",
+    # Domain Models - 会話
+    "EpisodeType",
+    "Episode",
+    "Message",
     "ConversationContext",
-    "ContextAwareResponseGenerator",
-    "ContextAwareResponse",
-    "EmotionalState",
-    "ConversationPhase",
-    "TopicTransition",
-    # ユーザー学習
-    "EnhancedUserProfile",
-    "UserLearningManager",
-    "UserPreferences",
-    "UserLearningData",
-    "CommunicationStyle",
-    "ResponseLength",
-    "TechnicalLevel",
-    # インテリジェント検索
-    "IntelligentSearchEngine",
-    "KnowledgeGraph",
-    "SearchResult",
-    "ParsedQuery",
-    # 分析
-    "AnalyticsEngine",
-    "UserAnalytics",
-    "GlobalAnalytics",
-    "TopicAnalysis",
-    "SentimentAnalysis",
-    "Recommendation",
-    # ペルソナ（キャラクター設定）
-    "Persona",
-    "PersonaStore",
-    "PersonaAnalyzer",
-    "PersonaSourceType",
-    "PersonalityProfile",
-    "PersonalityTrait",
-    "SpeechPattern",
-    "BackgroundStory",
-    "ResponseBehavior",
-    "CommunicationTone",
-    "get_persona_store",
-    "get_persona_analyzer",
-    "get_persona_prompt",
-    "list_available_personas",
+    # Domain Models - ユーザー
+    "UserState",
+    "ProactiveSettings",
+    # Domain Models - 感情
+    "EmotionType",
+    "EmotionAnalysis",
+    # Domain Services
+    "EmotionService",
+    "CounselingService",
+    "ProactiveOutreachService",
+    # Ports
+    "IStorage",
+    "IAIProvider",
+    "IPlatformAdapter",
+    # Adapters (lazy)
+    "get_gemini_adapter",
+    "get_file_storage_adapter",
+    # API (lazy)
+    "get_app",
+    "create_app",
 ]
