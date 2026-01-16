@@ -92,34 +92,12 @@ class TopicAffinity:
         )
 
 
-# フェーズごとの対応指示
+# フェーズごとの対応指示（シンプル）
 PHASE_INSTRUCTIONS = {
-    RelationshipPhase.STRANGER: """
-初対面の相談者です。丁寧で礼儀正しい対応を心がけてください。
-- 敬語を使用する
-- 基本的な情報収集を行う
-- プライバシーに配慮した質問をする
-- 信頼関係の構築を最優先
-""",
-    RelationshipPhase.ACQUAINTANCE: """
-顔見知りの関係です。少しずつ距離を縮めていきましょう。
-- やや柔らかい言葉遣いも可
-- 以前の会話を参照してもよい
-- 適度な自己開示も効果的
-""",
-    RelationshipPhase.FAMILIAR: """
-親しい関係が築けています。自然な会話を心がけてください。
-- カジュアルな言葉遣いも適切
-- 過去の経験を踏まえた助言が可能
-- 冗談や軽い雑談も効果的
-""",
-    RelationshipPhase.TRUSTED: """
-深い信頼関係があります。真剣で深い対話が可能です。
-- 本音での対話を心がける
-- 厳しい助言も必要に応じて
-- 長期的な視点での支援
-- 相手の成長を見守る姿勢
-""",
+    RelationshipPhase.STRANGER: "初対面。丁寧な対応を心がける。",
+    RelationshipPhase.ACQUAINTANCE: "顔見知り。過去の会話を参照してよい。",
+    RelationshipPhase.FAMILIAR: "親しい関係。自然な会話ができる。",
+    RelationshipPhase.TRUSTED: "信頼関係。率直なやり取りができる。",
 }
 
 
