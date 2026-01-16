@@ -3,9 +3,10 @@ Yamii API - メインアプリケーション
 簡素化されたFastAPI アプリケーション
 """
 
-import logging
+import asyncio
 from datetime import datetime
 from contextlib import asynccontextmanager
+from typing import Optional
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -36,9 +37,32 @@ class APIVersionMiddleware(BaseHTTPMiddleware):
         return response
 
 
+async def run_misskey_bot() -> None:
+    """Misskey Botを起動"""
+    from ..bot.misskey.yamii_bot import YamiiMisskeyBot
+    from ..bot.misskey.config import YamiiMisskeyBotConfig
+
+    settings = get_settings()
+
+    config = YamiiMisskeyBotConfig(
+        misskey_instance_url=settings.misskey.instance_url,
+        misskey_access_token=settings.misskey.access_token,
+        misskey_bot_user_id=settings.misskey.bot_user_id,
+    )
+
+    logger.info(f"Misskey Bot starting: {settings.misskey.instance_url}")
+    bot = YamiiMisskeyBot(config)
+    await bot.start()
+
+
+# グローバルBot タスク参照
+_bot_task: Optional[asyncio.Task] = None
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """アプリケーションライフサイクル"""
+    global _bot_task
     settings = get_settings()
 
     # 起動時
@@ -51,8 +75,24 @@ async def lifespan(app: FastAPI):
     if not settings.security.api_keys:
         logger.warning("No API keys configured - running in development mode (no auth)")
 
+    # Misskey Botを起動（設定があれば）
+    if settings.misskey.is_configured:
+        logger.info("Misskey Bot: 起動中...")
+        _bot_task = asyncio.create_task(run_misskey_bot())
+    else:
+        logger.info("Misskey Bot: 設定なし（スキップ）")
+
     yield
+
     # 終了時
+    if _bot_task and not _bot_task.done():
+        logger.info("Misskey Bot: 停止中...")
+        _bot_task.cancel()
+        try:
+            await _bot_task
+        except asyncio.CancelledError:
+            pass
+
     logger.info("Yamii API shutting down...")
 
 

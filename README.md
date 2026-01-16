@@ -34,8 +34,8 @@ Misskey設定があればBotが自動起動します。
 # 依存関係インストール
 uv sync
 
-# サーバー起動
-uv run uvicorn yamii.api:app --reload --port 8000
+# サーバー起動（FastAPI CLI）
+uv run fastapi dev yamii/api/main.py
 ```
 
 ### 動作確認

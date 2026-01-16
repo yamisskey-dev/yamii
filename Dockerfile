@@ -49,7 +49,6 @@ COPY --from=builder /app/.venv /app/.venv
 
 # Copy application code
 COPY yamii/ ./yamii/
-COPY start_yamii.py ./
 COPY README.md ./
 COPY YAMII.md ./
 
@@ -66,5 +65,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
 # Expose port
 EXPOSE 8000
 
-# Run the application with integrated bot support
-CMD ["python", "start_yamii.py"]
+# Run with FastAPI CLI (Bot auto-starts via lifespan)
+CMD ["fastapi", "run", "yamii/api/main.py", "--host", "0.0.0.0", "--port", "8000"]
