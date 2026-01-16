@@ -59,7 +59,7 @@ class YamiiClient:
     async def health_check(self) -> Dict[str, Any]:
         """yamiiサーバーのヘルスチェック"""
         try:
-            url = f"{self.config.yamii_api_url}/health"
+            url = f"{self.config.yamii_api_url}/v1/health"
             async with self.session.get(url) as response:
                 if response.status == 200:
                     return await response.json()
@@ -72,7 +72,7 @@ class YamiiClient:
     async def send_counseling_request(self, request: YamiiRequest) -> YamiiResponse:
         """人生相談リクエストを送信"""
         try:
-            url = f"{self.config.yamii_api_url}/counseling"
+            url = f"{self.config.yamii_api_url}/v1/counseling"
             
             # リクエストデータを構築
             request_data = {
@@ -120,7 +120,7 @@ class YamiiClient:
     async def get_custom_prompt(self, user_id: str) -> Dict[str, Any]:
         """カスタムプロンプトを取得"""
         try:
-            url = f"{self.config.yamii_api_url}/custom-prompts"
+            url = f"{self.config.yamii_api_url}/v1/custom-prompts"
             params = {"user_id": user_id}
             
             async with self.session.get(url, params=params) as response:
@@ -139,7 +139,7 @@ class YamiiClient:
     async def create_custom_prompt(self, user_id: str, prompt_text: str) -> bool:
         """カスタムプロンプトを作成"""
         try:
-            url = f"{self.config.yamii_api_url}/custom-prompts"
+            url = f"{self.config.yamii_api_url}/v1/custom-prompts"
             params = {"user_id": user_id}
             data = {"prompt_text": prompt_text}
             
@@ -153,7 +153,7 @@ class YamiiClient:
     async def delete_custom_prompt(self, user_id: str) -> bool:
         """カスタムプロンプトを削除"""
         try:
-            url = f"{self.config.yamii_api_url}/custom-prompts"
+            url = f"{self.config.yamii_api_url}/v1/custom-prompts"
             params = {"user_id": user_id}
             
             async with self.session.delete(url, params=params) as response:
@@ -166,10 +166,9 @@ class YamiiClient:
     async def get_user_profile(self, user_id: str) -> Optional[Dict[str, Any]]:
         """ユーザープロファイルを取得"""
         try:
-            url = f"{self.config.yamii_api_url}/profile"
-            params = {"user_id": user_id}
-            
-            async with self.session.get(url, params=params) as response:
+            url = f"{self.config.yamii_api_url}/v1/users/{user_id}"
+
+            async with self.session.get(url) as response:
                 if response.status == 200:
                     return await response.json()
                 elif response.status == 404:
@@ -185,11 +184,10 @@ class YamiiClient:
     async def set_user_profile(self, user_id: str, profile_text: str) -> bool:
         """ユーザープロファイルを設定"""
         try:
-            url = f"{self.config.yamii_api_url}/profile"
-            params = {"user_id": user_id}
-            data = {"profile_text": profile_text}
-            
-            async with self.session.post(url, params=params, json=data) as response:
+            url = f"{self.config.yamii_api_url}/v1/users/{user_id}"
+            data = {"explicit_profile": profile_text}
+
+            async with self.session.put(url, json=data) as response:
                 return response.status == 200
                 
         except Exception as e:
@@ -199,10 +197,9 @@ class YamiiClient:
     async def delete_user_profile(self, user_id: str) -> bool:
         """ユーザープロファイルを削除"""
         try:
-            url = f"{self.config.yamii_api_url}/profile"
-            params = {"user_id": user_id}
-            
-            async with self.session.delete(url, params=params) as response:
+            url = f"{self.config.yamii_api_url}/v1/users/{user_id}"
+
+            async with self.session.delete(url) as response:
                 return response.status == 200
                 
         except Exception as e:
