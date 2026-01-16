@@ -1,6 +1,4 @@
-# Yamii 人生相談APIサーバー - シンプル構成（SQLite使用）
-version: '3.8'
-
+# Yamii 人生相談Bot - API + Misskey Bot 統合構成
 services:
   yamii:
     build: .
@@ -9,19 +7,19 @@ services:
       - "8000:8000"
     env_file:
       - .env
-    environment:
-      - ENVIRONMENT=production
     volumes:
       - yamii_data:/app/data
-      - ./logs:/app/logs
+      - yamii_keys:/app/.yamii_keys
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/v1/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 10s
 
 volumes:
   yamii_data:
+    driver: local
+  yamii_keys:
     driver: local

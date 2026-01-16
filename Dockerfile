@@ -36,6 +36,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 # Install system dependencies for runtime
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
+    curl \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd -r yamii \
     && useradd -r -g yamii yamii
@@ -52,15 +53,15 @@ COPY start_yamii.py ./
 COPY README.md ./
 COPY YAMII.md ./
 
-# Create directory for data persistence
-RUN mkdir -p /app/data && chown -R yamii:yamii /app
+# Create directories for data persistence
+RUN mkdir -p /app/data /app/.yamii_keys && chown -R yamii:yamii /app
 
 # Switch to non-root user
 USER yamii
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:8000/v1/health || exit 1
 
 # Expose port
 EXPOSE 8000
