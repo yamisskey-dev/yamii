@@ -4,7 +4,7 @@ yuiのyamiiモジュールをPythonで実装したMisskeyボット
 """
 
 from .config import YamiiMisskeyBotConfig, load_config
-from .misskey_client import MisskeyClient, MisskeyNote, MisskeyUser
+from .misskey_client import MisskeyClient, MisskeyNote, MisskeyUser, MisskeyChatMessage
 from .yamii_client import YamiiClient, YamiiRequest, YamiiResponse
 from .yamii_bot import YamiiMisskeyBot, setup_logging
 
@@ -18,6 +18,7 @@ __all__ = [
     "MisskeyClient",
     "MisskeyNote",
     "MisskeyUser",
+    "MisskeyChatMessage",
     "YamiiClient",
     "YamiiRequest",
     "YamiiResponse",

@@ -37,6 +37,19 @@ class MisskeyUser:
     name: Optional[str]
 
 
+@dataclass
+class MisskeyChatMessage:
+    """Misskeyチャットメッセージの構造"""
+    id: str
+    text: Optional[str]
+    user_id: str
+    user_username: str
+    user_name: Optional[str]
+    created_at: datetime
+    is_read: bool
+    file_id: Optional[str] = None
+
+
 class MisskeyClient:
     """Misskeyクライアント"""
     
@@ -130,8 +143,34 @@ class MisskeyClient:
         """ホームタイムラインを取得"""
         params = {"limit": limit}
         timeline = await self._api_request("notes/timeline", params)
-        
+
         return [self._parse_note(note_data) for note_data in timeline]
+
+    async def send_chat_message(self, user_id: str, text: str) -> Dict:
+        """チャットメッセージを送信"""
+        params = {
+            "toUserId": user_id,
+            "text": text
+        }
+        return await self._api_request("chat/messages/create-to-user", params)
+
+    async def read_chat_message(self, message_id: str) -> Dict:
+        """チャットメッセージを既読にする"""
+        params = {"messageId": message_id}
+        return await self._api_request("chat/messages/read", params)
+
+    def _parse_chat_message(self, data: Dict) -> MisskeyChatMessage:
+        """APIレスポンスからMisskeyChatMessageオブジェクトを作成"""
+        return MisskeyChatMessage(
+            id=data["id"],
+            text=data.get("text"),
+            user_id=data["fromUserId"],
+            user_username=data.get("fromUser", {}).get("username", "unknown"),
+            user_name=data.get("fromUser", {}).get("name"),
+            created_at=datetime.fromisoformat(data["createdAt"].replace("Z", "+00:00")),
+            is_read=data.get("isRead", False),
+            file_id=data.get("fileId")
+        )
         
     def _parse_note(self, note_data: Dict) -> MisskeyNote:
         """APIレスポンスからMisskeyNoteオブジェクトを作成"""
