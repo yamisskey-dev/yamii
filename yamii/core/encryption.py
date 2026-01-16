@@ -7,9 +7,7 @@ PyNaClとcryptographyを活用したゼロナレッジアーキテクチャ
 from __future__ import annotations
 
 import base64
-import json
 import logging
-import os
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
@@ -261,84 +259,8 @@ class E2EECrypto:
         return base64.b64decode(key_str)
 
 
-class KeyManager:
-    """
-    クライアントサイドキー管理システム
-    """
-
-    def __init__(self, storage_path: str = ".yamii_keys"):
-        self.storage_path = storage_path
-        self.e2ee = E2EECrypto()
-
-    def generate_and_save_keys(self, user_id: str) -> tuple[str, str]:
-        """
-        新しいキーペアを生成して保存
-
-        Args:
-            user_id: ユーザーID
-
-        Returns:
-            Tuple[str, str]: (public_key_b64, private_key_b64)
-        """
-        try:
-            # キーペア生成
-            public_key, private_key = self.e2ee.generate_key_pair()
-
-            # Base64エンコード
-            public_key_b64 = self.e2ee.key_to_base64(public_key)
-            private_key_b64 = self.e2ee.key_to_base64(private_key)
-
-            # ローカル保存（実際の実装では安全な場所に保存）
-            key_data = {
-                "user_id": user_id,
-                "public_key": public_key_b64,
-                "private_key": private_key_b64,
-                "created_at": datetime.now().isoformat(),
-            }
-
-            os.makedirs(self.storage_path, exist_ok=True)
-            key_file = os.path.join(self.storage_path, f"{user_id}.json")
-
-            with open(key_file, "w") as f:
-                json.dump(key_data, f)
-
-            logger.info(f"キーペアを生成・保存: {user_id}")
-
-            return public_key_b64, private_key_b64
-
-        except Exception as e:
-            logger.error(f"キー生成・保存エラー: {e}")
-            raise
-
-    def load_keys(self, user_id: str) -> tuple[str, str] | None:
-        """
-        保存されたキーペアを読み込み
-
-        Args:
-            user_id: ユーザーID
-
-        Returns:
-            Optional[Tuple[str, str]]: (public_key_b64, private_key_b64) or None
-        """
-        try:
-            key_file = os.path.join(self.storage_path, f"{user_id}.json")
-
-            if not os.path.exists(key_file):
-                return None
-
-            with open(key_file) as f:
-                key_data = json.load(f)
-
-            return key_data["public_key"], key_data["private_key"]
-
-        except Exception as e:
-            logger.error(f"キー読み込みエラー: {e}")
-            return None
-
-
 # グローバルインスタンス
 _global_e2ee: E2EECrypto | None = None
-_global_key_manager: KeyManager | None = None
 
 
 def get_e2ee_crypto() -> E2EECrypto:
@@ -349,13 +271,3 @@ def get_e2ee_crypto() -> E2EECrypto:
         _global_e2ee = E2EECrypto()
 
     return _global_e2ee
-
-
-def get_key_manager() -> KeyManager:
-    """グローバルキーマネージャーインスタンスを取得"""
-    global _global_key_manager
-
-    if _global_key_manager is None:
-        _global_key_manager = KeyManager()
-
-    return _global_key_manager

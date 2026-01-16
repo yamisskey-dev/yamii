@@ -97,17 +97,3 @@ class TopicAffinity:
             if data.get("last_mentioned")
             else None,
         )
-
-
-# フェーズごとの対応指示（シンプル）
-PHASE_INSTRUCTIONS = {
-    RelationshipPhase.STRANGER: "初対面。丁寧な対応を心がける。",
-    RelationshipPhase.ACQUAINTANCE: "顔見知り。過去の会話を参照してよい。",
-    RelationshipPhase.FAMILIAR: "親しい関係。自然な会話ができる。",
-    RelationshipPhase.TRUSTED: "信頼関係。率直なやり取りができる。",
-}
-
-
-def get_phase_instruction(phase: RelationshipPhase) -> str:
-    """フェーズに応じた対応指示を取得"""
-    return PHASE_INSTRUCTIONS.get(phase, PHASE_INSTRUCTIONS[RelationshipPhase.STRANGER])

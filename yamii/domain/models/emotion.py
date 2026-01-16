@@ -76,26 +76,6 @@ class EmotionAnalysis:
         )
 
 
-# 感情タイプの説明
-EMOTION_DESCRIPTIONS = {
-    EmotionType.HAPPINESS: "喜び・幸福感",
-    EmotionType.SADNESS: "悲しみ・落胆",
-    EmotionType.ANXIETY: "不安・心配",
-    EmotionType.ANGER: "怒り・イライラ",
-    EmotionType.LONELINESS: "孤独感・寂しさ",
-    EmotionType.DEPRESSION: "うつ・絶望感",
-    EmotionType.STRESS: "ストレス・疲労",
-    EmotionType.CONFUSION: "混乱・迷い",
-    EmotionType.HOPE: "希望・前向きさ",
-    EmotionType.NEUTRAL: "中性・平常",
-}
-
-
-def get_emotion_description(emotion_type: EmotionType) -> str:
-    """感情タイプの説明を取得"""
-    return EMOTION_DESCRIPTIONS.get(emotion_type, "不明")
-
-
 # 危機指標となる感情
 CRISIS_EMOTIONS = {EmotionType.DEPRESSION}
 

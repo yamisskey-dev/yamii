@@ -163,33 +163,6 @@ class PIIAnonymizer:
             result = result.replace(placeholder, original)
         return result
 
-    def detect_pii(self, text: str) -> list[dict[str, str]]:
-        """
-        テキスト内のPIIを検出（匿名化なし）
-
-        Args:
-            text: 検査対象テキスト
-
-        Returns:
-            List[Dict]: 検出されたPIIのリスト
-        """
-        detected = []
-
-        for pii_type, label, pattern in self._patterns:
-            for match in pattern.finditer(text):
-                detected.append(
-                    {
-                        "type": pii_type,
-                        "label": label,
-                        "value": match.group(),
-                        "start": match.start(),
-                        "end": match.end(),
-                    }
-                )
-
-        return detected
-
-
 # グローバルインスタンス
 _anonymizer: PIIAnonymizer | None = None
 
