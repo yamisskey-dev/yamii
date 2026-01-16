@@ -156,59 +156,56 @@ class YamiiMisskeyBot:
             await self._send_reply(note, "申し訳ありません。処理中にエラーが発生しました。")
 
     async def _handle_counseling(self, note: MisskeyNote):
-        """カウンセリング処理"""
+        """カウンセリング処理（薄型化: コマンド判定はAPI側）"""
         message = self.misskey_client.extract_message_from_note(note)
 
-        # 空メッセージの場合
-        if not message:
-            await self._send_reply(note, "何かお話ししたいことがあれば、気軽に話しかけてください。")
+        # メッセージ分類をAPIに委譲
+        classification = await self.yamii_client.classify_message(
+            message=message or "",
+            user_id=note.user_id,
+            platform="misskey"
+        )
+
+        # 空メッセージ
+        if classification.get("is_empty"):
+            empty_response = await self.yamii_client.get_empty_response()
+            await self._send_reply(note, empty_response)
             return
 
-        # ヘルプコマンド
-        if message.lower() in ["/help", "ヘルプ"]:
-            help_text = (
-                "**Yamii - 相談AI**\n\n"
-                "話しかけるだけで相談できます。\n"
-                "- メンション: @yamii 相談内容\n"
-                "- リプライ: 会話を続ける\n"
-                "- DM: プライベートな相談\n\n"
-                "何でもお気軽にどうぞ。"
-            )
-            await self._send_reply(note, help_text)
-            return
-
-        # ステータスコマンド
-        if message.lower() == "/status":
-            try:
-                health = await self.yamii_client.health_check()
-                status = "正常" if health.get("status") == "healthy" else "異常"
-                await self._send_reply(note, f"Yamii API: {status}")
-            except Exception:
-                await self._send_reply(note, "Yamii API: 接続エラー")
+        # コマンド処理
+        if classification.get("is_command"):
+            command_type = classification.get("command_type")
+            if command_type == "help":
+                help_text = await self.yamii_client.get_help(platform="misskey", context="note")
+                await self._send_reply(note, help_text)
+            elif command_type == "status":
+                status_text = await self.yamii_client.get_status()
+                await self._send_reply(note, status_text)
             return
 
         # カウンセリングリクエスト
-        session_id = self.user_sessions.get(note.user_id)
+        if classification.get("should_counsel"):
+            session_id = self.user_sessions.get(note.user_id)
 
-        request = YamiiRequest(
-            message=message,
-            user_id=note.user_id,
-            user_name=note.user_name or note.user_username,
-            session_id=session_id,
-            context={"platform": "misskey", "bot_name": self.config.bot_name}
-        )
+            request = YamiiRequest(
+                message=message,
+                user_id=note.user_id,
+                user_name=note.user_name or note.user_username,
+                session_id=session_id,
+                context={"platform": "misskey", "bot_name": self.config.bot_name}
+            )
 
-        response = await self.yamii_client.send_counseling_request(request)
+            response = await self.yamii_client.send_counseling_request(request)
 
-        if response:
-            # セッション記録
-            self.user_sessions[note.user_id] = response.session_id
+            if response:
+                # セッション記録
+                self.user_sessions[note.user_id] = response.session_id
 
-            # formatted_responseを使用（危機対応情報を含む）
-            reply_text = response.formatted_response or response.response
-            await self._send_reply(note, reply_text)
-        else:
-            await self._send_reply(note, "現在サービスを利用できません。しばらくお待ちください。")
+                # formatted_responseを使用（危機対応情報を含む）
+                reply_text = response.formatted_response or response.response
+                await self._send_reply(note, reply_text)
+            else:
+                await self._send_reply(note, "現在サービスを利用できません。しばらくお待ちください。")
 
     async def _send_reply(self, note: MisskeyNote, text: str):
         """返信を送信"""
@@ -258,44 +255,54 @@ class YamiiMisskeyBot:
             await self._send_chat_reply(from_user_id, "申し訳ありません。処理中にエラーが発生しました。")
 
     async def _handle_chat_counseling(self, user_id: str, username: str, user_name: str, text: str):
-        """チャットカウンセリング処理"""
-        # 空メッセージの場合
-        if not text:
-            await self._send_chat_reply(user_id, "何かお話ししたいことがあれば、気軽に話しかけてください。")
+        """チャットカウンセリング処理（薄型化: コマンド判定はAPI側）"""
+        # メッセージ分類をAPIに委譲
+        classification = await self.yamii_client.classify_message(
+            message=text or "",
+            user_id=user_id,
+            platform="misskey_chat"
+        )
+
+        # 空メッセージ
+        if classification.get("is_empty"):
+            empty_response = await self.yamii_client.get_empty_response()
+            await self._send_chat_reply(user_id, empty_response)
             return
 
-        # ヘルプコマンド
-        if text.lower() in ["/help", "ヘルプ"]:
-            help_text = (
-                "Yamii - 相談AI\n\n"
-                "チャットで相談できます。\n"
-                "何でもお気軽にどうぞ。"
-            )
-            await self._send_chat_reply(user_id, help_text)
+        # コマンド処理
+        if classification.get("is_command"):
+            command_type = classification.get("command_type")
+            if command_type == "help":
+                help_text = await self.yamii_client.get_help(platform="misskey", context="chat")
+                await self._send_chat_reply(user_id, help_text)
+            elif command_type == "status":
+                status_text = await self.yamii_client.get_status()
+                await self._send_chat_reply(user_id, status_text)
             return
 
         # カウンセリングリクエスト
-        session_id = self.user_sessions.get(user_id)
+        if classification.get("should_counsel"):
+            session_id = self.user_sessions.get(user_id)
 
-        request = YamiiRequest(
-            message=text,
-            user_id=user_id,
-            user_name=user_name or username,
-            session_id=session_id,
-            context={"platform": "misskey_chat", "bot_name": self.config.bot_name}
-        )
+            request = YamiiRequest(
+                message=text,
+                user_id=user_id,
+                user_name=user_name or username,
+                session_id=session_id,
+                context={"platform": "misskey_chat", "bot_name": self.config.bot_name}
+            )
 
-        response = await self.yamii_client.send_counseling_request(request)
+            response = await self.yamii_client.send_counseling_request(request)
 
-        if response:
-            # セッション記録
-            self.user_sessions[user_id] = response.session_id
+            if response:
+                # セッション記録
+                self.user_sessions[user_id] = response.session_id
 
-            # formatted_responseを使用（危機対応情報を含む）
-            reply_text = response.formatted_response or response.response
-            await self._send_chat_reply(user_id, reply_text)
-        else:
-            await self._send_chat_reply(user_id, "現在サービスを利用できません。しばらくお待ちください。")
+                # formatted_responseを使用（危機対応情報を含む）
+                reply_text = response.formatted_response or response.response
+                await self._send_chat_reply(user_id, reply_text)
+            else:
+                await self._send_chat_reply(user_id, "現在サービスを利用できません。しばらくお待ちください。")
 
     async def _send_chat_reply(self, user_id: str, text: str):
         """チャット返信を送信"""

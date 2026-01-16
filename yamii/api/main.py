@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 
-from .routes import counseling_router, user_router, outreach_router
+from .routes import counseling_router, user_router, outreach_router, commands_router
 from .schemas import HealthResponse, APIInfoResponse
 from .dependencies import get_storage, get_ai_provider
 
@@ -69,6 +69,7 @@ def create_app() -> FastAPI:
     application.include_router(counseling_router)
     application.include_router(user_router)
     application.include_router(outreach_router)
+    application.include_router(commands_router)
 
     # ルートエンドポイント
     @application.get("/", response_model=APIInfoResponse)

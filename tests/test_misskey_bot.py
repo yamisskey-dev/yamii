@@ -84,6 +84,12 @@ class TestYamiiMisskeyBot:
         bot.misskey_client.extract_message_from_note.return_value = "こんにちは、悩みがあります"
 
         bot.yamii_client = AsyncMock()
+        # Bot薄型化: API側でメッセージ分類
+        bot.yamii_client.classify_message.return_value = {
+            "is_command": False,
+            "is_empty": False,
+            "should_counsel": True,
+        }
         bot.yamii_client.send_counseling_request.return_value = sample_yamii_response
 
         bot._send_reply = AsyncMock()
@@ -122,6 +128,11 @@ class TestYamiiMisskeyBot:
         bot.misskey_client.extract_message_from_note.return_value = "もう少し詳しく聞きたいです"
 
         bot.yamii_client = AsyncMock()
+        bot.yamii_client.classify_message.return_value = {
+            "is_command": False,
+            "is_empty": False,
+            "should_counsel": True,
+        }
         bot.yamii_client.send_counseling_request.return_value = sample_yamii_response
 
         bot._send_reply = AsyncMock()
@@ -157,6 +168,11 @@ class TestYamiiMisskeyBot:
         bot.misskey_client.extract_message_from_note.return_value = "プライベートな相談があります"
 
         bot.yamii_client = AsyncMock()
+        bot.yamii_client.classify_message.return_value = {
+            "is_command": False,
+            "is_empty": False,
+            "should_counsel": True,
+        }
         bot.yamii_client.send_counseling_request.return_value = sample_yamii_response
 
         bot._send_reply = AsyncMock()
@@ -191,6 +207,11 @@ class TestYamiiMisskeyBot:
         bot.misskey_client.extract_message_from_note.return_value = "もう疲れました"
 
         bot.yamii_client = AsyncMock()
+        bot.yamii_client.classify_message.return_value = {
+            "is_command": False,
+            "is_empty": False,
+            "should_counsel": True,
+        }
         bot.yamii_client.send_counseling_request.return_value = crisis_response
 
         bot._send_reply = AsyncMock()
@@ -229,6 +250,23 @@ class TestYamiiMisskeyBot:
         bot.misskey_client.bot_user_id = "bot123"
         bot.misskey_client.extract_message_from_note.return_value = "/help"
 
+        # Bot薄型化: API側でコマンド判定＋レスポンス取得
+        bot.yamii_client = AsyncMock()
+        bot.yamii_client.classify_message.return_value = {
+            "is_command": True,
+            "command_type": "help",
+            "is_empty": False,
+            "should_counsel": False,
+        }
+        bot.yamii_client.get_help.return_value = """**Yamii - 相談AI**
+
+話しかけるだけで相談できます。
+- メンション: @yamii 相談内容
+- リプライ: 会話を続ける
+- DM: プライベートな相談
+
+何でもお気軽にどうぞ。"""
+
         bot._send_reply = AsyncMock()
 
         await bot._handle_note(help_note)
@@ -254,6 +292,11 @@ class TestYamiiMisskeyBot:
         bot.misskey_client.extract_message_from_note.return_value = "悩みがあります"
 
         bot.yamii_client = AsyncMock()
+        bot.yamii_client.classify_message.return_value = {
+            "is_command": False,
+            "is_empty": False,
+            "should_counsel": True,
+        }
         bot.yamii_client.send_counseling_request.return_value = sample_yamii_response
         bot._send_reply = AsyncMock()
 

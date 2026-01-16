@@ -174,3 +174,4 @@ Thumbs.db
 
 # Claude
 .claude/
+.yamii_keys/

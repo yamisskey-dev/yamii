@@ -136,16 +136,16 @@ uv run ruff format yamii/ tests/
 ```
 yamii/
 ├── api/              # FastAPI エンドポイント
+│   └── routes/       # counseling, user, outreach, commands
 ├── domain/           # ドメインモデル・サービス
-│   ├── models/       # UserState, Episode, Relationship
+│   ├── models/       # UserState（統合ユーザー状態）, Episode, Relationship
 │   ├── services/     # Emotion, Counseling, Outreach
-│   └── ports/        # インターフェース定義
+│   └── ports/        # インターフェース定義（IAIProvider, IStorage）
 ├── adapters/         # 外部サービス実装
-│   ├── ai/           # OpenAI
-│   └── storage/      # ファイルストレージ
-├── relationship/     # 関係性管理システム
+│   ├── ai/           # OpenAI（PII匿名化付き）
+│   └── storage/      # ファイル / 暗号化ストレージ
 ├── core/             # 暗号化、ログ、設定
-└── bot/misskey/      # Misskey Bot
+└── bot/misskey/      # Misskey Bot（薄型: API経由で処理）
 ```
 
 ## ドキュメント

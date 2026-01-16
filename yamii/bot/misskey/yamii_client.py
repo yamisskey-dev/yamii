@@ -130,3 +130,65 @@ class YamiiClient:
         except Exception as e:
             self.logger.error(f"Get pending outreach failed: {e}")
             return []
+
+    # === コマンドAPI（Bot薄型化） ===
+
+    async def classify_message(self, message: str, user_id: str, platform: str = "misskey") -> Dict[str, Any]:
+        """メッセージを分類（コマンド判定をAPI側で行う）"""
+        url = f"{self.config.yamii_api_url}/v1/commands/classify"
+
+        try:
+            async with self.session.post(url, json={
+                "message": message,
+                "user_id": user_id,
+                "platform": platform,
+                "bot_name": self.config.bot_name,
+            }) as response:
+                if response.status == 200:
+                    return await response.json()
+                return {"is_command": False, "is_empty": not message, "should_counsel": bool(message)}
+        except Exception as e:
+            self.logger.error(f"Message classification failed: {e}")
+            return {"is_command": False, "is_empty": not message, "should_counsel": bool(message)}
+
+    async def get_help(self, platform: str = "misskey", context: str = "note") -> str:
+        """ヘルプメッセージを取得"""
+        url = f"{self.config.yamii_api_url}/v1/commands/help"
+
+        try:
+            async with self.session.get(url, params={"platform": platform, "context": context}) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    return data.get("response", "ヘルプ情報を取得できませんでした。")
+                return "ヘルプ情報を取得できませんでした。"
+        except Exception as e:
+            self.logger.error(f"Get help failed: {e}")
+            return "ヘルプ情報を取得できませんでした。"
+
+    async def get_status(self) -> str:
+        """ステータスを取得"""
+        url = f"{self.config.yamii_api_url}/v1/commands/status"
+
+        try:
+            async with self.session.get(url) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    return data.get("response", "Yamii API: 不明")
+                return "Yamii API: 接続エラー"
+        except Exception as e:
+            self.logger.error(f"Get status failed: {e}")
+            return "Yamii API: 接続エラー"
+
+    async def get_empty_response(self) -> str:
+        """空メッセージへのレスポンスを取得"""
+        url = f"{self.config.yamii_api_url}/v1/commands/empty-response"
+
+        try:
+            async with self.session.post(url) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    return data.get("response", "何かお話ししたいことがあれば、気軽に話しかけてください。")
+                return "何かお話ししたいことがあれば、気軽に話しかけてください。"
+        except Exception as e:
+            self.logger.error(f"Get empty response failed: {e}")
+            return "何かお話ししたいことがあれば、気軽に話しかけてください。"
