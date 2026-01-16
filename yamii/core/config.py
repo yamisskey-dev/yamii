@@ -18,7 +18,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class AISettings(BaseSettings):
     """AI プロバイダー設定"""
 
-    model_config = SettingsConfigDict(env_prefix="")
+    model_config = SettingsConfigDict(env_file=".env", env_prefix="", extra="ignore")
 
     openai_api_key: str = Field(
         default="", alias="OPENAI_API_KEY", description="OpenAI API キー"
@@ -40,7 +40,7 @@ class AISettings(BaseSettings):
 class MisskeySettings(BaseSettings):
     """Misskey Bot 設定"""
 
-    model_config = SettingsConfigDict(env_prefix="MISSKEY_")
+    model_config = SettingsConfigDict(env_file=".env", env_prefix="MISSKEY_", extra="ignore")
 
     instance_url: str = Field(default="", description="Misskey インスタンス URL")
     access_token: str = Field(default="", description="Misskey アクセストークン")
@@ -59,7 +59,7 @@ class MisskeySettings(BaseSettings):
 class SecuritySettings(BaseSettings):
     """セキュリティ設定"""
 
-    model_config = SettingsConfigDict(env_prefix="YAMII_")
+    model_config = SettingsConfigDict(env_file=".env", env_prefix="YAMII_", extra="ignore")
 
     # 暗号化
     encryption_enabled: bool = Field(default=True, description="E2EE 暗号化を有効化")
