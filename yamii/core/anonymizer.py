@@ -163,6 +163,7 @@ class PIIAnonymizer:
             result = result.replace(placeholder, original)
         return result
 
+
 # グローバルインスタンス
 _anonymizer: PIIAnonymizer | None = None
 
