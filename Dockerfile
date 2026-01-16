@@ -50,7 +50,6 @@ COPY --from=builder /app/.venv /app/.venv
 # Copy application code
 COPY yamii/ ./yamii/
 COPY README.md ./
-COPY YAMII.md ./
 
 # Create directories for data persistence
 RUN mkdir -p /app/data /app/.yamii_keys && chown -R yamii:yamii /app
