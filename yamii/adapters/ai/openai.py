@@ -1,12 +1,14 @@
 """
 OpenAI AIアダプター
 OpenAI API (GPT-4.1等) への接続実装
+PII匿名化機能付き
 """
 
 import aiohttp
-from typing import Optional
+from typing import Optional, Dict
 
 from ...domain.ports.ai_port import IAIProvider
+from ...core.anonymizer import PIIAnonymizer, get_anonymizer
 
 
 class OpenAIAdapter(IAIProvider):
@@ -15,6 +17,7 @@ class OpenAIAdapter(IAIProvider):
 
     OpenAI APIを使用してAI応答を生成。
     GPT-4.1をデフォルトモデルとして使用。
+    PII匿名化機能を内蔵。
     """
 
     def __init__(
@@ -23,11 +26,21 @@ class OpenAIAdapter(IAIProvider):
         model: str = "gpt-4.1",
         timeout: int = 60,
         base_url: str = "https://api.openai.com/v1",
+        enable_anonymization: bool = True,
     ):
         self.api_key = api_key
         self.model = model
         self.timeout = timeout
         self.base_url = base_url
+        self.enable_anonymization = enable_anonymization
+        self._anonymizer: Optional[PIIAnonymizer] = None
+
+    @property
+    def anonymizer(self) -> PIIAnonymizer:
+        """匿名化サービスを取得（遅延初期化）"""
+        if self._anonymizer is None:
+            self._anonymizer = get_anonymizer()
+        return self._anonymizer
 
     async def generate(
         self,
@@ -44,11 +57,36 @@ class OpenAIAdapter(IAIProvider):
             max_tokens: 最大トークン数（オプション）
 
         Returns:
-            str: AI応答テキスト
+            str: AI応答テキスト（PII復元済み）
 
         Raises:
             Exception: API呼び出し失敗時
         """
+        # PII匿名化
+        mapping: Dict[str, str] = {}
+        processed_message = message
+
+        if self.enable_anonymization:
+            result = self.anonymizer.anonymize(message)
+            processed_message = result.anonymized_text
+            mapping = result.mapping
+
+        # API呼び出し
+        response_text = await self._call_api(processed_message, system_prompt, max_tokens)
+
+        # PII復元（応答にプレースホルダーが含まれている場合）
+        if mapping:
+            response_text = self.anonymizer.deanonymize(response_text, mapping)
+
+        return response_text
+
+    async def _call_api(
+        self,
+        message: str,
+        system_prompt: str,
+        max_tokens: Optional[int] = None,
+    ) -> str:
+        """OpenAI APIを呼び出し"""
         request_body = {
             "model": self.model,
             "messages": [
@@ -103,7 +141,7 @@ class OpenAIAdapter(IAIProvider):
             bool: 正常に動作しているか
         """
         try:
-            response = await self.generate(
+            response = await self._call_api(
                 message="Hello",
                 system_prompt="Reply with 'OK' only.",
                 max_tokens=10,
@@ -131,9 +169,10 @@ class OpenAIAdapterWithFallback(OpenAIAdapter):
         model: str = "gpt-4.1",
         timeout: int = 60,
         base_url: str = "https://api.openai.com/v1",
+        enable_anonymization: bool = True,
         fallback_message: str = "申し訳ありません。今少し調子が悪いようです。",
     ):
-        super().__init__(api_key, model, timeout, base_url)
+        super().__init__(api_key, model, timeout, base_url, enable_anonymization)
         self.fallback_message = fallback_message
 
     async def generate(
