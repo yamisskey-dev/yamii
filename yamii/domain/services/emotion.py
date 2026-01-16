@@ -29,90 +29,207 @@ class EmotionService:
         self._emotion_keywords = {
             EmotionType.HAPPINESS: {
                 "keywords": [
-                    "嬉しい", "楽しい", "幸せ", "最高", "素晴らしい", "感動", "感激", "興奮",
-                    "ワクワク", "ドキドキ", "やったー", "よっしゃ", "やった", "成功", "達成",
-                    "感謝", "ありがとう", "愛してる", "大好き", "完璧", "理想"
+                    "嬉しい",
+                    "楽しい",
+                    "幸せ",
+                    "最高",
+                    "素晴らしい",
+                    "感動",
+                    "感激",
+                    "興奮",
+                    "ワクワク",
+                    "ドキドキ",
+                    "やったー",
+                    "よっしゃ",
+                    "やった",
+                    "成功",
+                    "達成",
+                    "感謝",
+                    "ありがとう",
+                    "愛してる",
+                    "大好き",
+                    "完璧",
+                    "理想",
                 ],
-                "weight": 2.0
+                "weight": 2.0,
             },
             EmotionType.SADNESS: {
                 "keywords": [
-                    "悲しい", "辛い", "苦しい", "切ない", "寂しい", "孤独", "絶望", "失望",
-                    "落ち込む", "凹む", "しんどい", "終わり", "諦める",
-                    "無理", "ダメ", "失敗", "後悔", "申し訳ない", "ごめん"
+                    "悲しい",
+                    "辛い",
+                    "苦しい",
+                    "切ない",
+                    "寂しい",
+                    "孤独",
+                    "絶望",
+                    "失望",
+                    "落ち込む",
+                    "凹む",
+                    "しんどい",
+                    "終わり",
+                    "諦める",
+                    "無理",
+                    "ダメ",
+                    "失敗",
+                    "後悔",
+                    "申し訳ない",
+                    "ごめん",
                 ],
-                "weight": 3.0
+                "weight": 3.0,
             },
             EmotionType.ANXIETY: {
                 "keywords": [
-                    "不安", "心配", "怖い", "恐い", "緊張", "ハラハラ", "焦る", "急ぐ",
-                    "間に合わない", "やばい", "まずい", "危険", "大変", "困る",
-                    "どうしよう", "助けて", "助け", "救い"
+                    "不安",
+                    "心配",
+                    "怖い",
+                    "恐い",
+                    "緊張",
+                    "ハラハラ",
+                    "焦る",
+                    "急ぐ",
+                    "間に合わない",
+                    "やばい",
+                    "まずい",
+                    "危険",
+                    "大変",
+                    "困る",
+                    "どうしよう",
+                    "助けて",
+                    "助け",
+                    "救い",
                 ],
-                "weight": 2.5
+                "weight": 2.5,
             },
             EmotionType.ANGER: {
                 "keywords": [
-                    "怒り", "イライラ", "腹立つ", "ムカつく", "キレる", "許せない", "最悪",
-                    "うざい", "うるさい", "しつこい", "めんどくさい", "やだ",
-                    "嫌い", "大嫌い"
+                    "怒り",
+                    "イライラ",
+                    "腹立つ",
+                    "ムカつく",
+                    "キレる",
+                    "許せない",
+                    "最悪",
+                    "うざい",
+                    "うるさい",
+                    "しつこい",
+                    "めんどくさい",
+                    "やだ",
+                    "嫌い",
+                    "大嫌い",
                 ],
-                "weight": 3.0
+                "weight": 3.0,
             },
             EmotionType.LONELINESS: {
                 "keywords": [
-                    "寂しい", "孤独", "ひとり", "一人", "孤立", "誰もいない", "ひとりぼっち",
-                    "仲間がいない", "理解されない", "孤独感"
+                    "寂しい",
+                    "孤独",
+                    "ひとり",
+                    "一人",
+                    "孤立",
+                    "誰もいない",
+                    "ひとりぼっち",
+                    "仲間がいない",
+                    "理解されない",
+                    "孤独感",
                 ],
-                "weight": 2.5
+                "weight": 2.5,
             },
             EmotionType.DEPRESSION: {
                 "keywords": [
-                    "死にたい", "消えたい", "生きる意味", "無気力", "やる気がない",
-                    "生きていく意味", "もう限界", "生きるのが辛い", "自分を傷つけ"
+                    "死にたい",
+                    "消えたい",
+                    "生きる意味",
+                    "無気力",
+                    "やる気がない",
+                    "生きていく意味",
+                    "もう限界",
+                    "生きるのが辛い",
+                    "自分を傷つけ",
                 ],
-                "weight": 5.0  # 最高重要度
+                "weight": 5.0,  # 最高重要度
             },
             EmotionType.STRESS: {
                 "keywords": [
-                    "疲れた", "しんどい", "限界", "プレッシャー", "ストレス", "忙しい",
-                    "余裕がない", "追い詰められ", "パンク"
+                    "疲れた",
+                    "しんどい",
+                    "限界",
+                    "プレッシャー",
+                    "ストレス",
+                    "忙しい",
+                    "余裕がない",
+                    "追い詰められ",
+                    "パンク",
                 ],
-                "weight": 2.0
+                "weight": 2.0,
             },
             EmotionType.CONFUSION: {
                 "keywords": [
-                    "わからない", "迷っている", "どうしたら", "困っている", "混乱",
-                    "判断できない", "決められない", "迷子"
+                    "わからない",
+                    "迷っている",
+                    "どうしたら",
+                    "困っている",
+                    "混乱",
+                    "判断できない",
+                    "決められない",
+                    "迷子",
                 ],
-                "weight": 1.5
+                "weight": 1.5,
             },
             EmotionType.HOPE: {
                 "keywords": [
-                    "頑張りたい", "変わりたい", "希望", "前向き", "未来", "目標",
-                    "夢", "可能性", "チャンス", "成長"
+                    "頑張りたい",
+                    "変わりたい",
+                    "希望",
+                    "前向き",
+                    "未来",
+                    "目標",
+                    "夢",
+                    "可能性",
+                    "チャンス",
+                    "成長",
                 ],
-                "weight": 2.0
-            }
+                "weight": 2.0,
+            },
         }
 
         # 危機キーワード（セットで高速検索）
         self._crisis_keywords: set[str] = {
-            "死にたい", "消えたい", "自殺", "生きる意味がない", "もう限界",
-            "自分を傷つけ", "生きていく意味", "死んだ方がマシ", "終わりにしたい"
+            "死にたい",
+            "消えたい",
+            "自殺",
+            "生きる意味がない",
+            "もう限界",
+            "自分を傷つけ",
+            "生きていく意味",
+            "死んだ方がマシ",
+            "終わりにしたい",
         }
 
         # 強調語・修飾語（セットで高速検索）
-        self._emphasis_words: set[str] = {"すごく", "とても", "めちゃくちゃ", "超", "激", "死ぬほど", "マジで"}
-        self._negation_words: set[str] = {"ない", "ません", "じゃない", "ではない", "違う", "ちがう"}
+        self._emphasis_words: set[str] = {
+            "すごく",
+            "とても",
+            "めちゃくちゃ",
+            "超",
+            "激",
+            "死ぬほど",
+            "マジで",
+        }
+        self._negation_words: set[str] = {
+            "ない",
+            "ません",
+            "じゃない",
+            "ではない",
+            "違う",
+            "ちがう",
+        }
 
         # 事前コンパイル済みパターン
         self._compiled_patterns: dict[EmotionType, list[tuple[re.Pattern, float]]] = {}
         for emotion_type, emotion_data in self._emotion_keywords.items():
             weight = emotion_data["weight"]
             patterns = [
-                (re.compile(re.escape(kw)), weight)
-                for kw in emotion_data["keywords"]
+                (re.compile(re.escape(kw)), weight) for kw in emotion_data["keywords"]
             ]
             self._compiled_patterns[emotion_type] = patterns
 
@@ -171,7 +288,9 @@ class EmotionService:
         """危機状況の高速検出（一度のマッチで全キーワードチェック）"""
         return bool(self._crisis_pattern.search(message_lower))
 
-    def _calculate_emotion_scores_fast(self, message_lower: str) -> dict[EmotionType, float]:
+    def _calculate_emotion_scores_fast(
+        self, message_lower: str
+    ) -> dict[EmotionType, float]:
         """各感情のスコアを高速計算（事前コンパイル済みパターン使用）"""
         scores = {emotion: 0.0 for emotion in EmotionType}
 
@@ -184,14 +303,18 @@ class EmotionService:
 
         return scores
 
-    def _apply_modifiers_fast(self, message: str, scores: dict[EmotionType, float]) -> dict[EmotionType, float]:
+    def _apply_modifiers_fast(
+        self, message: str, scores: dict[EmotionType, float]
+    ) -> dict[EmotionType, float]:
         """修飾語による感情スコアの高速調整"""
         modified_scores = scores.copy()
 
         # 否定語の検出（セット使用で高速）
         has_negation = bool(self._negation_words & set(message))
         if has_negation:
-            modified_scores[EmotionType.HAPPINESS] = max(0, modified_scores[EmotionType.HAPPINESS] - 2)
+            modified_scores[EmotionType.HAPPINESS] = max(
+                0, modified_scores[EmotionType.HAPPINESS] - 2
+            )
             modified_scores[EmotionType.SADNESS] += 1
             modified_scores[EmotionType.ANXIETY] += 1
 
@@ -233,12 +356,8 @@ class EmotionService:
         if total == 0:
             return "stable"
 
-        positive_count = sum(
-            patterns.get(e.value, 0) for e in POSITIVE_EMOTIONS
-        )
-        negative_count = sum(
-            patterns.get(e.value, 0) for e in NEGATIVE_EMOTIONS
-        )
+        positive_count = sum(patterns.get(e.value, 0) for e in POSITIVE_EMOTIONS)
+        negative_count = sum(patterns.get(e.value, 0) for e in NEGATIVE_EMOTIONS)
 
         positive_ratio = positive_count / total
         negative_ratio = negative_count / total
@@ -249,7 +368,9 @@ class EmotionService:
             return "declining"
         return "stable"
 
-    def _determine_primary_emotion(self, scores: dict[EmotionType, float]) -> tuple[EmotionType, float]:
+    def _determine_primary_emotion(
+        self, scores: dict[EmotionType, float]
+    ) -> tuple[EmotionType, float]:
         """主要感情と強度を決定"""
         max_score = max(scores.values()) if scores.values() else 0
 
@@ -257,7 +378,9 @@ class EmotionService:
             return EmotionType.NEUTRAL, 0.0
 
         # 最高スコアの感情を特定
-        primary_emotions = [emotion for emotion, score in scores.items() if score == max_score]
+        primary_emotions = [
+            emotion for emotion, score in scores.items() if score == max_score
+        ]
 
         # 複数の感情が同じスコアの場合、優先度順で選択
         priority_order = [
@@ -295,7 +418,9 @@ class EmotionService:
         concentration = max_score / total_score
         return concentration
 
-    def _calculate_confidence(self, scores: dict[EmotionType, float], message: str) -> float:
+    def _calculate_confidence(
+        self, scores: dict[EmotionType, float], message: str
+    ) -> float:
         """分析の信頼度を計算"""
         total_score = sum(scores.values())
         max_score = max(scores.values()) if scores.values() else 0

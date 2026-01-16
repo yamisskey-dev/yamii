@@ -19,7 +19,9 @@ class BasePlatformAdapter(IPlatformAdapter, ABC):
 
     def __init__(self):
         self._connected = False
-        self._message_handler: Callable[[PlatformMessage], Awaitable[str | None]] | None = None
+        self._message_handler: (
+            Callable[[PlatformMessage], Awaitable[str | None]] | None
+        ) = None
 
     @property
     def is_connected(self) -> bool:
@@ -43,6 +45,7 @@ class BasePlatformAdapter(IPlatformAdapter, ABC):
         """
         # @username を除去
         import re
+
         pattern = rf"@{re.escape(bot_username)}\s*"
         return re.sub(pattern, "", content).strip()
 
@@ -59,7 +62,7 @@ class BasePlatformAdapter(IPlatformAdapter, ABC):
         """
         if len(response) <= max_length:
             return response
-        return response[:max_length - 3] + "..."
+        return response[: max_length - 3] + "..."
 
     def _format_error_response(self, error: Exception) -> str:
         """

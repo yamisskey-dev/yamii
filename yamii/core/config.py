@@ -7,6 +7,8 @@ pydantic-settings を使用した型安全な設定管理
 - デフォルト値対応
 """
 
+from __future__ import annotations
+
 from functools import lru_cache
 
 from pydantic import Field, field_validator
@@ -37,9 +39,15 @@ class AISettings(BaseSettings):
 
     model_config = SettingsConfigDict(env_prefix="")
 
-    openai_api_key: str = Field(default="", alias="OPENAI_API_KEY", description="OpenAI API キー")
-    openai_model: str = Field(default="gpt-4.1", alias="OPENAI_MODEL", description="OpenAI モデル")
-    gemini_api_key: str = Field(default="", alias="GEMINI_API_KEY", description="Gemini API キー")
+    openai_api_key: str = Field(
+        default="", alias="OPENAI_API_KEY", description="OpenAI API キー"
+    )
+    openai_model: str = Field(
+        default="gpt-4.1", alias="OPENAI_MODEL", description="OpenAI モデル"
+    )
+    gemini_api_key: str = Field(
+        default="", alias="GEMINI_API_KEY", description="Gemini API キー"
+    )
 
     @field_validator("openai_api_key")
     @classmethod
@@ -77,19 +85,25 @@ class SecuritySettings(BaseSettings):
 
     # 暗号化
     encryption_enabled: bool = Field(default=True, description="E2EE 暗号化を有効化")
-    master_key: str | None = Field(default=None, alias="YAMII_MASTER_KEY", description="マスター暗号化キー (Base64)")
+    master_key: str | None = Field(
+        default=None,
+        alias="YAMII_MASTER_KEY",
+        description="マスター暗号化キー (Base64)",
+    )
 
     # API 認証（カンマ区切り文字列で指定）
     api_keys_str: str = Field(
         default="",
         alias="YAMII_API_KEYS",
-        description="許可された API キー（カンマ区切り）"
+        description="許可された API キー（カンマ区切り）",
     )
     api_key_header: str = Field(default="X-API-Key", description="API キーヘッダー名")
 
     # レート制限
     rate_limit_enabled: bool = Field(default=True, description="レート制限を有効化")
-    rate_limit_requests: int = Field(default=100, description="レート制限: リクエスト数")
+    rate_limit_requests: int = Field(
+        default=100, description="レート制限: リクエスト数"
+    )
     rate_limit_window: int = Field(default=60, description="レート制限: ウィンドウ(秒)")
 
     @property
@@ -110,9 +124,15 @@ class YamiiSettings(BaseSettings):
     )
 
     # 基本設定
-    data_dir: str = Field(default="data", alias="YAMII_DATA_DIR", description="データ保存ディレクトリ")
-    debug: bool = Field(default=False, alias="YAMII_DEBUG", description="デバッグモード")
-    log_level: str = Field(default="INFO", alias="YAMII_LOG_LEVEL", description="ログレベル")
+    data_dir: str = Field(
+        default="data", alias="YAMII_DATA_DIR", description="データ保存ディレクトリ"
+    )
+    debug: bool = Field(
+        default=False, alias="YAMII_DEBUG", description="デバッグモード"
+    )
+    log_level: str = Field(
+        default="INFO", alias="YAMII_LOG_LEVEL", description="ログレベル"
+    )
 
     # サブ設定
     database: DatabaseSettings = Field(default_factory=DatabaseSettings)
@@ -121,11 +141,15 @@ class YamiiSettings(BaseSettings):
     security: SecuritySettings = Field(default_factory=SecuritySettings)
 
     # API サーバー設定
-    api_host: str = Field(default="0.0.0.0", alias="API_HOST", description="API サーバーホスト")
-    api_port: int = Field(default=8000, alias="API_PORT", description="API サーバーポート")
+    api_host: str = Field(
+        default="0.0.0.0", alias="API_HOST", description="API サーバーホスト"
+    )
+    api_port: int = Field(
+        default=8000, alias="API_PORT", description="API サーバーポート"
+    )
 
     @classmethod
-    def load(cls) -> "YamiiSettings":
+    def load(cls) -> YamiiSettings:
         """設定をロード（サブ設定も含む）"""
         return cls(
             database=DatabaseSettings(),

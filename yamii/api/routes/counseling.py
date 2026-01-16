@@ -73,7 +73,9 @@ async def counseling(
 
         if result.is_crisis:
             crisis_resources = CRISIS_RESOURCES
-            formatted_response = _format_crisis_response(result.response, CRISIS_RESOURCES)
+            formatted_response = _format_crisis_response(
+                result.response, CRISIS_RESOURCES
+            )
         else:
             formatted_response = result.response
 
@@ -105,7 +107,7 @@ async def counseling(
                 "message": "うまく受け取れませんでした。もう一度お試しください。",
                 "error": str(e),
                 "suggestion": "メッセージが空でないか確認してください。",
-            }
+            },
         )
     except Exception as e:
         # メンタルファースト: システムエラーでも安心感を
@@ -116,5 +118,5 @@ async def counseling(
                 "error": str(e),
                 "suggestion": "しばらく待ってからもう一度お試しください。問題が続く場合は、直接相談窓口へのご連絡もご検討ください。",
                 "resources": CRISIS_RESOURCES,
-            }
+            },
         )

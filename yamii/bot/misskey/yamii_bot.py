@@ -84,8 +84,12 @@ class YamiiMisskeyBot:
 
             # プロアクティブアウトリーチスケジューラを開始
             if self.config.enable_proactive_outreach:
-                self._outreach_task = asyncio.create_task(self._proactive_outreach_loop())
-                self.logger.info(f"Proactive outreach scheduler started (interval: {self.config.proactive_check_interval}s)")
+                self._outreach_task = asyncio.create_task(
+                    self._proactive_outreach_loop()
+                )
+                self.logger.info(
+                    f"Proactive outreach scheduler started (interval: {self.config.proactive_check_interval}s)"
+                )
 
             # ストリーミング開始
             await self.misskey_client.start_streaming(self._on_streaming_message)
@@ -114,30 +118,28 @@ class YamiiMisskeyBot:
             body = data.get("body", {})
             body_type = body.get("type")
 
-            # タイムラインからのノート
-            if body_type == "note":
-                note_data = body["body"]
-                note = self.misskey_client._parse_note(note_data)
-                await self._handle_note(note)
-
-            # メンション通知
-            elif body_type == "mention":
-                note_data = body["body"]
-                note = self.misskey_client._parse_note(note_data)
-                await self._handle_note(note)
-
-            # 通知（リプライなど）
-            elif body_type == "notification":
-                notification = body["body"]
-                if notification.get("type") in ["mention", "reply"] and "note" in notification:
-                    note_data = notification["note"]
+            match body_type:
+                case "note" | "mention":
+                    # タイムラインからのノートまたはメンション通知
+                    note_data = body["body"]
                     note = self.misskey_client._parse_note(note_data)
                     await self._handle_note(note)
 
-            # チャットメッセージ（mainチャンネルから）
-            elif body_type == "newChatMessage":
-                chat_data = body["body"]
-                await self._handle_chat_message(chat_data)
+                case "notification":
+                    # 通知（リプライなど）
+                    notification = body["body"]
+                    if (
+                        notification.get("type") in ["mention", "reply"]
+                        and "note" in notification
+                    ):
+                        note_data = notification["note"]
+                        note = self.misskey_client._parse_note(note_data)
+                        await self._handle_note(note)
+
+                case "newChatMessage":
+                    # チャットメッセージ（mainチャンネルから）
+                    chat_data = body["body"]
+                    await self._handle_chat_message(chat_data)
 
         except Exception as e:
             self.logger.error(f"Error handling message: {e}")
@@ -161,13 +163,17 @@ class YamiiMisskeyBot:
         if not (is_mentioned or is_reply or is_dm):
             return
 
-        self.logger.info(f"Processing: @{note.user_username} (mention={is_mentioned}, reply={is_reply}, dm={is_dm})")
+        self.logger.info(
+            f"Processing: @{note.user_username} (mention={is_mentioned}, reply={is_reply}, dm={is_dm})"
+        )
 
         try:
             await self._handle_counseling(note)
         except Exception as e:
             self.logger.error(f"Counseling error: {e}")
-            await self._send_reply(note, "申し訳ありません。処理中にエラーが発生しました。")
+            await self._send_reply(
+                note, "申し訳ありません。処理中にエラーが発生しました。"
+            )
 
     async def _handle_counseling(self, note: MisskeyNote):
         """カウンセリング処理（薄型化: コマンド判定はAPI側）"""
@@ -175,9 +181,7 @@ class YamiiMisskeyBot:
 
         # メッセージ分類をAPIに委譲
         classification = await self.yamii_client.classify_message(
-            message=message or "",
-            user_id=note.user_id,
-            platform="misskey"
+            message=message or "", user_id=note.user_id, platform="misskey"
         )
 
         # 空メッセージ
@@ -188,13 +192,15 @@ class YamiiMisskeyBot:
 
         # コマンド処理
         if classification.get("is_command"):
-            command_type = classification.get("command_type")
-            if command_type == "help":
-                help_text = await self.yamii_client.get_help(platform="misskey", context="note")
-                await self._send_reply(note, help_text)
-            elif command_type == "status":
-                status_text = await self.yamii_client.get_status()
-                await self._send_reply(note, status_text)
+            match classification.get("command_type"):
+                case "help":
+                    help_text = await self.yamii_client.get_help(
+                        platform="misskey", context="note"
+                    )
+                    await self._send_reply(note, help_text)
+                case "status":
+                    status_text = await self.yamii_client.get_status()
+                    await self._send_reply(note, status_text)
             return
 
         # カウンセリングリクエスト
@@ -206,7 +212,7 @@ class YamiiMisskeyBot:
                 user_id=note.user_id,
                 user_name=note.user_name or note.user_username,
                 session_id=session_id,
-                context={"platform": "misskey", "bot_name": self.config.bot_name}
+                context={"platform": "misskey", "bot_name": self.config.bot_name},
             )
 
             response = await self.yamii_client.send_counseling_request(request)
@@ -219,7 +225,9 @@ class YamiiMisskeyBot:
                 reply_text = response.formatted_response or response.response
                 await self._send_reply(note, reply_text)
             else:
-                await self._send_reply(note, "現在サービスを利用できません。しばらくお待ちください。")
+                await self._send_reply(
+                    note, "現在サービスを利用できません。しばらくお待ちください。"
+                )
 
     async def _send_reply(self, note: MisskeyNote, text: str):
         """返信を送信"""
@@ -227,9 +235,7 @@ class YamiiMisskeyBot:
             # DMにはDMで返信
             visibility = "specified" if note.visibility == "specified" else "home"
             await self.misskey_client.create_note(
-                text=text,
-                reply_id=note.id,
-                visibility=visibility
+                text=text, reply_id=note.id, visibility=visibility
             )
             self.logger.info(f"Replied to @{note.user_username}")
         except Exception as e:
@@ -262,15 +268,17 @@ class YamiiMisskeyBot:
             await self._handle_chat_counseling(from_user_id, username, user_name, text)
         except Exception as e:
             self.logger.error(f"Chat counseling error: {e}")
-            await self._send_chat_reply(from_user_id, "申し訳ありません。処理中にエラーが発生しました。")
+            await self._send_chat_reply(
+                from_user_id, "申し訳ありません。処理中にエラーが発生しました。"
+            )
 
-    async def _handle_chat_counseling(self, user_id: str, username: str, user_name: str, text: str):
+    async def _handle_chat_counseling(
+        self, user_id: str, username: str, user_name: str, text: str
+    ):
         """チャットカウンセリング処理（薄型化: コマンド判定はAPI側）"""
         # メッセージ分類をAPIに委譲
         classification = await self.yamii_client.classify_message(
-            message=text or "",
-            user_id=user_id,
-            platform="misskey_chat"
+            message=text or "", user_id=user_id, platform="misskey_chat"
         )
 
         # 空メッセージ
@@ -283,7 +291,9 @@ class YamiiMisskeyBot:
         if classification.get("is_command"):
             command_type = classification.get("command_type")
             if command_type == "help":
-                help_text = await self.yamii_client.get_help(platform="misskey", context="chat")
+                help_text = await self.yamii_client.get_help(
+                    platform="misskey", context="chat"
+                )
                 await self._send_chat_reply(user_id, help_text)
             elif command_type == "status":
                 status_text = await self.yamii_client.get_status()
@@ -299,7 +309,7 @@ class YamiiMisskeyBot:
                 user_id=user_id,
                 user_name=user_name or username,
                 session_id=session_id,
-                context={"platform": "misskey_chat", "bot_name": self.config.bot_name}
+                context={"platform": "misskey_chat", "bot_name": self.config.bot_name},
             )
 
             response = await self.yamii_client.send_counseling_request(request)
@@ -312,7 +322,9 @@ class YamiiMisskeyBot:
                 reply_text = response.formatted_response or response.response
                 await self._send_chat_reply(user_id, reply_text)
             else:
-                await self._send_chat_reply(user_id, "現在サービスを利用できません。しばらくお待ちください。")
+                await self._send_chat_reply(
+                    user_id, "現在サービスを利用できません。しばらくお待ちください。"
+                )
 
     async def _send_chat_reply(self, user_id: str, text: str):
         """チャット返信を送信"""
@@ -350,13 +362,17 @@ class YamiiMisskeyBot:
 
         try:
             # APIからアウトリーチが必要なユーザーを取得
-            users_needing_outreach = await self.yamii_client.get_all_users_needing_outreach()
+            users_needing_outreach = (
+                await self.yamii_client.get_all_users_needing_outreach()
+            )
 
             if not users_needing_outreach:
                 self.logger.debug("No users need outreach at this time")
                 return
 
-            self.logger.info(f"Found {len(users_needing_outreach)} users needing outreach")
+            self.logger.info(
+                f"Found {len(users_needing_outreach)} users needing outreach"
+            )
 
             for outreach_data in users_needing_outreach:
                 user_id = outreach_data.get("user_id")
@@ -366,7 +382,9 @@ class YamiiMisskeyBot:
                 if not user_id or not message:
                     continue
 
-                self.logger.info(f"Sending proactive outreach to {user_id} (reason: {reason})")
+                self.logger.info(
+                    f"Sending proactive outreach to {user_id} (reason: {reason})"
+                )
 
                 try:
                     # チャットでメッセージを送信（プライバシー配慮）
@@ -384,7 +402,7 @@ def setup_logging(config: YamiiMisskeyBotConfig):
     logging.basicConfig(
         level=getattr(logging, config.log_level),
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        filename=config.log_file
+        filename=config.log_file,
     )
 
 

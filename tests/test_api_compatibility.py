@@ -22,7 +22,7 @@ class TestPlatformContextMetadata:
             platform="misskey",
             bot_name="yui",
             client_version="1.0.0",
-            api_version="1.0.0"
+            api_version="1.0.0",
         )
 
         assert context.platform == "misskey"
@@ -35,10 +35,7 @@ class TestPlatformContextMetadata:
         from yamii.models.context import ContextMetadata
 
         context = ContextMetadata(
-            platform="misskey",
-            bot_name="yui",
-            note_visibility="home",
-            note_id="abc123"
+            platform="misskey", bot_name="yui", note_visibility="home", note_id="abc123"
         )
 
         assert context.note_visibility == "home"
@@ -73,9 +70,7 @@ class TestStandardizedAPIResponse:
         from yamii.models.response import ApiResponse
 
         response = ApiResponse(
-            success=True,
-            data={"message": "test"},
-            api_version="1.0.0"
+            success=True, data={"message": "test"}, api_version="1.0.0"
         )
 
         assert response.success is True
@@ -90,13 +85,10 @@ class TestStandardizedAPIResponse:
         error = ApiError(
             code="VALIDATION_ERROR",
             message="Invalid input",
-            details={"field": "message", "reason": "empty"}
+            details={"field": "message", "reason": "empty"},
         )
 
-        response = ApiResponse(
-            success=False,
-            error=error
-        )
+        response = ApiResponse(success=False, error=error)
 
         assert response.success is False
         assert response.data is None
@@ -115,17 +107,14 @@ class TestStandardizedAPIResponse:
                 "primary_emotion": "neutral",
                 "intensity": 5,
                 "is_crisis": False,
-                "all_emotions": {}
+                "all_emotions": {},
             },
             "advice_type": "supportive",
             "follow_up_questions": [],
-            "is_crisis": False
+            "is_crisis": False,
         }
 
-        response = ApiResponse(
-            success=True,
-            data=counseling_data
-        )
+        response = ApiResponse(success=True, data=counseling_data)
 
         assert response.success is True
         assert response.data["response"] == "テスト応答"
@@ -142,7 +131,7 @@ class TestEnhancedErrorHandling:
         error = ApiError(
             code="RATE_LIMIT_EXCEEDED",
             message="リクエスト制限を超えました",
-            retry_after=60
+            retry_after=60,
         )
 
         assert error.retry_after == 60
@@ -156,8 +145,8 @@ class TestEnhancedErrorHandling:
             message="外部サービスエラー",
             troubleshooting_steps=[
                 "ネットワーク接続を確認してください",
-                "しばらく待ってから再試行してください"
-            ]
+                "しばらく待ってから再試行してください",
+            ],
         )
 
         assert len(error.troubleshooting_steps) == 2
@@ -168,13 +157,13 @@ class TestEnhancedErrorHandling:
 
         field_errors = [
             FieldError(field="message", message="必須フィールドです"),
-            FieldError(field="user_id", message="空文字列は許可されません")
+            FieldError(field="user_id", message="空文字列は許可されません"),
         ]
 
         error = ApiError(
             code="VALIDATION_ERROR",
             message="入力値が不正です",
-            field_errors=field_errors
+            field_errors=field_errors,
         )
 
         assert len(error.field_errors) == 2
@@ -190,15 +179,11 @@ class TestCounselingRequestContextValidation:
         from yamii.models.request import CounselingAPIRequestV2
 
         context = ContextMetadata(
-            platform="misskey",
-            bot_name="yui",
-            note_visibility="home"
+            platform="misskey", bot_name="yui", note_visibility="home"
         )
 
         request = CounselingAPIRequestV2(
-            message="相談内容",
-            user_id="user123",
-            context=context
+            message="相談内容", user_id="user123", context=context
         )
 
         assert request.context.platform == "misskey"
@@ -212,10 +197,7 @@ class TestCounselingRequestContextValidation:
         request = CounselingAPIRequestV2(
             message="相談内容",
             user_id="user123",
-            context={
-                "platform": "misskey",
-                "bot_name": "yui"
-            }
+            context={"platform": "misskey", "bot_name": "yui"},
         )
 
         assert request.context.platform == "misskey"
@@ -231,7 +213,9 @@ class TestAPIVersioning:
         from yamii.api import app
 
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://test"
+        ) as client:
             response = await client.get("/v1/health")
 
             assert "x-api-version" in response.headers
@@ -243,7 +227,9 @@ class TestAPIVersioning:
         from yamii.api import app
 
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://test"
+        ) as client:
             response = await client.get("/")
 
             data = response.json()
@@ -267,11 +253,11 @@ class TestYuiCompatibility:
                 "primary_emotion": "neutral",
                 "intensity": 5,
                 "is_crisis": False,
-                "all_emotions": {}
+                "all_emotions": {},
             },
             advice_type="supportive",
             follow_up_questions=[],
-            is_crisis=False
+            is_crisis=False,
         )
 
         # Yuiが使用するフィールドがすべて存在することを確認
@@ -301,7 +287,7 @@ class TestYuiCompatibility:
             platform="misskey",
             bot_name="yui",
             note_visibility="home",
-            note_id="abc123xyz"
+            note_id="abc123xyz",
         )
 
         assert context.is_misskey_platform()
@@ -323,7 +309,7 @@ class TestSessionManagement:
             last_interaction=datetime.now(),
             platform_metadata={"note_id": "abc123"},
             interaction_count=5,
-            mood_trajectory=["neutral", "anxious", "calm"]
+            mood_trajectory=["neutral", "anxious", "calm"],
         )
 
         assert session.session_id == "sess123"
@@ -341,7 +327,9 @@ class TestHealthCheckEnhanced:
         from yamii.api import app
 
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://test"
+        ) as client:
             response = await client.get("/v1/health")
 
             data = response.json()
@@ -367,15 +355,17 @@ class TestEndToEndCompatibility:
         from yamii.api import app
 
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://test"
+        ) as client:
             request_data = {
                 "message": "テスト相談",
                 "user_id": "test_user",
                 "context": {
                     "platform": "misskey",
                     "bot_name": "yui",
-                    "api_version": "1.0.0"
-                }
+                    "api_version": "1.0.0",
+                },
             }
 
             response = await client.post("/v1/counseling", json=request_data)
@@ -393,7 +383,9 @@ class TestEndToEndCompatibility:
         from yamii.api import app
 
         transport = httpx.ASGITransport(app=app)
-        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://test"
+        ) as client:
             # V2ルートの存在確認（実装後に有効化）
             response = await client.get("/v1/health")
             # 404でもルーティングが動作していることを確認

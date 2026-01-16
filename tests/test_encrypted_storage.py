@@ -137,14 +137,18 @@ class TestEncryptedFileStorageAdapter:
         assert user is None
 
     @pytest.mark.asyncio
-    async def test_wrong_key_cannot_decrypt(self, storage, sample_user, temp_dir, crypto):
+    async def test_wrong_key_cannot_decrypt(
+        self, storage, sample_user, temp_dir, crypto
+    ):
         """異なる鍵では復号できないことを確認"""
         await storage.save_user(sample_user)
 
         # 新しい鍵で別のストレージを作成
         wrong_key = crypto.generate_symmetric_key()
         wrong_key_file = os.path.join(temp_dir, "wrong_key")
-        wrong_key_manager = SecureKeyManager(master_key=wrong_key, key_file=wrong_key_file)
+        wrong_key_manager = SecureKeyManager(
+            master_key=wrong_key, key_file=wrong_key_file
+        )
         wrong_storage = EncryptedFileStorageAdapter(
             data_dir=temp_dir,
             key_manager=wrong_key_manager,
@@ -155,7 +159,9 @@ class TestEncryptedFileStorageAdapter:
         assert len(wrong_storage._users) == 0
 
     @pytest.mark.asyncio
-    async def test_persistence_across_instances(self, temp_dir, master_key, sample_user):
+    async def test_persistence_across_instances(
+        self, temp_dir, master_key, sample_user
+    ):
         """インスタンス間でのデータ永続性"""
         key_file = os.path.join(temp_dir, "master_key")
 

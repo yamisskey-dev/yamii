@@ -2,6 +2,8 @@
 プラットフォームコンテキストメタデータの型定義
 """
 
+from __future__ import annotations
+
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -17,36 +19,23 @@ class ContextMetadata(BaseModel):
 
     # 基本フィールド
     platform: PlatformType = Field(
-        default="other",
-        description="プラットフォーム識別子"
+        default="other", description="プラットフォーム識別子"
     )
-    bot_name: str | None = Field(
-        default=None,
-        description="ボット名"
-    )
+    bot_name: str | None = Field(default=None, description="ボット名")
     client_version: str | None = Field(
-        default=None,
-        description="クライアントバージョン"
+        default=None, description="クライアントバージョン"
     )
-    api_version: str = Field(
-        default="1.0.0",
-        description="APIバージョン"
-    )
+    api_version: str = Field(default="1.0.0", description="APIバージョン")
 
     # Misskey固有フィールド
     note_visibility: str | None = Field(
-        default=None,
-        description="Misskeyノートの可視性 (public/home/followers/direct)"
+        default=None, description="Misskeyノートの可視性 (public/home/followers/direct)"
     )
-    note_id: str | None = Field(
-        default=None,
-        description="元ノートのID"
-    )
+    note_id: str | None = Field(default=None, description="元ノートのID")
 
     # 追加メタデータ
     extra: dict[str, Any] | None = Field(
-        default=None,
-        description="その他のプラットフォーム固有メタデータ"
+        default=None, description="その他のプラットフォーム固有メタデータ"
     )
 
     def is_misskey_platform(self) -> bool:

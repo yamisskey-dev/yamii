@@ -2,6 +2,8 @@
 セッション管理の拡張型定義
 """
 
+from __future__ import annotations
+
 from datetime import datetime
 from typing import Any
 
@@ -13,32 +15,21 @@ class SessionContext(BaseModel):
     拡張セッションコンテキスト
     プラットフォームメタデータと感情推移を含む
     """
+
     session_id: str = Field(description="セッションID")
     user_id: str = Field(description="ユーザーID")
-    platform: str = Field(
-        default="other",
-        description="プラットフォーム識別子"
-    )
+    platform: str = Field(default="other", description="プラットフォーム識別子")
     created_at: datetime = Field(
-        default_factory=datetime.now,
-        description="セッション作成時刻"
+        default_factory=datetime.now, description="セッション作成時刻"
     )
     last_interaction: datetime = Field(
-        default_factory=datetime.now,
-        description="最終インタラクション時刻"
+        default_factory=datetime.now, description="最終インタラクション時刻"
     )
     platform_metadata: dict[str, Any] | None = Field(
-        default=None,
-        description="プラットフォーム固有メタデータ"
+        default=None, description="プラットフォーム固有メタデータ"
     )
-    interaction_count: int = Field(
-        default=0,
-        description="インタラクション回数"
-    )
-    mood_trajectory: list[str] = Field(
-        default_factory=list,
-        description="感情推移履歴"
-    )
+    interaction_count: int = Field(default=0, description="インタラクション回数")
+    mood_trajectory: list[str] = Field(default_factory=list, description="感情推移履歴")
 
     def add_interaction(self, emotion: str | None = None) -> None:
         """インタラクションを記録"""
@@ -59,6 +50,6 @@ class SessionContext(BaseModel):
             summary[mood] = summary.get(mood, 0) + 1
         return summary
 
-    @field_serializer('created_at', 'last_interaction')
+    @field_serializer("created_at", "last_interaction")
     def serialize_datetime(self, value: datetime) -> str:
         return value.isoformat()

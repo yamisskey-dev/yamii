@@ -3,6 +3,8 @@ Yamii API - メインアプリケーション
 簡素化されたFastAPI アプリケーション
 """
 
+from __future__ import annotations
+
 import asyncio
 from contextlib import asynccontextmanager
 from datetime import datetime
@@ -194,4 +196,5 @@ app = create_app()
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -4,7 +4,6 @@ OpenAI API (GPT-4.1等) への接続実装
 PII匿名化機能付き
 """
 
-
 import aiohttp
 
 from ...core.anonymizer import PIIAnonymizer, get_anonymizer
@@ -72,7 +71,9 @@ class OpenAIAdapter(IAIProvider):
             mapping = result.mapping
 
         # API呼び出し
-        response_text = await self._call_api(processed_message, system_prompt, max_tokens)
+        response_text = await self._call_api(
+            processed_message, system_prompt, max_tokens
+        )
 
         # PII復元（応答にプレースホルダーが含まれている場合）
         if mapping:

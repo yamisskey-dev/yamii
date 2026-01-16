@@ -16,6 +16,7 @@ from .config import YamiiMisskeyBotConfig
 @dataclass
 class YamiiResponse:
     """yamiiサーバーからの応答"""
+
     response: str
     session_id: str
     timestamp: datetime
@@ -31,6 +32,7 @@ class YamiiResponse:
 @dataclass
 class YamiiRequest:
     """yamiiサーバーへのリクエスト"""
+
     message: str
     user_id: str
     user_name: str | None = None
@@ -80,10 +82,8 @@ class YamiiClient:
             "user_id": request.user_id,
             "user_name": request.user_name,
             "session_id": request.session_id,
-            "context": request.context or {
-                "platform": "misskey",
-                "bot_name": self.config.bot_name
-            }
+            "context": request.context
+            or {"platform": "misskey", "bot_name": self.config.bot_name},
         }
 
         self.logger.debug(f"Sending request to {url}")
@@ -94,7 +94,9 @@ class YamiiClient:
                 return YamiiResponse(
                     response=data["response"],
                     session_id=data["session_id"],
-                    timestamp=datetime.fromisoformat(data["timestamp"].replace("Z", "+00:00")),
+                    timestamp=datetime.fromisoformat(
+                        data["timestamp"].replace("Z", "+00:00")
+                    ),
                     emotion_analysis=data["emotion_analysis"],
                     advice_type=data["advice_type"],
                     follow_up_questions=data["follow_up_questions"],
@@ -134,30 +136,45 @@ class YamiiClient:
 
     # === コマンドAPI（Bot薄型化） ===
 
-    async def classify_message(self, message: str, user_id: str, platform: str = "misskey") -> dict[str, Any]:
+    async def classify_message(
+        self, message: str, user_id: str, platform: str = "misskey"
+    ) -> dict[str, Any]:
         """メッセージを分類（コマンド判定をAPI側で行う）"""
         url = f"{self.config.yamii_api_url}/v1/commands/classify"
 
         try:
-            async with self.session.post(url, json={
-                "message": message,
-                "user_id": user_id,
-                "platform": platform,
-                "bot_name": self.config.bot_name,
-            }) as response:
+            async with self.session.post(
+                url,
+                json={
+                    "message": message,
+                    "user_id": user_id,
+                    "platform": platform,
+                    "bot_name": self.config.bot_name,
+                },
+            ) as response:
                 if response.status == 200:
                     return await response.json()
-                return {"is_command": False, "is_empty": not message, "should_counsel": bool(message)}
+                return {
+                    "is_command": False,
+                    "is_empty": not message,
+                    "should_counsel": bool(message),
+                }
         except Exception as e:
             self.logger.error(f"Message classification failed: {e}")
-            return {"is_command": False, "is_empty": not message, "should_counsel": bool(message)}
+            return {
+                "is_command": False,
+                "is_empty": not message,
+                "should_counsel": bool(message),
+            }
 
     async def get_help(self, platform: str = "misskey", context: str = "note") -> str:
         """ヘルプメッセージを取得"""
         url = f"{self.config.yamii_api_url}/v1/commands/help"
 
         try:
-            async with self.session.get(url, params={"platform": platform, "context": context}) as response:
+            async with self.session.get(
+                url, params={"platform": platform, "context": context}
+            ) as response:
                 if response.status == 200:
                     data = await response.json()
                     return data.get("response", "ヘルプ情報を取得できませんでした。")
@@ -188,7 +205,10 @@ class YamiiClient:
             async with self.session.post(url) as response:
                 if response.status == 200:
                     data = await response.json()
-                    return data.get("response", "何かお話ししたいことがあれば、気軽に話しかけてください。")
+                    return data.get(
+                        "response",
+                        "何かお話ししたいことがあれば、気軽に話しかけてください。",
+                    )
                 return "何かお話ししたいことがあれば、気軽に話しかけてください。"
         except Exception as e:
             self.logger.error(f"Get empty response failed: {e}")

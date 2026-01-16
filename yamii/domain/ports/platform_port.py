@@ -11,6 +11,7 @@ from dataclasses import dataclass
 @dataclass
 class PlatformMessage:
     """プラットフォームからのメッセージ"""
+
     id: str
     user_id: str
     content: str
@@ -22,6 +23,7 @@ class PlatformMessage:
 @dataclass
 class PlatformResponse:
     """プラットフォームへの応答"""
+
     content: str
     reply_to_id: str | None = None
     visibility: str = "public"

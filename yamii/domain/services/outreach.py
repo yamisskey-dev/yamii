@@ -26,17 +26,19 @@ from .emotion import EmotionService
 
 class OutreachReason(Enum):
     """アウトリーチの理由"""
-    ABSENCE = "absence"                    # 不在チェックイン
+
+    ABSENCE = "absence"  # 不在チェックイン
     SENTIMENT_DECLINE = "sentiment_decline"  # センチメント悪化
-    FOLLOW_UP = "follow_up"                # フォローアップ
-    SCHEDULED = "scheduled"                # 定期チェックイン
-    MILESTONE = "milestone"                # マイルストーン（記念日など）
+    FOLLOW_UP = "follow_up"  # フォローアップ
+    SCHEDULED = "scheduled"  # 定期チェックイン
+    MILESTONE = "milestone"  # マイルストーン（記念日など）
     CRISIS_FOLLOW_UP = "crisis_follow_up"  # 危機後フォローアップ
 
 
 @dataclass
 class OutreachDecision:
     """アウトリーチ判断結果"""
+
     should_reach_out: bool
     reason: OutreachReason | None = None
     message: str | None = None
@@ -56,6 +58,7 @@ class OutreachDecision:
 @dataclass
 class ScheduledOutreach:
     """スケジュールされたアウトリーチ"""
+
     user_id: str
     scheduled_at: datetime
     reason: OutreachReason
@@ -323,7 +326,10 @@ class ProactiveOutreachService:
 
         # 名前がある場合は追加
         message = random.choice(messages)
-        if user.display_name and phase in [RelationshipPhase.FAMILIAR, RelationshipPhase.TRUSTED]:
+        if user.display_name and phase in [
+            RelationshipPhase.FAMILIAR,
+            RelationshipPhase.TRUSTED,
+        ]:
             message = f"{user.display_name}、{message}"
 
         return message
@@ -339,9 +345,7 @@ class ProactiveOutreachService:
             return OutreachDecision(should_reach_out=False)
 
         # ネガティブ感情の割合を計算
-        negative_count = sum(
-            patterns.get(e.value, 0) for e in NEGATIVE_EMOTIONS
-        )
+        negative_count = sum(patterns.get(e.value, 0) for e in NEGATIVE_EMOTIONS)
         negative_ratio = negative_count / total
 
         if negative_ratio > 0.6:
@@ -364,7 +368,10 @@ class ProactiveOutreachService:
         )
 
         message = random.choice(messages)
-        if user.display_name and phase in [RelationshipPhase.FAMILIAR, RelationshipPhase.TRUSTED]:
+        if user.display_name and phase in [
+            RelationshipPhase.FAMILIAR,
+            RelationshipPhase.TRUSTED,
+        ]:
             message = f"{user.display_name}、{message}"
 
         return message
@@ -401,7 +408,10 @@ class ProactiveOutreachService:
 
         message = templates.get(topic, templates["general_support"])
 
-        if user.display_name and phase in [RelationshipPhase.FAMILIAR, RelationshipPhase.TRUSTED]:
+        if user.display_name and phase in [
+            RelationshipPhase.FAMILIAR,
+            RelationshipPhase.TRUSTED,
+        ]:
             message = f"{user.display_name}、{message}"
 
         return message
@@ -416,7 +426,10 @@ class ProactiveOutreachService:
 
         for milestone_days, message in milestones.items():
             if abs(days_since_first - milestone_days) <= 1:
-                if user.display_name and phase in [RelationshipPhase.FAMILIAR, RelationshipPhase.TRUSTED]:
+                if user.display_name and phase in [
+                    RelationshipPhase.FAMILIAR,
+                    RelationshipPhase.TRUSTED,
+                ]:
                     message = f"{user.display_name}、{message}"
 
                 return OutreachDecision(
@@ -434,7 +447,10 @@ class ProactiveOutreachService:
             else:
                 message = f"{interactions}回目の会話ですね！ありがとうございます。"
 
-            if user.display_name and phase in [RelationshipPhase.FAMILIAR, RelationshipPhase.TRUSTED]:
+            if user.display_name and phase in [
+                RelationshipPhase.FAMILIAR,
+                RelationshipPhase.TRUSTED,
+            ]:
                 message = f"{user.display_name}、{message}"
 
             return OutreachDecision(
@@ -458,7 +474,7 @@ class ProactiveOutreachService:
         all_user_ids = await self.storage.list_users()
 
         # バッチ読み込み（load_usersがあれば使用、なければフォールバック）
-        if hasattr(self.storage, 'load_users'):
+        if hasattr(self.storage, "load_users"):
             users = await self.storage.load_users(all_user_ids)
         else:
             # フォールバック: 個別読み込み
@@ -478,7 +494,9 @@ class ProactiveOutreachService:
         decisions.sort(key=lambda d: d.priority, reverse=True)
         return decisions
 
-    def _analyze_user_patterns_sync(self, user_id: str, user: "UserState") -> OutreachDecision:
+    def _analyze_user_patterns_sync(
+        self, user_id: str, user: "UserState"
+    ) -> OutreachDecision:
         """
         ユーザーパターンを同期的に分析（バッチ処理用）
 

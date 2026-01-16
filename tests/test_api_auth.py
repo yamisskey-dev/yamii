@@ -128,7 +128,10 @@ class TestAPIKeyVerification:
     async def test_valid_api_key(self):
         """有効な API キーは許可される"""
         with patch("yamii.api.auth.get_settings") as mock_settings:
-            mock_settings.return_value.security.api_keys = ["valid-key-1", "valid-key-2"]
+            mock_settings.return_value.security.api_keys = [
+                "valid-key-1",
+                "valid-key-2",
+            ]
 
             result = await verify_api_key(api_key="valid-key-1")
             assert result == "valid-key-1"

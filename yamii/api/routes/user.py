@@ -39,7 +39,7 @@ async def get_user(
             detail={
                 "message": "まだお話ししたことがないようです。いつでもお気軽にどうぞ。",
                 "user_id": user_id,
-            }
+            },
         )
 
     days_since_first = (datetime.now() - user.first_interaction).days
@@ -79,7 +79,7 @@ async def update_user(
             detail={
                 "message": "まだお話ししたことがないようです。先にお話ししてからプロフィールを設定できます。",
                 "user_id": user_id,
-            }
+            },
         )
 
     if request.explicit_profile is not None:
@@ -107,7 +107,7 @@ async def delete_user(
             detail={
                 "message": "削除するデータがありません。",
                 "user_id": user_id,
-            }
+            },
         )
 
     return {
@@ -131,7 +131,7 @@ async def export_user_data(
             detail={
                 "message": "エクスポートするデータがありません。いつでもお話ししてくださいね。",
                 "user_id": user_id,
-            }
+            },
         )
 
     # メンタルファースト: エクスポートにメッセージを追加
@@ -163,7 +163,7 @@ async def get_user_episodes(
             detail={
                 "message": "まだエピソードがありません。お話しすると記録されていきます。",
                 "user_id": user_id,
-            }
+            },
         )
 
     recent_episodes = user.get_recent_episodes(limit)

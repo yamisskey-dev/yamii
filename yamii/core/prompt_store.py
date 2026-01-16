@@ -3,7 +3,9 @@
 YAMII.mdに依存しない独立したプロンプトストレージ
 """
 
-from dataclasses import dataclass
+from __future__ import annotations
+
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
@@ -11,19 +13,18 @@ from typing import Any
 @dataclass
 class PromptEntry:
     """プロンプトエントリー"""
+
     id: str
     name: str
     description: str
     prompt_text: str
     category: str = "counseling"
-    tags: list[str] = None
-    created_at: datetime = None
-    updated_at: datetime = None
+    tags: list[str] = field(default_factory=list)
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
     active: bool = True
 
     def __post_init__(self):
-        if self.tags is None:
-            self.tags = []
         if self.created_at is None:
             self.created_at = datetime.now()
         if self.updated_at is None:
@@ -32,15 +33,15 @@ class PromptEntry:
     def to_dict(self) -> dict[str, Any]:
         """辞書形式に変換"""
         return {
-            'id': self.id,
-            'name': self.name,
-            'description': self.description,
-            'prompt_text': self.prompt_text,
-            'category': self.category,
-            'tags': self.tags,
-            'created_at': self.created_at.isoformat(),
-            'updated_at': self.updated_at.isoformat(),
-            'active': self.active
+            "id": self.id,
+            "name": self.name,
+            "description": self.description,
+            "prompt_text": self.prompt_text,
+            "category": self.category,
+            "tags": self.tags,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
+            "active": self.active,
         }
 
 
@@ -62,7 +63,7 @@ class PromptStore:
                 tags=["相談", "標準"],
                 prompt_text="""あなたは相談者の話に寄り添う相談相手です。
 まず気持ちを受け止め、必要に応じて一緒に考えます。
-危機的状況では専門機関への相談を案内します。"""
+危機的状況では専門機関への相談を案内します。""",
             ),
         ]
 
@@ -87,7 +88,9 @@ class PromptStore:
         return """あなたは相談者の話に寄り添う相談相手です。
 まず気持ちを受け止め、必要に応じて一緒に考えます。"""
 
-    def list_prompts(self, category: str = None, active_only: bool = True) -> list[PromptEntry]:
+    def list_prompts(
+        self, category: str = None, active_only: bool = True
+    ) -> list[PromptEntry]:
         """プロンプト一覧を取得"""
         prompts = list(self.prompts.values())
 
@@ -138,10 +141,12 @@ class PromptStore:
             if not prompt.active:
                 continue
 
-            if (query_lower in prompt.name.lower() or
-                query_lower in prompt.description.lower() or
-                query_lower in prompt.prompt_text.lower() or
-                any(query_lower in tag.lower() for tag in prompt.tags)):
+            if (
+                query_lower in prompt.name.lower()
+                or query_lower in prompt.description.lower()
+                or query_lower in prompt.prompt_text.lower()
+                or any(query_lower in tag.lower() for tag in prompt.tags)
+            ):
                 results.append(prompt)
 
         return results

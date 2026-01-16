@@ -8,6 +8,8 @@ Adapters Layer
     from yamii.adapters.storage.file import FileStorageAdapter
 """
 
+from __future__ import annotations
+
 # 遅延インポート用のサブモジュール名のみエクスポート
 __all__ = [
     "ai",

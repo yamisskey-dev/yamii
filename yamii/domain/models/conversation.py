@@ -13,23 +13,26 @@ from .emotion import EmotionType
 
 class EpisodeType(Enum):
     """エピソードタイプ"""
-    GENERAL = "general"             # 一般的な会話
-    DISCLOSURE = "disclosure"       # 個人情報の開示
-    CRISIS = "crisis"               # 危機的状況
-    MILESTONE = "milestone"         # 関係性のマイルストーン
-    INSIGHT = "insight"             # 気づき・洞察
+
+    GENERAL = "general"  # 一般的な会話
+    DISCLOSURE = "disclosure"  # 個人情報の開示
+    CRISIS = "crisis"  # 危機的状況
+    MILESTONE = "milestone"  # 関係性のマイルストーン
+    INSIGHT = "insight"  # 気づき・洞察
 
 
 class ConversationPhase(Enum):
     """会話フェーズ"""
-    GREETING = "greeting"    # 挨拶
-    MAIN = "main"            # メイン会話
-    CLOSING = "closing"      # 終了
+
+    GREETING = "greeting"  # 挨拶
+    MAIN = "main"  # メイン会話
+    CLOSING = "closing"  # 終了
 
 
 @dataclass
 class Message:
     """個別メッセージ"""
+
     id: str
     role: str  # "user" or "assistant"
     content: str
@@ -53,7 +56,9 @@ class Message:
             id=data["id"],
             role=data["role"],
             content=data["content"],
-            timestamp=datetime.fromisoformat(data.get("timestamp", datetime.now().isoformat())),
+            timestamp=datetime.fromisoformat(
+                data.get("timestamp", datetime.now().isoformat())
+            ),
             emotion=EmotionType(data["emotion"]) if data.get("emotion") else None,
             emotion_intensity=data.get("emotion_intensity", 0.0),
         )
@@ -65,19 +70,20 @@ class Episode:
     エピソード記憶（長期記憶）
     重要な会話やマイルストーンを保存
     """
+
     id: str
     user_id: str
     created_at: datetime
 
     # コンテンツ
-    summary: str                              # 会話の要約
+    summary: str  # 会話の要約
     user_shared: list[str] = field(default_factory=list)  # ユーザーが共有した情報
-    emotional_context: str = ""               # 感情的文脈
+    emotional_context: str = ""  # 感情的文脈
     topics: list[str] = field(default_factory=list)
 
     # メタデータ
-    importance_score: float = 0.5             # 重要度 (0.0-1.0)
-    emotional_intensity: float = 0.5          # 感情の強さ (0.0-1.0)
+    importance_score: float = 0.5  # 重要度 (0.0-1.0)
+    emotional_intensity: float = 0.5  # 感情の強さ (0.0-1.0)
     episode_type: EpisodeType = EpisodeType.GENERAL
     emotion: EmotionType = EmotionType.NEUTRAL
 
@@ -124,6 +130,7 @@ class ConversationContext:
     会話コンテキスト（短期記憶）
     現在進行中のセッション状態を管理
     """
+
     user_id: str
     session_id: str
 
@@ -184,9 +191,15 @@ class ConversationContext:
             current_emotion=EmotionType(data.get("current_emotion", "neutral")),
             emotion_intensity=data.get("emotion_intensity", 0.0),
             emotion_stability=data.get("emotion_stability", 1.0),
-            recent_messages=[Message.from_dict(m) for m in data.get("recent_messages", [])],
+            recent_messages=[
+                Message.from_dict(m) for m in data.get("recent_messages", [])
+            ],
             unresolved_questions=data.get("unresolved_questions", []),
             pending_follow_ups=data.get("pending_follow_ups", []),
-            started_at=datetime.fromisoformat(data.get("started_at", datetime.now().isoformat())),
-            last_message_at=datetime.fromisoformat(data.get("last_message_at", datetime.now().isoformat())),
+            started_at=datetime.fromisoformat(
+                data.get("started_at", datetime.now().isoformat())
+            ),
+            last_message_at=datetime.fromisoformat(
+                data.get("last_message_at", datetime.now().isoformat())
+            ),
         )

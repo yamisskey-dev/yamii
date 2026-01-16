@@ -4,6 +4,8 @@ YAMII.mdからプロンプトを読み込む軽量なマークダウンローダ
 Typerの依存関係でインストールされたmarkdown-itを活用
 """
 
+from __future__ import annotations
+
 import logging
 from pathlib import Path
 from typing import Any
@@ -30,7 +32,7 @@ class YamiiMarkdownLoader:
                 self._create_fallback_prompts()
                 return
 
-            with open(self.yamii_md_path, encoding='utf-8') as f:
+            with open(self.yamii_md_path, encoding="utf-8") as f:
                 content = f.read()
 
             # markdown-itでパース
@@ -50,77 +52,82 @@ class YamiiMarkdownLoader:
 
         for token in tokens:
             # H3見出し（### プロンプト名）でセクション開始
-            if token.type == 'heading_open' and token.tag == 'h3':
+            if token.type == "heading_open" and token.tag == "h3":
                 # 前のプロンプトを保存
                 if current_prompt and content_lines:
-                    current_prompt['prompt_text'] = '\n'.join(content_lines).strip()
-                    if current_prompt.get('id'):
-                        self.prompts[current_prompt['id']] = current_prompt
+                    current_prompt["prompt_text"] = "\n".join(content_lines).strip()
+                    if current_prompt.get("id"):
+                        self.prompts[current_prompt["id"]] = current_prompt
 
                 # 新しいプロンプト開始
                 current_prompt = {
-                    'title': '',
-                    'id': None,
-                    'name': '',
-                    'description': '',
-                    'prompt_text': '',
-                    'tags': []
+                    "title": "",
+                    "id": None,
+                    "name": "",
+                    "description": "",
+                    "prompt_text": "",
+                    "tags": [],
                 }
                 content_lines = []
                 collecting_content = False
 
-            elif token.type == 'inline' and current_prompt and not current_prompt['title']:
+            elif (
+                token.type == "inline"
+                and current_prompt
+                and not current_prompt["title"]
+            ):
                 # H3見出しのテキスト（タイトル）
-                current_prompt['title'] = token.content.strip()
-                current_prompt['name'] = token.content.strip()
+                current_prompt["title"] = token.content.strip()
+                current_prompt["name"] = token.content.strip()
 
-            elif token.type == 'inline' and current_prompt:
+            elif token.type == "inline" and current_prompt:
                 # **ID**: `prompt_id` のような形式を検出
                 content = token.content
-                if '**ID**:' in content and '`' in content:
+                if "**ID**:" in content and "`" in content:
                     # ID抽出
                     import re
-                    id_match = re.search(r'`([^`]+)`', content)
-                    if id_match:
-                        current_prompt['id'] = id_match.group(1)
 
-                elif '**説明**:' in content:
+                    id_match = re.search(r"`([^`]+)`", content)
+                    if id_match:
+                        current_prompt["id"] = id_match.group(1)
+
+                elif "**説明**:" in content:
                     # 説明抽出
-                    description = content.replace('**説明**:', '').strip()
-                    current_prompt['description'] = description
+                    description = content.replace("**説明**:", "").strip()
+                    current_prompt["description"] = description
 
                 # プロンプト本文の収集を開始（コードブロック内または区切り線後）
-                elif collecting_content or token.content.strip().startswith('あなたは'):
+                elif collecting_content or token.content.strip().startswith("あなたは"):
                     collecting_content = True
                     content_lines.append(token.content)
 
-            elif token.type == 'fence' and current_prompt:
+            elif token.type == "fence" and current_prompt:
                 # コードブロック内のプロンプトテキスト
-                current_prompt['prompt_text'] = token.content.strip()
+                current_prompt["prompt_text"] = token.content.strip()
                 collecting_content = False
 
-            elif token.type == 'inline' and collecting_content and current_prompt:
+            elif token.type == "inline" and collecting_content and current_prompt:
                 # 通常のテキストとしてプロンプト内容を収集
                 content_lines.append(token.content)
 
         # 最後のプロンプトを保存
-        if current_prompt and (current_prompt.get('prompt_text') or content_lines):
-            if content_lines and not current_prompt.get('prompt_text'):
-                current_prompt['prompt_text'] = '\n'.join(content_lines).strip()
-            if current_prompt.get('id'):
-                self.prompts[current_prompt['id']] = current_prompt
+        if current_prompt and (current_prompt.get("prompt_text") or content_lines):
+            if content_lines and not current_prompt.get("prompt_text"):
+                current_prompt["prompt_text"] = "\n".join(content_lines).strip()
+            if current_prompt.get("id"):
+                self.prompts[current_prompt["id"]] = current_prompt
 
     def _create_fallback_prompts(self):
         """YAMII.mdが見つからない場合のフォールバックプロンプト"""
         logger.info("Creating fallback CLI prompts")
 
         self.prompts = {
-            'cli_expert': {
-                'id': 'cli_expert',
-                'title': 'CLI開発エキスパート',
-                'name': 'CLI開発エキスパート',
-                'description': 'Typer/CLI開発専門',
-                'prompt_text': '''あなたはTyperとCLI開発のエキスパートです。
+            "cli_expert": {
+                "id": "cli_expert",
+                "title": "CLI開発エキスパート",
+                "name": "CLI開発エキスパート",
+                "description": "Typer/CLI開発専門",
+                "prompt_text": """あなたはTyperとCLI開発のエキスパートです。
 美しく使いやすいコマンドラインツールの設計と実装をサポートします。
 
 専門分野：
@@ -130,8 +137,8 @@ class YamiiMarkdownLoader:
 - ユーザーエクスペリエンス
 - エラーハンドリング
 
-開発者が効率的で保守可能なCLIツールを作成できるよう支援してください。''',
-                'tags': ['CLI', 'Typer', 'Rich']
+開発者が効率的で保守可能なCLIツールを作成できるよう支援してください。""",
+                "tags": ["CLI", "Typer", "Rich"],
             }
         }
 

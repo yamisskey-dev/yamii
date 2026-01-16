@@ -23,6 +23,7 @@ class ProactiveSettings:
     プロアクティブケア設定
     Bot APIならではの機能 - ユーザーに先にチェックインする設定
     """
+
     enabled: bool = False
     frequency: str = "weekly"  # "daily", "weekly", "never"
     preferred_time: str | None = None  # "09:00" 形式
@@ -40,8 +41,12 @@ class ProactiveSettings:
             "enabled": self.enabled,
             "frequency": self.frequency,
             "preferred_time": self.preferred_time,
-            "last_outreach": self.last_outreach.isoformat() if self.last_outreach else None,
-            "next_scheduled": self.next_scheduled.isoformat() if self.next_scheduled else None,
+            "last_outreach": self.last_outreach.isoformat()
+            if self.last_outreach
+            else None,
+            "next_scheduled": self.next_scheduled.isoformat()
+            if self.next_scheduled
+            else None,
             "absence_check_enabled": self.absence_check_enabled,
             "absence_threshold_days": self.absence_threshold_days,
             "sentiment_check_enabled": self.sentiment_check_enabled,
@@ -54,8 +59,12 @@ class ProactiveSettings:
             enabled=data.get("enabled", False),
             frequency=data.get("frequency", "weekly"),
             preferred_time=data.get("preferred_time"),
-            last_outreach=datetime.fromisoformat(data["last_outreach"]) if data.get("last_outreach") else None,
-            next_scheduled=datetime.fromisoformat(data["next_scheduled"]) if data.get("next_scheduled") else None,
+            last_outreach=datetime.fromisoformat(data["last_outreach"])
+            if data.get("last_outreach")
+            else None,
+            next_scheduled=datetime.fromisoformat(data["next_scheduled"])
+            if data.get("next_scheduled")
+            else None,
             absence_check_enabled=data.get("absence_check_enabled", True),
             absence_threshold_days=data.get("absence_threshold_days", 3),
             sentiment_check_enabled=data.get("sentiment_check_enabled", True),
@@ -71,6 +80,7 @@ class UserState:
 
     これが単一の真実の源泉 (Single Source of Truth)
     """
+
     user_id: str
 
     # === 関係性フェーズ（RelationshipStateから） ===
@@ -80,9 +90,9 @@ class UserState:
     last_interaction: datetime = field(default_factory=datetime.now)
 
     # 関係性指標 (0.0-1.0)
-    trust_score: float = 0.0          # 信頼度
-    openness_score: float = 0.0       # ユーザーの開示度
-    rapport_score: float = 0.0        # 親密度
+    trust_score: float = 0.0  # 信頼度
+    openness_score: float = 0.0  # ユーザーの開示度
+    rapport_score: float = 0.0  # 親密度
 
     # フェーズ履歴
     phase_history: list[PhaseTransition] = field(default_factory=list)
@@ -98,13 +108,13 @@ class UserState:
     emotional_patterns: dict[str, int] = field(default_factory=dict)
 
     # 好み設定 (0.0-1.0)
-    likes_questions: float = 0.5      # 質問を好むか
-    likes_advice: float = 0.5         # アドバイスを好むか
-    likes_empathy: float = 0.7        # 共感を重視するか
-    likes_detail: float = 0.5         # 詳細な説明を好むか
+    likes_questions: float = 0.5  # 質問を好むか
+    likes_advice: float = 0.5  # アドバイスを好むか
+    likes_empathy: float = 0.7  # 共感を重視するか
+    likes_detail: float = 0.5  # 詳細な説明を好むか
 
     # 学習状態
-    confidence_score: float = 0.0     # 学習の確信度 (0.0-1.0)
+    confidence_score: float = 0.0  # 学習の確信度 (0.0-1.0)
 
     # === 明示的プロファイル（UserProfileから） ===
     explicit_profile: str | None = None  # ユーザーが設定した自由形式プロファイル
@@ -196,7 +206,9 @@ class UserState:
             # 学習された好み
             "preferred_tone": self.preferred_tone.value,
             "preferred_depth": self.preferred_depth.value,
-            "topic_affinities": {k: v.to_dict() for k, v in self.topic_affinities.items()},
+            "topic_affinities": {
+                k: v.to_dict() for k, v in self.topic_affinities.items()
+            },
             "emotional_patterns": self.emotional_patterns,
             "likes_questions": self.likes_questions,
             "likes_advice": self.likes_advice,
@@ -234,7 +246,9 @@ class UserState:
             trust_score=data.get("trust_score", 0.0),
             openness_score=data.get("openness_score", 0.0),
             rapport_score=data.get("rapport_score", 0.0),
-            phase_history=[PhaseTransition.from_dict(p) for p in data.get("phase_history", [])],
+            phase_history=[
+                PhaseTransition.from_dict(p) for p in data.get("phase_history", [])
+            ],
             # 学習された好み
             preferred_tone=ToneLevel(data.get("preferred_tone", "balanced")),
             preferred_depth=DepthLevel(data.get("preferred_depth", "medium")),

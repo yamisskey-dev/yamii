@@ -3,6 +3,8 @@ API Dependencies
 依存性注入の設定
 """
 
+from __future__ import annotations
+
 import os
 from functools import lru_cache
 
@@ -16,6 +18,7 @@ from ..domain.services.emotion import EmotionService
 from ..domain.services.outreach import ProactiveOutreachService
 
 # === 設定 ===
+
 
 @lru_cache
 def get_openai_api_key() -> str:
@@ -42,6 +45,7 @@ _outreach_service: ProactiveOutreachService | None = None
 
 
 # === 依存性取得関数 ===
+
 
 @lru_cache
 def is_encryption_enabled() -> bool:
@@ -107,9 +111,15 @@ def get_outreach_service() -> ProactiveOutreachService:
 
 # === テスト用リセット関数 ===
 
+
 def reset_dependencies() -> None:
     """依存性をリセット（テスト用）"""
-    global _storage, _ai_provider, _emotion_service, _counseling_service, _outreach_service
+    global \
+        _storage, \
+        _ai_provider, \
+        _emotion_service, \
+        _counseling_service, \
+        _outreach_service
     _storage = None
     _ai_provider = None
     _emotion_service = None

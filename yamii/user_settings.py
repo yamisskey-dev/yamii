@@ -1,6 +1,7 @@
 """
 User settings management with encrypted database storage
 """
+
 import hashlib
 import json
 import logging
@@ -13,12 +14,15 @@ from cryptography.fernet import Fernet
 
 logger = logging.getLogger(__name__)
 
+
 class UserSettingsManager:
     """
     Encrypted user settings manager using SQLite database
     """
 
-    def __init__(self, db_path: str = "user_settings.db", key_file: str = "encryption.key"):
+    def __init__(
+        self, db_path: str = "user_settings.db", key_file: str = "encryption.key"
+    ):
         self.db_path = db_path
         self.key_file = key_file
         self.cipher_suite = self._get_or_create_cipher()
@@ -27,11 +31,11 @@ class UserSettingsManager:
     def _get_or_create_cipher(self) -> Fernet:
         """Get or create encryption key"""
         if os.path.exists(self.key_file):
-            with open(self.key_file, 'rb') as f:
+            with open(self.key_file, "rb") as f:
                 key = f.read()
         else:
             key = Fernet.generate_key()
-            with open(self.key_file, 'wb') as f:
+            with open(self.key_file, "wb") as f:
                 f.write(key)
             # Set restrictive permissions on key file
             os.chmod(self.key_file, 0o600)
@@ -44,7 +48,7 @@ class UserSettingsManager:
         cursor = conn.cursor()
 
         # User settings table
-        cursor.execute('''
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS user_settings (
                 user_id TEXT PRIMARY KEY,
                 encrypted_data TEXT NOT NULL,
@@ -52,10 +56,10 @@ class UserSettingsManager:
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
-        ''')
+        """)
 
         # Custom prompts table
-        cursor.execute('''
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS custom_prompts (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id TEXT NOT NULL,
@@ -68,7 +72,7 @@ class UserSettingsManager:
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(user_id, name)
             )
-        ''')
+        """)
 
         conn.commit()
         conn.close()
@@ -107,10 +111,13 @@ class UserSettingsManager:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
 
-            cursor.execute('''
+            cursor.execute(
+                """
                 INSERT OR REPLACE INTO user_settings (user_id, encrypted_data, data_hash, updated_at)
                 VALUES (?, ?, ?, ?)
-            ''', (user_id, encrypted_data, data_hash, datetime.now().isoformat()))
+            """,
+                (user_id, encrypted_data, data_hash, datetime.now().isoformat()),
+            )
 
             conn.commit()
             conn.close()
@@ -128,9 +135,12 @@ class UserSettingsManager:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
 
-            cursor.execute('''
+            cursor.execute(
+                """
                 SELECT encrypted_data, data_hash FROM user_settings WHERE user_id = ?
-            ''', (user_id,))
+            """,
+                (user_id,),
+            )
 
             result = cursor.fetchone()
             conn.close()
@@ -145,13 +155,17 @@ class UserSettingsManager:
             logger.error(f"Failed to get settings for user {user_id}: {e}")
             return None
 
-    def save_custom_prompt(self, user_id: str, name: str, prompt_text: str,
-                          description: str = "", tags: list[str] = None) -> bool:
+    def save_custom_prompt(
+        self,
+        user_id: str,
+        name: str,
+        prompt_text: str,
+        description: str = "",
+        tags: list[str] = None,
+    ) -> bool:
         """Save user's single custom prompt (simplified - ignores name/desc/tags)"""
         try:
-            prompt_data = {
-                "prompt_text": prompt_text
-            }
+            prompt_data = {"prompt_text": prompt_text}
 
             encrypted_prompt, data_hash = self._encrypt_data(prompt_data)
 
@@ -159,15 +173,25 @@ class UserSettingsManager:
             cursor = conn.cursor()
 
             # Delete any existing custom prompt for this user
-            cursor.execute('DELETE FROM custom_prompts WHERE user_id = ?', (user_id,))
+            cursor.execute("DELETE FROM custom_prompts WHERE user_id = ?", (user_id,))
 
             # Insert the new custom prompt (simplified fields)
-            cursor.execute('''
+            cursor.execute(
+                """
                 INSERT INTO custom_prompts
                 (user_id, name, encrypted_prompt, description, tags, data_hash, updated_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
-            ''', (user_id, "custom_prompt", encrypted_prompt, "",
-                  json.dumps([]), data_hash, datetime.now().isoformat()))
+            """,
+                (
+                    user_id,
+                    "custom_prompt",
+                    encrypted_prompt,
+                    "",
+                    json.dumps([]),
+                    data_hash,
+                    datetime.now().isoformat(),
+                ),
+            )
 
             conn.commit()
             conn.close()
@@ -185,10 +209,13 @@ class UserSettingsManager:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
 
-            cursor.execute('''
+            cursor.execute(
+                """
                 SELECT encrypted_prompt, data_hash, created_at, updated_at FROM custom_prompts
                 WHERE user_id = ? LIMIT 1
-            ''', (user_id,))
+            """,
+                (user_id,),
+            )
 
             result = cursor.fetchone()
             conn.close()
@@ -199,7 +226,7 @@ class UserSettingsManager:
                 return {
                     "prompt_text": prompt_data["prompt_text"],
                     "created_at": created_at,
-                    "updated_at": updated_at
+                    "updated_at": updated_at,
                 }
 
             return None
@@ -214,7 +241,9 @@ class UserSettingsManager:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
 
-            cursor.execute('SELECT 1 FROM custom_prompts WHERE user_id = ? LIMIT 1', (user_id,))
+            cursor.execute(
+                "SELECT 1 FROM custom_prompts WHERE user_id = ? LIMIT 1", (user_id,)
+            )
             result = cursor.fetchone()
             conn.close()
 
@@ -230,7 +259,7 @@ class UserSettingsManager:
             conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
 
-            cursor.execute('DELETE FROM custom_prompts WHERE user_id = ?', (user_id,))
+            cursor.execute("DELETE FROM custom_prompts WHERE user_id = ?", (user_id,))
 
             deleted_count = cursor.rowcount
             conn.commit()
@@ -254,18 +283,24 @@ class UserSettingsManager:
             cursor = conn.cursor()
 
             # Delete old user settings
-            cursor.execute('''
+            cursor.execute(
+                """
                 DELETE FROM user_settings
                 WHERE updated_at < datetime('now', '-' || ? || ' days')
-            ''', (days,))
+            """,
+                (days,),
+            )
 
             settings_deleted = cursor.rowcount
 
             # Delete old custom prompts
-            cursor.execute('''
+            cursor.execute(
+                """
                 DELETE FROM custom_prompts
                 WHERE updated_at < datetime('now', '-' || ? || ' days')
-            ''', (days,))
+            """,
+                (days,),
+            )
 
             prompts_deleted = cursor.rowcount
 
@@ -274,15 +309,19 @@ class UserSettingsManager:
             conn.commit()
             conn.close()
 
-            logger.info(f"Cleaned up {total_deleted} old records ({settings_deleted} settings, {prompts_deleted} prompts)")
+            logger.info(
+                f"Cleaned up {total_deleted} old records ({settings_deleted} settings, {prompts_deleted} prompts)"
+            )
             return total_deleted
 
         except Exception as e:
             logger.error(f"Failed to cleanup old data: {e}")
             return 0
 
+
 # Global instance
 settings_manager = UserSettingsManager()
+
 
 def get_settings_manager() -> UserSettingsManager:
     """Get the global settings manager instance"""

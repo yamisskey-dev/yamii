@@ -3,8 +3,11 @@
 ユーザーごとの派生キーを使用したプライバシーファースト暗号化（遅延書き込み最適化）
 """
 
+from __future__ import annotations
+
 import asyncio
 import json
+import logging
 from datetime import datetime
 from pathlib import Path
 
@@ -12,6 +15,8 @@ from ...core.encryption import E2EECrypto, EncryptedData
 from ...core.key_management import SecureKeyManager, get_key_manager
 from ...domain.models.user import UserState
 from ...domain.ports.storage_port import IStorage
+
+logger = logging.getLogger(__name__)
 
 
 class EncryptedFileStorageAdapter(IStorage):
@@ -97,10 +102,10 @@ class EncryptedFileStorageAdapter(IStorage):
                     self._users[user_id] = UserState.from_dict(user_data)
                 except Exception as e:
                     # 復号失敗したユーザーはスキップ（鍵が変わった可能性）
-                    print(f"ユーザー {user_id} の復号に失敗: {e}")
+                    logger.warning(f"ユーザー {user_id} の復号に失敗: {e}")
 
         except (json.JSONDecodeError, KeyError) as e:
-            print(f"データ読み込みエラー: {e}")
+            logger.error(f"データ読み込みエラー: {e}")
             self._users = {}
 
     def _read_json_file(self) -> dict:
@@ -152,9 +157,7 @@ class EncryptedFileStorageAdapter(IStorage):
         async with self._lock:
             # スレッドプールで書き込み
             loop = asyncio.get_event_loop()
-            await loop.run_in_executor(
-                None, self._write_json_file, temp_file, data
-            )
+            await loop.run_in_executor(None, self._write_json_file, temp_file, data)
             # アトミックに置換
             temp_file.replace(self.data_file)
             self._dirty = False

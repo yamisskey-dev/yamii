@@ -51,20 +51,28 @@ from .domain.services import (
 # アダプターは依存関係が多いため遅延インポート
 def get_openai_adapter():
     from .adapters.ai.openai import OpenAIAdapter
+
     return OpenAIAdapter
+
 
 def get_file_storage_adapter():
     from .adapters.storage.file import FileStorageAdapter
+
     return FileStorageAdapter
+
 
 # ===== API (lazy import) =====
 def get_app():
     from .api import app
+
     return app
+
 
 def create_app():
     from .api import create_app as _create_app
+
     return _create_app()
+
 
 __all__ = [
     # Version

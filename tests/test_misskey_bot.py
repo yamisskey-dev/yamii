@@ -42,7 +42,7 @@ def sample_note():
         visibility="home",
         mentions=["test_yamii"],
         is_reply=False,
-        reply_id=None
+        reply_id=None,
     )
 
 
@@ -57,11 +57,11 @@ def sample_yamii_response():
             "primary_emotion": "anxiety",
             "intensity": 0.6,
             "is_crisis": False,
-            "all_emotions": {"anxiety": 0.6, "sadness": 0.3}
+            "all_emotions": {"anxiety": 0.6, "sadness": 0.3},
         },
         advice_type="empathy",
         follow_up_questions=["具体的にどのような状況ですか？"],
-        is_crisis=False
+        is_crisis=False,
     )
 
 
@@ -76,11 +76,13 @@ class TestYamiiMisskeyBot:
         assert bot.config == mock_config
         assert isinstance(bot.user_sessions, dict)
         # processed_notesはLRUSetでset-likeなインターフェースを持つ
-        assert hasattr(bot.processed_notes, 'add')
-        assert hasattr(bot.processed_notes, '__contains__')
+        assert hasattr(bot.processed_notes, "add")
+        assert hasattr(bot.processed_notes, "__contains__")
 
     @pytest.mark.asyncio
-    async def test_handle_mention(self, mock_config, sample_note, sample_yamii_response):
+    async def test_handle_mention(
+        self, mock_config, sample_note, sample_yamii_response
+    ):
         """メンション処理をテスト"""
         bot = YamiiMisskeyBot(mock_config)
 
@@ -89,7 +91,9 @@ class TestYamiiMisskeyBot:
         bot.misskey_client.is_reply_to_bot.return_value = False
         bot.misskey_client.is_direct_message.return_value = False
         bot.misskey_client.bot_user_id = "bot123"
-        bot.misskey_client.extract_message_from_note.return_value = "こんにちは、悩みがあります"
+        bot.misskey_client.extract_message_from_note.return_value = (
+            "こんにちは、悩みがあります"
+        )
 
         bot.yamii_client = AsyncMock()
         # Bot薄型化: API側でメッセージ分類
@@ -108,7 +112,9 @@ class TestYamiiMisskeyBot:
         call_args = bot._send_reply.call_args
         assert call_args[0][0] == sample_note
         assert "あなたの気持ちをお聞かせください" in call_args[0][1]
-        assert bot.user_sessions[sample_note.user_id] == sample_yamii_response.session_id
+        assert (
+            bot.user_sessions[sample_note.user_id] == sample_yamii_response.session_id
+        )
 
     @pytest.mark.asyncio
     async def test_handle_reply(self, mock_config, sample_yamii_response):
@@ -125,7 +131,7 @@ class TestYamiiMisskeyBot:
             visibility="home",
             mentions=[],
             is_reply=True,
-            reply_id="note123"
+            reply_id="note123",
         )
 
         bot.misskey_client = Mock()
@@ -133,7 +139,9 @@ class TestYamiiMisskeyBot:
         bot.misskey_client.is_reply_to_bot.return_value = True
         bot.misskey_client.is_direct_message.return_value = False
         bot.misskey_client.bot_user_id = "bot123"
-        bot.misskey_client.extract_message_from_note.return_value = "もう少し詳しく聞きたいです"
+        bot.misskey_client.extract_message_from_note.return_value = (
+            "もう少し詳しく聞きたいです"
+        )
 
         bot.yamii_client = AsyncMock()
         bot.yamii_client.classify_message.return_value = {
@@ -165,7 +173,7 @@ class TestYamiiMisskeyBot:
             mentions=[],
             is_reply=False,
             reply_id=None,
-            visible_user_ids=["bot123"]
+            visible_user_ids=["bot123"],
         )
 
         bot.misskey_client = Mock()
@@ -173,7 +181,9 @@ class TestYamiiMisskeyBot:
         bot.misskey_client.is_reply_to_bot.return_value = False
         bot.misskey_client.is_direct_message.return_value = True
         bot.misskey_client.bot_user_id = "bot123"
-        bot.misskey_client.extract_message_from_note.return_value = "プライベートな相談があります"
+        bot.misskey_client.extract_message_from_note.return_value = (
+            "プライベートな相談があります"
+        )
 
         bot.yamii_client = AsyncMock()
         bot.yamii_client.classify_message.return_value = {
@@ -198,7 +208,11 @@ class TestYamiiMisskeyBot:
             response="心配です。あなたの安全が大切です。",
             session_id="session123",
             timestamp=datetime.now(),
-            emotion_analysis={"primary_emotion": "crisis", "intensity": 0.9, "is_crisis": True},
+            emotion_analysis={
+                "primary_emotion": "crisis",
+                "intensity": 0.9,
+                "is_crisis": True,
+            },
             advice_type="crisis",
             follow_up_questions=[],
             is_crisis=True,
@@ -248,7 +262,7 @@ class TestYamiiMisskeyBot:
             visibility="home",
             mentions=["test_yamii"],
             is_reply=False,
-            reply_id=None
+            reply_id=None,
         )
 
         bot.misskey_client = Mock()
@@ -288,7 +302,9 @@ class TestYamiiMisskeyBot:
         assert "リプライ" in response_text
 
     @pytest.mark.asyncio
-    async def test_session_continues(self, mock_config, sample_note, sample_yamii_response):
+    async def test_session_continues(
+        self, mock_config, sample_note, sample_yamii_response
+    ):
         """セッション継続をテスト"""
         bot = YamiiMisskeyBot(mock_config)
 
@@ -311,7 +327,9 @@ class TestYamiiMisskeyBot:
         await bot._handle_note(sample_note)
 
         assert sample_note.user_id in bot.user_sessions
-        assert bot.user_sessions[sample_note.user_id] == sample_yamii_response.session_id
+        assert (
+            bot.user_sessions[sample_note.user_id] == sample_yamii_response.session_id
+        )
 
         # 継続会話
         continue_note = MisskeyNote(
@@ -324,10 +342,12 @@ class TestYamiiMisskeyBot:
             visibility="home",
             mentions=["test_yamii"],
             is_reply=False,
-            reply_id=None
+            reply_id=None,
         )
 
-        bot.misskey_client.extract_message_from_note.return_value = "もう少し詳しくお聞きしたいです"
+        bot.misskey_client.extract_message_from_note.return_value = (
+            "もう少し詳しくお聞きしたいです"
+        )
 
         await bot._handle_note(continue_note)
 
@@ -351,7 +371,7 @@ class TestYamiiMisskeyBot:
             visibility="home",
             mentions=[],
             is_reply=False,
-            reply_id=None
+            reply_id=None,
         )
 
         bot.misskey_client = Mock()
@@ -398,7 +418,7 @@ class TestMisskeyClient:
             mentions=[],
             is_reply=False,
             reply_id=None,
-            visible_user_ids=["bot123", "user456"]
+            visible_user_ids=["bot123", "user456"],
         )
         assert client.is_direct_message(dm_note) is True
 
@@ -412,7 +432,7 @@ class TestMisskeyClient:
             visibility="home",
             mentions=[],
             is_reply=False,
-            reply_id=None
+            reply_id=None,
         )
         assert client.is_direct_message(normal_note) is False
 
@@ -432,7 +452,7 @@ class TestMisskeyClient:
             visibility="home",
             mentions=[],
             is_reply=True,
-            reply_id="parent_note"
+            reply_id="parent_note",
         )
         assert client.is_reply_to_bot(reply_note) is True
 
@@ -446,6 +466,6 @@ class TestMisskeyClient:
             visibility="home",
             mentions=[],
             is_reply=False,
-            reply_id=None
+            reply_id=None,
         )
         assert client.is_reply_to_bot(normal_note) is False

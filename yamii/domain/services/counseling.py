@@ -27,6 +27,7 @@ from .emotion import EmotionService
 @dataclass
 class CounselingRequest:
     """カウンセリングリクエスト"""
+
     message: str
     user_id: str
     session_id: str | None = None
@@ -44,6 +45,7 @@ class CounselingRequest:
 @dataclass
 class CounselingResponse:
     """カウンセリングレスポンス"""
+
     response: str
     session_id: str
     emotion_analysis: EmotionAnalysis
@@ -77,35 +79,75 @@ class AdviceTypeClassifier:
     def __init__(self):
         self._category_keywords = {
             "crisis_support": [
-                "死にたい", "消えたい", "自殺", "生きる意味", "限界",
-                "自分を傷つけ", "終わりにしたい"
+                "死にたい",
+                "消えたい",
+                "自殺",
+                "生きる意味",
+                "限界",
+                "自分を傷つけ",
+                "終わりにしたい",
             ],
             "mental_health": [
-                "うつ", "うつ病", "精神的", "メンタル", "心療内科",
-                "精神科", "カウンセラー", "薬", "治療"
+                "うつ",
+                "うつ病",
+                "精神的",
+                "メンタル",
+                "心療内科",
+                "精神科",
+                "カウンセラー",
+                "薬",
+                "治療",
             ],
             "relationship": [
-                "恋愛", "恋人", "彼氏", "彼女", "片思い", "失恋",
-                "デート", "結婚", "離婚", "パートナー"
+                "恋愛",
+                "恋人",
+                "彼氏",
+                "彼女",
+                "片思い",
+                "失恋",
+                "デート",
+                "結婚",
+                "離婚",
+                "パートナー",
             ],
             "career": [
-                "仕事", "職場", "転職", "就職", "会社", "上司",
-                "同僚", "残業", "給料", "キャリア", "昇進"
+                "仕事",
+                "職場",
+                "転職",
+                "就職",
+                "会社",
+                "上司",
+                "同僚",
+                "残業",
+                "給料",
+                "キャリア",
+                "昇進",
             ],
             "family": [
-                "家族", "親", "父", "母", "兄弟", "姉妹",
-                "子供", "育児", "介護", "実家"
+                "家族",
+                "親",
+                "父",
+                "母",
+                "兄弟",
+                "姉妹",
+                "子供",
+                "育児",
+                "介護",
+                "実家",
             ],
-            "friendship": [
-                "友達", "友人", "仲間", "人間関係", "サークル"
-            ],
+            "friendship": ["友達", "友人", "仲間", "人間関係", "サークル"],
             "education": [
-                "勉強", "学校", "大学", "受験", "テスト",
-                "試験", "宿題", "成績", "進路"
+                "勉強",
+                "学校",
+                "大学",
+                "受験",
+                "テスト",
+                "試験",
+                "宿題",
+                "成績",
+                "進路",
             ],
-            "health": [
-                "健康", "病気", "体調", "病院", "医者", "症状"
-            ]
+            "health": ["健康", "病気", "体調", "病院", "医者", "症状"],
         }
 
     def classify(self, message: str, emotion: EmotionType) -> str:
@@ -159,7 +201,7 @@ class FollowUpGenerator:
             "general_support": [
                 "このことで一番困っていることは何ですか？",
                 "理想的な状況はどのようなものでしょうか？",
-            ]
+            ],
         }
 
     def generate(self, advice_type: str) -> list[str]:
@@ -280,8 +322,12 @@ class CounselingService:
             DepthLevel.DEEP: "丁寧に掘り下げて、3-4文（150-200文字）で応答してください。",
         }
 
-        tone = tone_instructions.get(user.preferred_tone, tone_instructions[ToneLevel.BALANCED])
-        depth = depth_instructions.get(user.preferred_depth, depth_instructions[DepthLevel.MEDIUM])
+        tone = tone_instructions.get(
+            user.preferred_tone, tone_instructions[ToneLevel.BALANCED]
+        )
+        depth = depth_instructions.get(
+            user.preferred_depth, depth_instructions[DepthLevel.MEDIUM]
+        )
 
         return f"""あなたは相談者の話に寄り添う相談相手です。
 まず気持ちを受け止め、必要に応じて一緒に考えます。
@@ -411,8 +457,7 @@ class CounselingService:
         """危機対応の特別指示"""
         # 過去の危機エピソードを確認
         crisis_history = [
-            ep for ep in user.episodes
-            if ep.episode_type == EpisodeType.CRISIS
+            ep for ep in user.episodes if ep.episode_type == EpisodeType.CRISIS
         ]
 
         instruction = """
@@ -508,10 +553,7 @@ class CounselingService:
             user.likes_advice = min(1.0, user.likes_advice + learning_rate)
 
         # 学習の確信度を上げる
-        user.confidence_score = min(
-            1.0,
-            user.confidence_score + learning_rate / 2
-        )
+        user.confidence_score = min(1.0, user.confidence_score + learning_rate / 2)
 
     def _update_trust_scores(
         self,

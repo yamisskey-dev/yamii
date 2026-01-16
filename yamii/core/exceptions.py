@@ -3,14 +3,20 @@
 階層的な例外処理によるエラーハンドリングの統一
 """
 
+from __future__ import annotations
+
 from typing import Any
 
 
 class YamiiException(Exception):
     """Yamiiアプリケーションのベース例外クラス"""
 
-    def __init__(self, message: str, error_code: str | None = None,
-                 details: dict[str, Any] | None = None):
+    def __init__(
+        self,
+        message: str,
+        error_code: str | None = None,
+        details: dict[str, Any] | None = None,
+    ):
         super().__init__(message)
         self.message = message
         self.error_code = error_code or self.__class__.__name__
@@ -32,13 +38,14 @@ class AuthenticationError(YamiiException):
 class ValidationError(YamiiException):
     """バリデーションエラー"""
 
-    def __init__(self, message: str, field: str | None = None,
-                 value: Any | None = None, **kwargs):
+    def __init__(
+        self, message: str, field: str | None = None, value: Any | None = None, **kwargs
+    ):
         super().__init__(message, **kwargs)
         if field:
-            self.details['field'] = field
+            self.details["field"] = field
         if value is not None:
-            self.details['value'] = value
+            self.details["value"] = value
 
 
 class BusinessLogicError(YamiiException):
@@ -48,12 +55,17 @@ class BusinessLogicError(YamiiException):
 class ExternalServiceError(YamiiException):
     """外部サービス（Gemini APIなど）関連のエラー"""
 
-    def __init__(self, message: str, service_name: str = "unknown",
-                 status_code: int | None = None, **kwargs):
+    def __init__(
+        self,
+        message: str,
+        service_name: str = "unknown",
+        status_code: int | None = None,
+        **kwargs,
+    ):
         super().__init__(message, **kwargs)
-        self.details['service_name'] = service_name
+        self.details["service_name"] = service_name
         if status_code:
-            self.details['status_code'] = status_code
+            self.details["status_code"] = status_code
 
 
 class PromptError(BusinessLogicError):
@@ -71,10 +83,15 @@ class MemoryError(BusinessLogicError):
 class CounselingError(BusinessLogicError):
     """カウンセリング処理関連のエラー"""
 
-    def __init__(self, message: str, user_id: str | None = None,
-                 session_id: str | None = None, **kwargs):
+    def __init__(
+        self,
+        message: str,
+        user_id: str | None = None,
+        session_id: str | None = None,
+        **kwargs,
+    ):
         super().__init__(message, **kwargs)
         if user_id:
-            self.details['user_id'] = user_id
+            self.details["user_id"] = user_id
         if session_id:
-            self.details['session_id'] = session_id
+            self.details["session_id"] = session_id

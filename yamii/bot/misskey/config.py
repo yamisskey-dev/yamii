@@ -52,7 +52,7 @@ class YamiiMisskeyBotConfig:
         if self.crisis_hotlines is None:
             self.crisis_hotlines = [
                 "いのちの電話: 0570-783-556",
-                "こころの健康相談統一ダイヤル: 0570-064-556"
+                "こころの健康相談統一ダイヤル: 0570-064-556",
             ]
 
         # Misskey固有の検証
@@ -75,7 +75,9 @@ def load_config() -> YamiiMisskeyBotConfig:
     # Misskeyボット有効化チェック
     enable_bot = os.getenv("ENABLE_MISSKEY_BOT", "false").lower() == "true"
     if not enable_bot:
-        raise ValueError("ENABLE_MISSKEY_BOT is set to false. Set it to true to enable the Misskey bot.")
+        raise ValueError(
+            "ENABLE_MISSKEY_BOT is set to false. Set it to true to enable the Misskey bot."
+        )
 
     # 必須環境変数のチェック
     misskey_instance_url = os.getenv("MISSKEY_INSTANCE_URL")
@@ -83,14 +85,20 @@ def load_config() -> YamiiMisskeyBotConfig:
     misskey_bot_user_id = os.getenv("MISSKEY_BOT_USER_ID")
 
     if not misskey_instance_url:
-        raise ValueError("MISSKEY_INSTANCE_URL environment variable is required when ENABLE_MISSKEY_BOT=true")
+        raise ValueError(
+            "MISSKEY_INSTANCE_URL environment variable is required when ENABLE_MISSKEY_BOT=true"
+        )
     if not misskey_access_token:
-        raise ValueError("MISSKEY_ACCESS_TOKEN environment variable is required when ENABLE_MISSKEY_BOT=true")
+        raise ValueError(
+            "MISSKEY_ACCESS_TOKEN environment variable is required when ENABLE_MISSKEY_BOT=true"
+        )
     if not misskey_bot_user_id:
-        raise ValueError("MISSKEY_BOT_USER_ID environment variable is required when ENABLE_MISSKEY_BOT=true")
+        raise ValueError(
+            "MISSKEY_BOT_USER_ID environment variable is required when ENABLE_MISSKEY_BOT=true"
+        )
 
     # URLの正規化
-    if not misskey_instance_url.startswith(('http://', 'https://')):
+    if not misskey_instance_url.startswith(("http://", "https://")):
         misskey_instance_url = f"https://{misskey_instance_url}"
 
     # カスタム緊急時相談窓口の読み込み
@@ -111,12 +119,12 @@ def load_config() -> YamiiMisskeyBotConfig:
         enable_dm=os.getenv("BOT_ENABLE_DM", "true").lower() == "true",
         enable_mentions=os.getenv("BOT_ENABLE_MENTIONS", "true").lower() == "true",
         enable_timeline=os.getenv("BOT_ENABLE_TIMELINE", "false").lower() == "true",
-        enable_global_timeline=os.getenv("BOT_ENABLE_GLOBAL_TIMELINE", "false").lower() == "true",
-
+        enable_global_timeline=os.getenv("BOT_ENABLE_GLOBAL_TIMELINE", "false").lower()
+        == "true",
         # プロアクティブアウトリーチ設定
-        enable_proactive_outreach=os.getenv("BOT_ENABLE_PROACTIVE", "true").lower() == "true",
+        enable_proactive_outreach=os.getenv("BOT_ENABLE_PROACTIVE", "true").lower()
+        == "true",
         proactive_check_interval=int(os.getenv("BOT_PROACTIVE_INTERVAL", "3600")),
-
         # Misskey固有設定
         misskey_instance_url=misskey_instance_url,
         misskey_access_token=misskey_access_token,

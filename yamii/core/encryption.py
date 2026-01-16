@@ -4,11 +4,14 @@ E2EE（End-to-End Encryption）暗号化システム
 PyNaClとcryptographyを活用したゼロナレッジアーキテクチャ
 """
 
+from __future__ import annotations
+
 import base64
 import json
 import logging
 import os
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any
 
 import nacl.secret
@@ -21,6 +24,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class EncryptedData:
     """暗号化されたデータの構造"""
+
     ciphertext: bytes
     nonce: bytes
     metadata: dict[str, Any]
@@ -28,18 +32,18 @@ class EncryptedData:
     def to_dict(self) -> dict[str, Any]:
         """辞書形式に変換（データベース保存用）"""
         return {
-            'ciphertext': base64.b64encode(self.ciphertext).decode('utf-8'),
-            'nonce': base64.b64encode(self.nonce).decode('utf-8'),
-            'metadata': self.metadata
+            "ciphertext": base64.b64encode(self.ciphertext).decode("utf-8"),
+            "nonce": base64.b64encode(self.nonce).decode("utf-8"),
+            "metadata": self.metadata,
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> 'EncryptedData':
+    def from_dict(cls, data: dict[str, Any]) -> EncryptedData:
         """辞書から復元"""
         return cls(
-            ciphertext=base64.b64decode(data['ciphertext']),
-            nonce=base64.b64decode(data['nonce']),
-            metadata=data['metadata']
+            ciphertext=base64.b64decode(data["ciphertext"]),
+            nonce=base64.b64decode(data["nonce"]),
+            metadata=data["metadata"],
         )
 
 
@@ -72,7 +76,7 @@ class E2EECrypto:
             # バイト形式で返す
             return (
                 public_key.encode(),  # 公開鍵 (32 bytes)
-                private_key.encode()  # 秘密鍵 (32 bytes)
+                private_key.encode(),  # 秘密鍵 (32 bytes)
             )
 
         except Exception as e:
@@ -101,7 +105,7 @@ class E2EECrypto:
             box = Box(sender_private_key, recipient_public_key)
 
             # プレインテキストをUTF-8でエンコード
-            plaintext_bytes = plaintext.encode('utf-8')
+            plaintext_bytes = plaintext.encode("utf-8")
 
             # 暗号化（nonceは自動生成される）
             encrypted = box.encrypt(plaintext_bytes)
@@ -112,17 +116,15 @@ class E2EECrypto:
 
             # メタデータ
             metadata = {
-                'sender_public_key': base64.b64encode(sender_private_key.public_key.encode()).decode('utf-8'),
-                'algorithm': 'nacl.Box',
-                'version': '1.0',
-                'timestamp': str(int(os.urandom(4).hex(), 16))  # タイムスタンプ的な値
+                "sender_public_key": base64.b64encode(
+                    sender_private_key.public_key.encode()
+                ).decode("utf-8"),
+                "algorithm": "nacl.Box",
+                "version": "1.0",
+                "timestamp": datetime.now().isoformat(),
             }
 
-            return EncryptedData(
-                ciphertext=ciphertext,
-                nonce=nonce,
-                metadata=metadata
-            )
+            return EncryptedData(ciphertext=ciphertext, nonce=nonce, metadata=metadata)
 
         except Exception as e:
             self.logger.error(f"暗号化エラー: {e}")
@@ -145,7 +147,7 @@ class E2EECrypto:
 
             # 送信者の公開鍵を取得
             sender_public_key_bytes = base64.b64decode(
-                encrypted_data.metadata['sender_public_key']
+                encrypted_data.metadata["sender_public_key"]
             )
             sender_public_key = PublicKey(sender_public_key_bytes)
 
@@ -154,6 +156,7 @@ class E2EECrypto:
 
             # 暗号化データを復元
             from nacl.utils import EncryptedMessage
+
             # PyNaClのEncryptedMessageは nonce + ciphertext の順序
             encrypted_message = EncryptedMessage(
                 encrypted_data.nonce + encrypted_data.ciphertext
@@ -163,7 +166,7 @@ class E2EECrypto:
             decrypted_bytes = box.decrypt(encrypted_message)
 
             # UTF-8でデコード
-            return decrypted_bytes.decode('utf-8')
+            return decrypted_bytes.decode("utf-8")
 
         except Exception as e:
             self.logger.error(f"復号エラー: {e}")
@@ -194,28 +197,30 @@ class E2EECrypto:
             secret_box = nacl.secret.SecretBox(symmetric_key)
 
             # データをUTF-8でエンコード
-            data_bytes = data.encode('utf-8')
+            data_bytes = data.encode("utf-8")
 
             # 暗号化
             encrypted = secret_box.encrypt(data_bytes)
 
             metadata = {
-                'algorithm': 'nacl.SecretBox',
-                'version': '1.0',
-                'size': len(data_bytes)
+                "algorithm": "nacl.SecretBox",
+                "version": "1.0",
+                "size": len(data_bytes),
             }
 
             return EncryptedData(
                 ciphertext=encrypted.ciphertext,
                 nonce=encrypted.nonce,
-                metadata=metadata
+                metadata=metadata,
             )
 
         except Exception as e:
             self.logger.error(f"対称暗号化エラー: {e}")
             raise
 
-    def decrypt_large_data(self, encrypted_data: EncryptedData, symmetric_key: bytes) -> str:
+    def decrypt_large_data(
+        self, encrypted_data: EncryptedData, symmetric_key: bytes
+    ) -> str:
         """
         対称鍵で暗号化されたデータを復号
 
@@ -232,6 +237,7 @@ class E2EECrypto:
 
             # EncryptedMessageを復元
             from nacl.utils import EncryptedMessage
+
             # PyNaClのEncryptedMessageは nonce + ciphertext の順序
             encrypted_message = EncryptedMessage(
                 encrypted_data.nonce + encrypted_data.ciphertext
@@ -240,7 +246,7 @@ class E2EECrypto:
             # 復号
             decrypted_bytes = secret_box.decrypt(encrypted_message)
 
-            return decrypted_bytes.decode('utf-8')
+            return decrypted_bytes.decode("utf-8")
 
         except Exception as e:
             self.logger.error(f"対称復号エラー: {e}")
@@ -248,7 +254,7 @@ class E2EECrypto:
 
     def key_to_base64(self, key: bytes) -> str:
         """キーをBase64文字列に変換"""
-        return base64.b64encode(key).decode('utf-8')
+        return base64.b64encode(key).decode("utf-8")
 
     def key_from_base64(self, key_str: str) -> bytes:
         """Base64文字列からキーを復元"""
@@ -284,16 +290,16 @@ class KeyManager:
 
             # ローカル保存（実際の実装では安全な場所に保存）
             key_data = {
-                'user_id': user_id,
-                'public_key': public_key_b64,
-                'private_key': private_key_b64,
-                'created_at': str(int(os.urandom(4).hex(), 16))
+                "user_id": user_id,
+                "public_key": public_key_b64,
+                "private_key": private_key_b64,
+                "created_at": datetime.now().isoformat(),
             }
 
             os.makedirs(self.storage_path, exist_ok=True)
             key_file = os.path.join(self.storage_path, f"{user_id}.json")
 
-            with open(key_file, 'w') as f:
+            with open(key_file, "w") as f:
                 json.dump(key_data, f)
 
             logger.info(f"キーペアを生成・保存: {user_id}")
@@ -323,7 +329,7 @@ class KeyManager:
             with open(key_file) as f:
                 key_data = json.load(f)
 
-            return key_data['public_key'], key_data['private_key']
+            return key_data["public_key"], key_data["private_key"]
 
         except Exception as e:
             logger.error(f"キー読み込みエラー: {e}")

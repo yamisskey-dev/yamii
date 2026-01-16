@@ -8,7 +8,6 @@ CounselingService のテスト
 - フェーズ遷移が正しく動作するか
 """
 
-
 import pytest
 
 from yamii.domain.models.emotion import EmotionType

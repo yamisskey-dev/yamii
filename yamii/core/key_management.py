@@ -6,6 +6,8 @@
 - キーローテーション対応
 """
 
+from __future__ import annotations
+
 import base64
 import hashlib
 import os
@@ -21,6 +23,7 @@ from nacl.pwhash import argon2id
 @dataclass
 class DerivedKey:
     """派生されたユーザーキー"""
+
     user_id: str
     key: bytes
     key_id: str  # キー識別子（ローテーション用）
@@ -66,7 +69,7 @@ class SecureKeyManager:
                 raise PermissionError(
                     f"マスターキーファイルのパーミッションが危険です: {oct(mode)}。0o600にしてください。"
                 )
-            with open(self._key_file) as f:
+            with open(self._key_file, encoding="utf-8") as f:
                 return base64.b64decode(f.read().strip())
 
         # 新規生成（32バイト = 256ビット）
@@ -75,7 +78,7 @@ class SecureKeyManager:
         # 安全なファイル書き込み（umaskを一時的に変更）
         old_umask = os.umask(0o077)
         try:
-            with open(self._key_file, "w") as f:
+            with open(self._key_file, "w", encoding="utf-8") as f:
                 f.write(base64.b64encode(new_key).decode("utf-8"))
             os.chmod(self._key_file, 0o600)
         finally:
@@ -152,7 +155,7 @@ class SecureKeyManager:
         # 新しいキーをファイルに保存
         old_umask = os.umask(0o077)
         try:
-            with open(self._key_file, "w") as f:
+            with open(self._key_file, "w", encoding="utf-8") as f:
                 f.write(base64.b64encode(new_key).decode("utf-8"))
             os.chmod(self._key_file, 0o600)
         finally:

@@ -23,5 +23,5 @@ __all__ = [
     "YamiiRequest",
     "YamiiResponse",
     "YamiiMisskeyBot",
-    "setup_logging"
+    "setup_logging",
 ]

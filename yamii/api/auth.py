@@ -6,6 +6,8 @@ API 認証・認可
 - セキュリティミドルウェア
 """
 
+from __future__ import annotations
+
 import time
 from collections import defaultdict
 from collections.abc import Callable
@@ -67,6 +69,7 @@ async def verify_api_key(
 
 # === レート制限 ===
 
+
 class RateLimiter:
     """
     インメモリレート制限
@@ -101,11 +104,11 @@ class RateLimiter:
     def _cleanup_old_requests(self, client_id: str, current_time: float) -> None:
         """古いリクエスト記録を削除"""
         cutoff = current_time - self.window_seconds
-        self._requests[client_id] = [
-            t for t in self._requests[client_id] if t > cutoff
-        ]
+        self._requests[client_id] = [t for t in self._requests[client_id] if t > cutoff]
 
-    def is_allowed(self, request: Request, api_key: str | None = None) -> tuple[bool, dict]:
+    def is_allowed(
+        self, request: Request, api_key: str | None = None
+    ) -> tuple[bool, dict]:
         """
         リクエストが許可されるか確認
 
@@ -209,6 +212,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
 # === セキュリティヘッダーミドルウェア ===
 
+
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """
     セキュリティヘッダーを追加
@@ -232,6 +236,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
 
 # === リクエストログミドルウェア ===
+
 
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
     """
@@ -257,7 +262,9 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         start_time = time.time()
 
         # リクエスト情報
-        request_id = request.headers.get("X-Request-ID", f"req_{int(start_time * 1000)}")
+        request_id = request.headers.get(
+            "X-Request-ID", f"req_{int(start_time * 1000)}"
+        )
         client_ip = self._get_client_ip(request)
 
         # リクエストログ
@@ -270,7 +277,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
                 "path": request.url.path,
                 "client_ip": client_ip,
                 "user_agent": request.headers.get("User-Agent", ""),
-            }
+            },
         )
 
         # リクエスト処理
@@ -304,7 +311,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
                 "path": request.url.path,
                 "status_code": response.status_code,
                 "duration_ms": round(duration_ms, 2),
-            }
+            },
         )
 
         # レスポンスにリクエストIDを追加

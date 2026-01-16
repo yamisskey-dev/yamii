@@ -3,7 +3,6 @@
 Bot APIの差別化機能
 """
 
-
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
@@ -27,6 +26,7 @@ router = APIRouter(
 
 class PendingOutreachUser(BaseModel):
     """アウトリーチ待ちユーザー"""
+
     user_id: str
     message: str
     reason: str
@@ -35,11 +35,14 @@ class PendingOutreachUser(BaseModel):
 
 class PendingOutreachResponse(BaseModel):
     """アウトリーチ待ちユーザーリスト"""
+
     users: list[PendingOutreachUser]
     total: int
 
 
-@router.get("/users/{user_id}/outreach/settings", response_model=ProactiveSettingsResponse)
+@router.get(
+    "/users/{user_id}/outreach/settings", response_model=ProactiveSettingsResponse
+)
 async def get_outreach_settings(
     user_id: str,
     storage: IStorage = Depends(get_storage),
@@ -60,7 +63,9 @@ async def get_outreach_settings(
     )
 
 
-@router.put("/users/{user_id}/outreach/settings", response_model=ProactiveSettingsResponse)
+@router.put(
+    "/users/{user_id}/outreach/settings", response_model=ProactiveSettingsResponse
+)
 async def update_outreach_settings(
     user_id: str,
     request: ProactiveSettingsRequest,
@@ -91,7 +96,9 @@ async def update_outreach_settings(
     )
 
 
-@router.get("/users/{user_id}/outreach/analyze", response_model=OutreachDecisionResponse)
+@router.get(
+    "/users/{user_id}/outreach/analyze", response_model=OutreachDecisionResponse
+)
 async def analyze_outreach(
     user_id: str,
     outreach_service: ProactiveOutreachService = Depends(get_outreach_service),
@@ -167,16 +174,18 @@ async def get_pending_outreach(
         message = decision.message or ""
         user_id = ""
         if message.startswith("[") and "]" in message:
-            user_id = message[1:message.index("]")]
-            message = message[message.index("]") + 2:]  # " ]" の後の空白もスキップ
+            user_id = message[1 : message.index("]")]
+            message = message[message.index("]") + 2 :]  # " ]" の後の空白もスキップ
 
         if user_id:
-            users.append(PendingOutreachUser(
-                user_id=user_id,
-                message=message,
-                reason=decision.reason.value if decision.reason else "unknown",
-                priority=decision.priority,
-            ))
+            users.append(
+                PendingOutreachUser(
+                    user_id=user_id,
+                    message=message,
+                    reason=decision.reason.value if decision.reason else "unknown",
+                    priority=decision.priority,
+                )
+            )
 
     return PendingOutreachResponse(
         users=users,

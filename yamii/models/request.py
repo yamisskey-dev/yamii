@@ -2,6 +2,8 @@
 標準化されたAPIリクエスト形式
 """
 
+from __future__ import annotations
+
 from typing import Any
 
 from pydantic import BaseModel, Field, model_validator
@@ -14,28 +16,18 @@ class CounselingAPIRequestV2(BaseModel):
     カウンセリングAPIリクエスト V2
     型付けされたコンテキストをサポート
     """
+
     message: str = Field(description="相談メッセージ")
     user_id: str = Field(description="ユーザーID")
-    user_name: str | None = Field(
-        default=None,
-        description="ユーザー表示名"
-    )
-    session_id: str | None = Field(
-        default=None,
-        description="セッションID"
-    )
+    user_name: str | None = Field(default=None, description="ユーザー表示名")
+    session_id: str | None = Field(default=None, description="セッションID")
     context: ContextMetadata | None = Field(
-        default=None,
-        description="プラットフォームコンテキスト"
+        default=None, description="プラットフォームコンテキスト"
     )
     custom_prompt_id: str | None = Field(
-        default=None,
-        description="カスタムプロンプトID"
+        default=None, description="カスタムプロンプトID"
     )
-    prompt_id: str | None = Field(
-        default=None,
-        description="プロンプトID"
-    )
+    prompt_id: str | None = Field(default=None, description="プロンプトID")
 
     @model_validator(mode="before")
     @classmethod

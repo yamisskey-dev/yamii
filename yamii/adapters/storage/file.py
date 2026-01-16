@@ -97,9 +97,7 @@ class FileStorageAdapter(IStorage):
         async with self._lock:
             # スレッドプールで書き込み
             loop = asyncio.get_event_loop()
-            await loop.run_in_executor(
-                None, self._write_json_file, temp_file, data
-            )
+            await loop.run_in_executor(None, self._write_json_file, temp_file, data)
             # アトミックに置換
             temp_file.replace(self.data_file)
             self._dirty = False

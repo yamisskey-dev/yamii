@@ -13,16 +13,17 @@ class EmotionType(Enum):
     感情タイプ
     統一された感情分類（複数システムから統合）
     """
-    HAPPINESS = "happiness"       # 喜び・幸福感
-    SADNESS = "sadness"          # 悲しみ・落胆
-    ANXIETY = "anxiety"          # 不安・心配
-    ANGER = "anger"              # 怒り・イライラ
-    LONELINESS = "loneliness"    # 孤独感・寂しさ
-    DEPRESSION = "depression"    # うつ・絶望感（危機指標）
-    STRESS = "stress"            # ストレス・疲労
-    CONFUSION = "confusion"      # 混乱・迷い
-    HOPE = "hope"                # 希望・前向きさ
-    NEUTRAL = "neutral"          # 中性・平常
+
+    HAPPINESS = "happiness"  # 喜び・幸福感
+    SADNESS = "sadness"  # 悲しみ・落胆
+    ANXIETY = "anxiety"  # 不安・心配
+    ANGER = "anger"  # 怒り・イライラ
+    LONELINESS = "loneliness"  # 孤独感・寂しさ
+    DEPRESSION = "depression"  # うつ・絶望感（危機指標）
+    STRESS = "stress"  # ストレス・疲労
+    CONFUSION = "confusion"  # 混乱・迷い
+    HOPE = "hope"  # 希望・前向きさ
+    NEUTRAL = "neutral"  # 中性・平常
 
 
 @dataclass
@@ -31,6 +32,7 @@ class EmotionAnalysis:
     感情分析結果
     単一の分析結果構造（複数システムから統合）
     """
+
     primary_emotion: EmotionType
     intensity: float  # 0.0-1.0（正規化）
     stability: float  # 0.0-1.0（感情の安定性）

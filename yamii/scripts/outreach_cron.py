@@ -15,6 +15,8 @@ Misskey Bot 経由でメッセージを送信する。
     # systemd timer での設定も推奨
 """
 
+from __future__ import annotations
+
 import asyncio
 import sys
 
@@ -42,27 +44,36 @@ class OutreachCronJob:
         Returns:
             int: 送信したメッセージ数
         """
-        logger.info("Starting proactive outreach job", extra={
-            "event_type": "cron_start",
-            "job": "outreach",
-        })
+        logger.info(
+            "Starting proactive outreach job",
+            extra={
+                "event_type": "cron_start",
+                "job": "outreach",
+            },
+        )
 
         try:
             # 1. API からアウトリーチ待ちユーザーを取得
             pending_users = await self._fetch_pending_outreach()
 
             if not pending_users:
-                logger.info("No users need outreach at this time", extra={
-                    "event_type": "cron_complete",
-                    "job": "outreach",
-                    "users_processed": 0,
-                })
+                logger.info(
+                    "No users need outreach at this time",
+                    extra={
+                        "event_type": "cron_complete",
+                        "job": "outreach",
+                        "users_processed": 0,
+                    },
+                )
                 return 0
 
-            logger.info(f"Found {len(pending_users)} users needing outreach", extra={
-                "event_type": "outreach_pending",
-                "count": len(pending_users),
-            })
+            logger.info(
+                f"Found {len(pending_users)} users needing outreach",
+                extra={
+                    "event_type": "outreach_pending",
+                    "count": len(pending_users),
+                },
+            )
 
             # 2. 各ユーザーにメッセージを送信
             sent_count = 0
@@ -71,21 +82,28 @@ class OutreachCronJob:
                 if success:
                     sent_count += 1
 
-            logger.info(f"Outreach job completed: {sent_count}/{len(pending_users)} messages sent", extra={
-                "event_type": "cron_complete",
-                "job": "outreach",
-                "users_processed": len(pending_users),
-                "messages_sent": sent_count,
-            })
+            logger.info(
+                f"Outreach job completed: {sent_count}/{len(pending_users)} messages sent",
+                extra={
+                    "event_type": "cron_complete",
+                    "job": "outreach",
+                    "users_processed": len(pending_users),
+                    "messages_sent": sent_count,
+                },
+            )
 
             return sent_count
 
         except Exception as e:
-            logger.error(f"Outreach job failed: {e}", extra={
-                "event_type": "cron_error",
-                "job": "outreach",
-                "error": str(e),
-            }, exc_info=True)
+            logger.error(
+                f"Outreach job failed: {e}",
+                extra={
+                    "event_type": "cron_error",
+                    "job": "outreach",
+                    "error": str(e),
+                },
+                exc_info=True,
+            )
             return 0
 
     async def _fetch_pending_outreach(self) -> list[dict]:
@@ -100,7 +118,9 @@ class OutreachCronJob:
                         data = await response.json()
                         return data.get("users", [])
                     else:
-                        logger.warning(f"Failed to fetch pending outreach: {response.status}")
+                        logger.warning(
+                            f"Failed to fetch pending outreach: {response.status}"
+                        )
                         return []
             except aiohttp.ClientError as e:
                 logger.error(f"API request failed: {e}")
@@ -121,11 +141,14 @@ class OutreachCronJob:
             logger.warning(f"Invalid user info: {user_info}")
             return False
 
-        logger.info(f"Sending outreach to user {user_id}", extra={
-            "event_type": "outreach_send",
-            "user_id": user_id,
-            "reason": reason,
-        })
+        logger.info(
+            f"Sending outreach to user {user_id}",
+            extra={
+                "event_type": "outreach_send",
+                "user_id": user_id,
+                "reason": reason,
+            },
+        )
 
         # Misskey が設定されている場合は直接送信
         if self.settings.misskey.is_configured:
@@ -151,19 +174,25 @@ class OutreachCronJob:
             async with MisskeyClient(config) as client:
                 await client.send_chat_message(user_id, message)
 
-            logger.info(f"Sent DM to user {user_id}", extra={
-                "event_type": "outreach_sent",
-                "user_id": user_id,
-                "method": "misskey_dm",
-            })
+            logger.info(
+                f"Sent DM to user {user_id}",
+                extra={
+                    "event_type": "outreach_sent",
+                    "user_id": user_id,
+                    "method": "misskey_dm",
+                },
+            )
             return True
 
         except Exception as e:
-            logger.error(f"Failed to send DM: {e}", extra={
-                "event_type": "outreach_failed",
-                "user_id": user_id,
-                "error": str(e),
-            })
+            logger.error(
+                f"Failed to send DM: {e}",
+                extra={
+                    "event_type": "outreach_failed",
+                    "user_id": user_id,
+                    "error": str(e),
+                },
+            )
             return False
 
     async def _trigger_via_api(self, user_id: str, message: str) -> bool:
@@ -177,13 +206,18 @@ class OutreachCronJob:
 
         async with aiohttp.ClientSession() as session:
             try:
-                async with session.post(url, headers=headers, json=data, timeout=30) as response:
+                async with session.post(
+                    url, headers=headers, json=data, timeout=30
+                ) as response:
                     if response.status == 200:
-                        logger.info(f"Triggered outreach for user {user_id}", extra={
-                            "event_type": "outreach_sent",
-                            "user_id": user_id,
-                            "method": "api_trigger",
-                        })
+                        logger.info(
+                            f"Triggered outreach for user {user_id}",
+                            extra={
+                                "event_type": "outreach_sent",
+                                "user_id": user_id,
+                                "method": "api_trigger",
+                            },
+                        )
                         return True
                     else:
                         logger.warning(f"Failed to trigger outreach: {response.status}")
@@ -200,7 +234,10 @@ class OutreachCronJob:
         if self.settings.security.api_keys:
             # 最初のキーを使用（Bot 用キーを使う場合は環境変数で指定）
             import os
-            api_key = os.getenv("YAMII_BOT_API_KEY") or self.settings.security.api_keys[0]
+
+            api_key = (
+                os.getenv("YAMII_BOT_API_KEY") or self.settings.security.api_keys[0]
+            )
             headers[self.settings.security.api_key_header] = api_key
 
         return headers

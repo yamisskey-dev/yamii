@@ -3,6 +3,8 @@ Yamii Domain Layer
 コアビジネスロジックとドメインモデル
 """
 
+from __future__ import annotations
+
 from .models import (
     ConversationContext,
     DepthLevel,

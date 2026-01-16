@@ -27,6 +27,7 @@ router = APIRouter(
 
 class CommandResponse(BaseModel):
     """コマンドレスポンス"""
+
     response: str = Field(..., description="レスポンステキスト")
     command: str = Field(..., description="実行されたコマンド")
     is_command: bool = Field(True, description="コマンドとして処理されたか")
@@ -34,6 +35,7 @@ class CommandResponse(BaseModel):
 
 class MessageRequest(BaseModel):
     """メッセージリクエスト"""
+
     message: str = Field(..., description="メッセージテキスト")
     user_id: str = Field(..., description="ユーザーID")
     platform: str = Field("generic", description="プラットフォーム名")
@@ -42,6 +44,7 @@ class MessageRequest(BaseModel):
 
 class MessageClassification(BaseModel):
     """メッセージ分類結果"""
+
     is_command: bool = Field(..., description="コマンドかどうか")
     command_type: str | None = Field(None, description="コマンドタイプ")
     is_empty: bool = Field(..., description="空メッセージかどうか")
@@ -221,6 +224,7 @@ async def get_empty_response() -> CommandResponse:
 
 class ExportResponse(BaseModel):
     """エクスポートレスポンス"""
+
     response: str = Field(..., description="レスポンスメッセージ")
     command: str = Field("export", description="コマンド名")
     data_summary: dict[str, Any] | None = Field(None, description="データサマリー")
@@ -229,12 +233,14 @@ class ExportResponse(BaseModel):
 
 class SettingsRequest(BaseModel):
     """設定変更リクエスト"""
+
     user_id: str = Field(..., description="ユーザーID")
     action: str = Field("show", description="アクション: show, on, off")
 
 
 class SettingsResponse(BaseModel):
     """設定レスポンス"""
+
     response: str = Field(..., description="レスポンスメッセージ")
     command: str = Field("settings", description="コマンド名")
     current_settings: dict[str, Any] | None = Field(None, description="現在の設定")
@@ -242,12 +248,14 @@ class SettingsResponse(BaseModel):
 
 class ClearDataRequest(BaseModel):
     """データ削除リクエスト"""
+
     user_id: str = Field(..., description="ユーザーID")
     confirm: bool = Field(False, description="削除を確認")
 
 
 class ClearDataResponse(BaseModel):
     """データ削除レスポンス"""
+
     response: str = Field(..., description="レスポンスメッセージ")
     command: str = Field("clear_data", description="コマンド名")
     deleted: bool = Field(False, description="削除されたか")

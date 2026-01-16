@@ -15,6 +15,7 @@ from .config import YamiiMisskeyBotConfig
 @dataclass
 class MisskeyNote:
     """Misskeyノートの構造"""
+
     id: str
     text: str | None
     user_id: str
@@ -31,6 +32,7 @@ class MisskeyNote:
 @dataclass
 class MisskeyUser:
     """Misskeyユーザーの構造"""
+
     id: str
     username: str
     name: str | None
@@ -39,6 +41,7 @@ class MisskeyUser:
 @dataclass
 class MisskeyChatMessage:
     """Misskeyチャットメッセージの構造"""
+
     id: str
     text: str | None
     user_id: str
@@ -77,7 +80,9 @@ class MisskeyClient:
             # 自分のユーザー情報を取得
             user_info = await self.get_my_user_info()
             self.bot_user_id = user_info["id"]
-            self.logger.info(f"Bot initialized: @{user_info['username']} ({user_info['name']})")
+            self.logger.info(
+                f"Bot initialized: @{user_info['username']} ({user_info['name']})"
+            )
 
         except Exception as e:
             self.logger.error(f"Failed to initialize bot: {e}")
@@ -98,7 +103,9 @@ class MisskeyClient:
                     return await response.json()
                 else:
                     error_text = await response.text()
-                    raise Exception(f"API request failed: {response.status} - {error_text}")
+                    raise Exception(
+                        f"API request failed: {response.status} - {error_text}"
+                    )
 
         except aiohttp.ClientError as e:
             self.logger.error(f"HTTP client error: {e}")
@@ -108,13 +115,11 @@ class MisskeyClient:
         """自分のユーザー情報を取得"""
         return await self._api_request("i")
 
-    async def create_note(self, text: str, reply_id: str | None = None,
-                         visibility: str = "home") -> dict:
+    async def create_note(
+        self, text: str, reply_id: str | None = None, visibility: str = "home"
+    ) -> dict:
         """ノートを投稿"""
-        params = {
-            "text": text,
-            "visibility": visibility
-        }
+        params = {"text": text, "visibility": visibility}
 
         if reply_id:
             params["replyId"] = reply_id
@@ -123,10 +128,7 @@ class MisskeyClient:
 
     async def get_mentions(self, limit: int = 10) -> list[MisskeyNote]:
         """メンション通知を取得"""
-        params = {
-            "limit": limit,
-            "includeTypes": ["mention", "reply"]
-        }
+        params = {"limit": limit, "includeTypes": ["mention", "reply"]}
 
         notifications = await self._api_request("i/notifications", params)
 
@@ -147,10 +149,7 @@ class MisskeyClient:
 
     async def send_chat_message(self, user_id: str, text: str) -> dict:
         """チャットメッセージを送信"""
-        params = {
-            "toUserId": user_id,
-            "text": text
-        }
+        params = {"toUserId": user_id, "text": text}
         return await self._api_request("chat/messages/create-to-user", params)
 
     async def read_chat_message(self, message_id: str) -> dict:
@@ -168,7 +167,7 @@ class MisskeyClient:
             user_name=data.get("fromUser", {}).get("name"),
             created_at=datetime.fromisoformat(data["createdAt"].replace("Z", "+00:00")),
             is_read=data.get("isRead", False),
-            file_id=data.get("fileId")
+            file_id=data.get("fileId"),
         )
 
     def _parse_note(self, note_data: dict) -> MisskeyNote:
@@ -177,7 +176,8 @@ class MisskeyClient:
         if note_data.get("text"):
             # @username の形式のメンションを抽出
             import re
-            mentions = re.findall(r'@(\w+)', note_data["text"])
+
+            mentions = re.findall(r"@(\w+)", note_data["text"])
 
         return MisskeyNote(
             id=note_data["id"],
@@ -185,11 +185,13 @@ class MisskeyClient:
             user_id=note_data["user"]["id"],
             user_username=note_data["user"]["username"],
             user_name=note_data["user"].get("name"),
-            created_at=datetime.fromisoformat(note_data["createdAt"].replace("Z", "+00:00")),
+            created_at=datetime.fromisoformat(
+                note_data["createdAt"].replace("Z", "+00:00")
+            ),
             visibility=note_data["visibility"],
             mentions=mentions,
             is_reply=note_data.get("replyId") is not None,
-            reply_id=note_data.get("replyId")
+            reply_id=note_data.get("replyId"),
         )
 
     async def start_streaming(self, on_message_callback):
@@ -210,15 +212,14 @@ class MisskeyClient:
                 channels = [
                     {"channel": "main", "id": "main"},
                     {"channel": "homeTimeline", "id": "homeTimeline"},
-                    {"channel": "messaging", "id": self.bot_user_id}
+                    {"channel": "messaging", "id": self.bot_user_id},
                 ]
                 for ch in channels:
-                    connect_message = {
-                        "type": "connect",
-                        "body": ch
-                    }
+                    connect_message = {"type": "connect", "body": ch}
                     await websocket.send(json.dumps(connect_message))
-                    self.logger.info(f"Sent channel connection request: {ch['channel']}")
+                    self.logger.info(
+                        f"Sent channel connection request: {ch['channel']}"
+                    )
 
                 self.logger.info("Started streaming connection")
 
@@ -226,7 +227,9 @@ class MisskeyClient:
                     self.logger.debug(f"Raw WebSocket message: {message}")
                     try:
                         data = json.loads(message)
-                        self.logger.debug(f"Received WebSocket message: {data.get('type', 'unknown')}")
+                        self.logger.debug(
+                            f"Received WebSocket message: {data.get('type', 'unknown')}"
+                        )
                         await on_message_callback(data)
                     except json.JSONDecodeError as e:
                         self.logger.error(f"Failed to parse websocket message: {e}")
@@ -270,6 +273,9 @@ class MisskeyClient:
 
         # @ボット名を除去
         import re
-        text = re.sub(rf'@{re.escape(self.config.bot_name)}\s*', '', text, flags=re.IGNORECASE)
+
+        text = re.sub(
+            rf"@{re.escape(self.config.bot_name)}\s*", "", text, flags=re.IGNORECASE
+        )
 
         return text.strip()

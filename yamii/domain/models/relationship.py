@@ -14,30 +14,34 @@ class RelationshipPhase(Enum):
     関係性フェーズ
     対話回数に応じて段階的に深まる関係性
     """
-    STRANGER = "stranger"           # 初対面 (0-5回)
-    ACQUAINTANCE = "acquaintance"   # 顔見知り (6-20回)
-    FAMILIAR = "familiar"           # 親しい関係 (21-50回)
-    TRUSTED = "trusted"             # 信頼関係 (51回以上)
+
+    STRANGER = "stranger"  # 初対面 (0-5回)
+    ACQUAINTANCE = "acquaintance"  # 顔見知り (6-20回)
+    FAMILIAR = "familiar"  # 親しい関係 (21-50回)
+    TRUSTED = "trusted"  # 信頼関係 (51回以上)
 
 
 class ToneLevel(Enum):
     """応答トーン"""
-    WARM = "warm"                   # 温かみのある
-    PROFESSIONAL = "professional"   # 専門的
-    CASUAL = "casual"               # カジュアル
-    BALANCED = "balanced"           # バランス型
+
+    WARM = "warm"  # 温かみのある
+    PROFESSIONAL = "professional"  # 専門的
+    CASUAL = "casual"  # カジュアル
+    BALANCED = "balanced"  # バランス型
 
 
 class DepthLevel(Enum):
     """応答の深さ"""
-    SHALLOW = "shallow"             # 浅い（短い応答）
-    MEDIUM = "medium"               # 中程度
-    DEEP = "deep"                   # 深い（詳細な応答）
+
+    SHALLOW = "shallow"  # 浅い（短い応答）
+    MEDIUM = "medium"  # 中程度
+    DEEP = "deep"  # 深い（詳細な応答）
 
 
 @dataclass
 class PhaseTransition:
     """フェーズ遷移記録"""
+
     from_phase: RelationshipPhase
     to_phase: RelationshipPhase
     transitioned_at: datetime
@@ -67,8 +71,9 @@ class PhaseTransition:
 @dataclass
 class TopicAffinity:
     """トピック関心度"""
+
     topic: str
-    affinity_score: float = 0.0       # 関心度 (0.0-1.0)
+    affinity_score: float = 0.0  # 関心度 (0.0-1.0)
     mention_count: int = 0
     last_mentioned: datetime | None = None
 
@@ -77,7 +82,9 @@ class TopicAffinity:
             "topic": self.topic,
             "affinity_score": self.affinity_score,
             "mention_count": self.mention_count,
-            "last_mentioned": self.last_mentioned.isoformat() if self.last_mentioned else None,
+            "last_mentioned": self.last_mentioned.isoformat()
+            if self.last_mentioned
+            else None,
         }
 
     @classmethod
