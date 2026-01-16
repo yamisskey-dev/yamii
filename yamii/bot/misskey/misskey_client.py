@@ -167,9 +167,10 @@ class MisskeyClient:
             async with websockets.connect(ws_url) as websocket:
                 self.logger.info("WebSocket connection established")
 
-                # mainとmessagingチャンネルのみ購読
+                # main（通知）、homeTimeline（タイムライン）、messaging（DM）を購読
                 channels = [
                     {"channel": "main", "id": "main"},
+                    {"channel": "homeTimeline", "id": "homeTimeline"},
                     {"channel": "messaging", "id": self.bot_user_id}
                 ]
                 for ch in channels:

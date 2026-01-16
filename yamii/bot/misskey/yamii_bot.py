@@ -66,10 +66,32 @@ class YamiiMisskeyBot:
     async def _on_streaming_message(self, data: dict):
         """ストリーミングメッセージを処理"""
         try:
-            if data.get("type") == "channel" and data.get("body", {}).get("type") == "note":
-                note_data = data["body"]["body"]
+            if data.get("type") != "channel":
+                return
+
+            body = data.get("body", {})
+            body_type = body.get("type")
+
+            # タイムラインからのノート
+            if body_type == "note":
+                note_data = body["body"]
                 note = self.misskey_client._parse_note(note_data)
                 await self._handle_note(note)
+
+            # メンション通知
+            elif body_type == "mention":
+                note_data = body["body"]
+                note = self.misskey_client._parse_note(note_data)
+                await self._handle_note(note)
+
+            # 通知（リプライなど）
+            elif body_type == "notification":
+                notification = body["body"]
+                if notification.get("type") in ["mention", "reply"] and "note" in notification:
+                    note_data = notification["note"]
+                    note = self.misskey_client._parse_note(note_data)
+                    await self._handle_note(note)
+
         except Exception as e:
             self.logger.error(f"Error handling message: {e}")
 
