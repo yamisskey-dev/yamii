@@ -15,25 +15,6 @@ from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class DatabaseSettings(BaseSettings):
-    """データベース設定"""
-
-    model_config = SettingsConfigDict(env_prefix="DB_")
-
-    host: str = Field(default="localhost", description="データベースホスト")
-    port: int = Field(default=5432, description="データベースポート")
-    name: str = Field(default="yamii", description="データベース名")
-    user: str = Field(default="yamii", description="データベースユーザー")
-    password: str = Field(default="", description="データベースパスワード")
-
-    @property
-    def url(self) -> str:
-        """PostgreSQL接続URL"""
-        if self.password:
-            return f"postgresql://{self.user}:{self.password}@{self.host}:{self.port}/{self.name}"
-        return f"postgresql://{self.user}@{self.host}:{self.port}/{self.name}"
-
-
 class AISettings(BaseSettings):
     """AI プロバイダー設定"""
 
@@ -44,9 +25,6 @@ class AISettings(BaseSettings):
     )
     openai_model: str = Field(
         default="gpt-4.1", alias="OPENAI_MODEL", description="OpenAI モデル"
-    )
-    gemini_api_key: str = Field(
-        default="", alias="GEMINI_API_KEY", description="Gemini API キー"
     )
 
     @field_validator("openai_api_key")
@@ -135,7 +113,6 @@ class YamiiSettings(BaseSettings):
     )
 
     # サブ設定
-    database: DatabaseSettings = Field(default_factory=DatabaseSettings)
     ai: AISettings = Field(default_factory=AISettings)
     misskey: MisskeySettings = Field(default_factory=MisskeySettings)
     security: SecuritySettings = Field(default_factory=SecuritySettings)
@@ -152,7 +129,6 @@ class YamiiSettings(BaseSettings):
     def load(cls) -> YamiiSettings:
         """設定をロード（サブ設定も含む）"""
         return cls(
-            database=DatabaseSettings(),
             ai=AISettings(),
             misskey=MisskeySettings(),
             security=SecuritySettings(),
