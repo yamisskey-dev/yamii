@@ -14,10 +14,15 @@ from typing import Optional, Dict, Any, List
 from datetime import datetime
 
 from ..dependencies import get_storage
+from ..auth import verify_api_key
 from ...domain.ports.storage_port import IStorage
 
 
-router = APIRouter(prefix="/v1/commands", tags=["commands"])
+router = APIRouter(
+    prefix="/v1/commands",
+    tags=["commands"],
+    dependencies=[Depends(verify_api_key)],
+)
 
 
 class CommandResponse(BaseModel):

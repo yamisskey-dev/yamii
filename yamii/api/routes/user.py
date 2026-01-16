@@ -14,9 +14,14 @@ from ..schemas import (
     EpisodeListResponse,
 )
 from ..dependencies import get_storage
+from ..auth import verify_api_key
 from ...domain.ports.storage_port import IStorage
 
-router = APIRouter(prefix="/v1/users", tags=["users"])
+router = APIRouter(
+    prefix="/v1/users",
+    tags=["users"],
+    dependencies=[Depends(verify_api_key)],
+)
 
 
 @router.get("/{user_id}", response_model=UserSummaryResponse)

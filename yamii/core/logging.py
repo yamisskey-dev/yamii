@@ -6,11 +6,22 @@
 import logging
 import json
 import sys
+import os
 from datetime import datetime
 from typing import Dict, Any, Optional
 from pathlib import Path
 
 from .exceptions import YamiiException
+
+
+def _get_log_level() -> str:
+    """環境変数からログレベルを取得"""
+    return os.getenv("YAMII_LOG_LEVEL", "INFO").upper()
+
+
+def _is_debug_mode() -> bool:
+    """デバッグモードかどうか"""
+    return os.getenv("YAMII_DEBUG", "false").lower() == "true"
 
 
 class StructuredFormatter(logging.Formatter):
@@ -68,14 +79,17 @@ class YamiiLogger:
     _configured = False
     
     @classmethod
-    def configure(cls, log_level: str = "INFO", log_file: Optional[str] = None):
+    def configure(cls, log_level: Optional[str] = None, log_file: Optional[str] = None):
         """ログシステムを設定"""
         if cls._configured:
             return
-        
+
+        # 環境変数からログレベルを取得（引数が優先）
+        actual_log_level = log_level or _get_log_level()
+
         # ルートロガーの設定
         root_logger = logging.getLogger("yamii")
-        root_logger.setLevel(getattr(logging, log_level.upper()))
+        root_logger.setLevel(getattr(logging, actual_log_level.upper()))
         
         # コンソールハンドラー
         console_handler = logging.StreamHandler(sys.stdout)

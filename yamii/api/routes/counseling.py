@@ -12,12 +12,17 @@ from ..schemas import (
     EmotionAnalysisResponse,
 )
 from ..dependencies import get_counseling_service
+from ..auth import verify_api_key
 from ...domain.services.counseling import (
     CounselingService,
     CounselingRequest as DomainRequest,
 )
 
-router = APIRouter(prefix="/v1/counseling", tags=["counseling"])
+router = APIRouter(
+    prefix="/v1/counseling",
+    tags=["counseling"],
+    dependencies=[Depends(verify_api_key)],
+)
 
 # 危機対応リソース（日本）
 CRISIS_RESOURCES = [

@@ -14,10 +14,15 @@ from ..schemas import (
     TriggerOutreachRequest,
 )
 from ..dependencies import get_storage, get_outreach_service
+from ..auth import verify_api_key
 from ...domain.ports.storage_port import IStorage
 from ...domain.services.outreach import ProactiveOutreachService
 
-router = APIRouter(prefix="/v1", tags=["outreach"])
+router = APIRouter(
+    prefix="/v1",
+    tags=["outreach"],
+    dependencies=[Depends(verify_api_key)],
+)
 
 
 class PendingOutreachUser(BaseModel):

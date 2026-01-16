@@ -3,7 +3,7 @@ Yamii API - メインアプリケーション
 簡素化されたFastAPI アプリケーション
 """
 
-import os
+import logging
 from datetime import datetime
 from contextlib import asynccontextmanager
 
@@ -15,7 +15,13 @@ from starlette.requests import Request
 from .routes import counseling_router, user_router, outreach_router, commands_router
 from .schemas import HealthResponse, APIInfoResponse
 from .dependencies import get_storage, get_ai_provider
+from .auth import RateLimitMiddleware, SecurityHeadersMiddleware, RequestLoggingMiddleware
+from ..core.config import get_settings
+from ..core.logging import YamiiLogger, get_logger
 
+# ログシステムを初期化
+YamiiLogger.configure()
+logger = get_logger("api.main")
 
 # バージョン
 API_VERSION = "2.0.0"
@@ -33,11 +39,21 @@ class APIVersionMiddleware(BaseHTTPMiddleware):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """アプリケーションライフサイクル"""
+    settings = get_settings()
+
     # 起動時
-    print(f"Yamii API v{API_VERSION} starting...")
+    logger.info(f"Yamii API v{API_VERSION} starting...")
+    logger.info(f"Debug mode: {settings.debug}")
+    logger.info(f"Encryption enabled: {settings.security.encryption_enabled}")
+    logger.info(f"Rate limiting: {settings.security.rate_limit_enabled}")
+    logger.info(f"API keys configured: {len(settings.security.api_keys)} key(s)")
+
+    if not settings.security.api_keys:
+        logger.warning("No API keys configured - running in development mode (no auth)")
+
     yield
     # 終了時
-    print("Yamii API shutting down...")
+    logger.info("Yamii API shutting down...")
 
 
 def create_app() -> FastAPI:
@@ -55,8 +71,8 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    # ミドルウェア
-    application.add_middleware(APIVersionMiddleware)
+    # ミドルウェア（実行順序: 下から上）
+    # 1. CORS
     application.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
@@ -64,6 +80,14 @@ def create_app() -> FastAPI:
         allow_methods=["GET", "POST", "PUT", "DELETE"],
         allow_headers=["*"],
     )
+    # 2. セキュリティヘッダー
+    application.add_middleware(SecurityHeadersMiddleware)
+    # 3. レート制限
+    application.add_middleware(RateLimitMiddleware)
+    # 4. リクエストログ
+    application.add_middleware(RequestLoggingMiddleware)
+    # 5. API バージョン
+    application.add_middleware(APIVersionMiddleware)
 
     # ルーター登録
     application.include_router(counseling_router)
