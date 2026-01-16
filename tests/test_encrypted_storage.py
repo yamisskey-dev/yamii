@@ -93,6 +93,7 @@ class TestEncryptedFileStorageAdapter:
     async def test_data_is_encrypted_in_file(self, storage, sample_user, temp_dir):
         """ファイル内のデータが暗号化されていることを確認"""
         await storage.save_user(sample_user)
+        await storage.flush()  # 遅延書き込みを強制実行
 
         # ファイルを直接読み込み
         data_file = Path(temp_dir) / "users.enc.json"
@@ -165,6 +166,7 @@ class TestEncryptedFileStorageAdapter:
             key_manager=key_manager1,
         )
         await storage1.save_user(sample_user)
+        await storage1.flush()  # 遅延書き込みを強制実行
 
         # 新しいインスタンスで読み込み（同じマスターキー）
         key_manager2 = SecureKeyManager(master_key=master_key, key_file=key_file)

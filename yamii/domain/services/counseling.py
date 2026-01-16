@@ -249,38 +249,23 @@ class CounselingService:
         パーソナライズされたシステムプロンプトを構築
 
         メンタルファースト: ユーザーの好みと状態に合わせる
+        最適化: リスト結合で空セクションを除外
         """
-        # 基本プロンプト
-        base_prompt = self._get_base_prompt(user)
+        # 各セクションを収集（空文字列は除外）
+        sections = [
+            self._get_base_prompt(user),
+            self._get_phase_specific_instruction(user),
+            self._get_personalization_instruction(user),
+            self._get_context_info(user, emotion_analysis, advice_type),
+            self._get_episode_context(user),
+        ]
 
-        # フェーズ固有の指示
-        phase_instruction = self._get_phase_specific_instruction(user)
-
-        # パーソナライゼーション指示
-        personalization = self._get_personalization_instruction(user)
-
-        # コンテキスト情報
-        context_info = self._get_context_info(user, emotion_analysis, advice_type)
-
-        # 危機対応（最優先）
-        crisis_instruction = ""
+        # 危機対応（最優先で末尾に追加）
         if emotion_analysis.is_crisis:
-            crisis_instruction = self._get_crisis_instruction(user)
+            sections.append(self._get_crisis_instruction(user))
 
-        # 最近のエピソードコンテキスト
-        episode_context = self._get_episode_context(user)
-
-        return f"""{base_prompt}
-
-{phase_instruction}
-
-{personalization}
-
-{context_info}
-
-{episode_context}
-
-{crisis_instruction}"""
+        # 空文字列を除外して結合
+        return "\n\n".join(s for s in sections if s)
 
     def _get_base_prompt(self, user: UserState) -> str:
         """ユーザーの好みに合わせた基本プロンプト"""

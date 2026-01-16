@@ -6,12 +6,32 @@ Yamii Misskey Bot
 
 import asyncio
 import logging
-from typing import Dict, Set, Optional
+from collections import OrderedDict
+from typing import Dict, Optional
 from datetime import datetime
 
 from .config import YamiiMisskeyBotConfig, load_config
 from .misskey_client import MisskeyClient, MisskeyNote, MisskeyChatMessage
 from .yamii_client import YamiiClient, YamiiRequest
+
+
+class LRUSet:
+    """最大サイズ付きLRUセット（重複チェック用）"""
+
+    def __init__(self, maxsize: int = 1000):
+        self.maxsize = maxsize
+        self._cache: OrderedDict[str, None] = OrderedDict()
+
+    def add(self, item: str) -> None:
+        if item in self._cache:
+            self._cache.move_to_end(item)
+        else:
+            self._cache[item] = None
+            if len(self._cache) > self.maxsize:
+                self._cache.popitem(last=False)
+
+    def __contains__(self, item: str) -> bool:
+        return item in self._cache
 
 
 class YamiiMisskeyBot:
@@ -39,9 +59,9 @@ class YamiiMisskeyBot:
         # ユーザーセッション（user_id -> session_id）
         self.user_sessions: Dict[str, str] = {}
 
-        # 処理済みメッセージ管理（重複処理防止）
-        self.processed_notes: Set[str] = set()
-        self.processed_chat_messages: Set[str] = set()
+        # 処理済みメッセージ管理（重複処理防止、LRUで自動クリーンアップ）
+        self.processed_notes = LRUSet(maxsize=1000)
+        self.processed_chat_messages = LRUSet(maxsize=1000)
 
         # プロアクティブアウトリーチタスク
         self._outreach_task: Optional[asyncio.Task] = None
@@ -126,14 +146,10 @@ class YamiiMisskeyBot:
 
     async def _handle_note(self, note: MisskeyNote):
         """ノートを処理"""
-        # 重複チェック
+        # 重複チェック（LRUSetで自動クリーンアップ）
         if note.id in self.processed_notes:
             return
         self.processed_notes.add(note.id)
-
-        # メモリリーク防止
-        if len(self.processed_notes) > 1000:
-            self.processed_notes = set(list(self.processed_notes)[-500:])
 
         # 自分の投稿はスキップ
         if note.user_id == self.misskey_client.bot_user_id:
@@ -227,14 +243,10 @@ class YamiiMisskeyBot:
         if not message_id:
             return
 
-        # 重複チェック
+        # 重複チェック（LRUSetで自動クリーンアップ）
         if message_id in self.processed_chat_messages:
             return
         self.processed_chat_messages.add(message_id)
-
-        # メモリリーク防止
-        if len(self.processed_chat_messages) > 1000:
-            self.processed_chat_messages = set(list(self.processed_chat_messages)[-500:])
 
         # 自分のメッセージはスキップ
         from_user_id = chat_data.get("fromUserId")

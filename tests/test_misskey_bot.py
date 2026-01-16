@@ -69,7 +69,9 @@ class TestYamiiMisskeyBot:
 
         assert bot.config == mock_config
         assert isinstance(bot.user_sessions, dict)
-        assert isinstance(bot.processed_notes, set)
+        # processed_notesはLRUSetでset-likeなインターフェースを持つ
+        assert hasattr(bot.processed_notes, 'add')
+        assert hasattr(bot.processed_notes, '__contains__')
 
     @pytest.mark.asyncio
     async def test_handle_mention(self, mock_config, sample_note, sample_yamii_response):

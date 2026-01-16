@@ -450,20 +450,88 @@ class ProactiveOutreachService:
         """
         チェックインが必要なすべてのユーザーを取得
 
+        最適化: バッチ読み込みでN+1問題を回避
+
         Returns:
             List[OutreachDecision]: チェックインが必要なユーザーのリスト
         """
-        all_users = await self.storage.list_users()
-        decisions = []
+        all_user_ids = await self.storage.list_users()
 
-        for user_id in all_users:
-            decision = await self.analyze_user_patterns(user_id)
+        # バッチ読み込み（load_usersがあれば使用、なければフォールバック）
+        if hasattr(self.storage, 'load_users'):
+            users = await self.storage.load_users(all_user_ids)
+        else:
+            # フォールバック: 個別読み込み
+            users = {}
+            for user_id in all_user_ids:
+                user = await self.storage.load_user(user_id)
+                if user:
+                    users[user_id] = user
+
+        decisions = []
+        for user_id, user in users.items():
+            decision = self._analyze_user_patterns_sync(user_id, user)
             if decision.should_reach_out:
                 decisions.append(decision)
 
         # 優先度順にソート
         decisions.sort(key=lambda d: d.priority, reverse=True)
         return decisions
+
+    def _analyze_user_patterns_sync(self, user_id: str, user: "UserState") -> OutreachDecision:
+        """
+        ユーザーパターンを同期的に分析（バッチ処理用）
+
+        Args:
+            user_id: ユーザーID
+            user: ユーザー状態（既に読み込み済み）
+
+        Returns:
+            OutreachDecision: チェックイン判断結果
+        """
+        # プロアクティブが無効なら何もしない
+        if not user.proactive.enabled:
+            return OutreachDecision(should_reach_out=False, user_id=user_id)
+
+        # 各種チェックを優先度順に実行
+        decisions = []
+
+        # 0. 危機後フォローアップ（最優先）
+        crisis_decision = self._check_crisis_follow_up(user)
+        if crisis_decision.should_reach_out:
+            decisions.append(crisis_decision)
+
+        # 1. センチメント悪化チェック（危機予防）
+        if user.proactive.sentiment_check_enabled:
+            sentiment_decision = self._check_sentiment_decline(user)
+            if sentiment_decision.should_reach_out:
+                decisions.append(sentiment_decision)
+
+        # 2. 不在チェック
+        if user.proactive.absence_check_enabled:
+            absence_decision = self._check_absence(user)
+            if absence_decision.should_reach_out:
+                decisions.append(absence_decision)
+
+        # 3. フォローアップチェック
+        if user.proactive.follow_up_enabled:
+            follow_up_decision = self._check_follow_up(user)
+            if follow_up_decision.should_reach_out:
+                decisions.append(follow_up_decision)
+
+        # 4. マイルストーンチェック
+        milestone_decision = self._check_milestone(user)
+        if milestone_decision.should_reach_out:
+            decisions.append(milestone_decision)
+
+        # 最も優先度の高い判断を返す
+        if decisions:
+            decisions.sort(key=lambda d: d.priority, reverse=True)
+            best = decisions[0]
+            best.user_id = user_id
+            return best
+
+        return OutreachDecision(should_reach_out=False, user_id=user_id)
 
     async def execute_outreach(
         self,
