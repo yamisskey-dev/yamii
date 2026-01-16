@@ -5,35 +5,15 @@ API Dependencies
 
 from __future__ import annotations
 
-import os
-from functools import lru_cache
-
 from ..adapters.ai.openai import OpenAIAdapterWithFallback
 from ..adapters.storage.encrypted_file import EncryptedFileStorageAdapter
 from ..adapters.storage.file import FileStorageAdapter
+from ..core.config import get_settings
 from ..domain.ports.ai_port import IAIProvider
 from ..domain.ports.storage_port import IStorage
 from ..domain.services.counseling import CounselingService
 from ..domain.services.emotion import EmotionService
 from ..domain.services.outreach import ProactiveOutreachService
-
-# === 設定 ===
-
-
-@lru_cache
-def get_openai_api_key() -> str:
-    """OpenAI API キーを取得"""
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        raise ValueError("OPENAI_API_KEY environment variable is required")
-    return api_key
-
-
-@lru_cache
-def get_data_dir() -> str:
-    """データディレクトリを取得"""
-    return os.getenv("YAMII_DATA_DIR", "data")
-
 
 # === シングルトンインスタンス ===
 
@@ -47,23 +27,18 @@ _outreach_service: ProactiveOutreachService | None = None
 # === 依存性取得関数 ===
 
 
-@lru_cache
-def is_encryption_enabled() -> bool:
-    """暗号化が有効かどうか"""
-    return os.getenv("YAMII_ENCRYPTION_ENABLED", "false").lower() == "true"
-
-
 def get_storage() -> IStorage:
     """ストレージを取得
 
-    環境変数 YAMII_ENCRYPTION_ENABLED=true で暗号化ストレージを使用
+    設定で暗号化が有効ならEncryptedFileStorageAdapterを使用
     """
     global _storage
     if _storage is None:
-        if is_encryption_enabled():
-            _storage = EncryptedFileStorageAdapter(data_dir=get_data_dir())
+        settings = get_settings()
+        if settings.security.encryption_enabled:
+            _storage = EncryptedFileStorageAdapter(data_dir=settings.data_dir)
         else:
-            _storage = FileStorageAdapter(data_dir=get_data_dir())
+            _storage = FileStorageAdapter(data_dir=settings.data_dir)
     return _storage
 
 
@@ -71,9 +46,12 @@ def get_ai_provider() -> IAIProvider:
     """AIプロバイダーを取得（OpenAI GPT-4.1）"""
     global _ai_provider
     if _ai_provider is None:
+        settings = get_settings()
+        if not settings.ai.openai_api_key:
+            raise ValueError("OPENAI_API_KEY is required")
         _ai_provider = OpenAIAdapterWithFallback(
-            api_key=get_openai_api_key(),
-            model=os.getenv("OPENAI_MODEL", "gpt-4.1"),
+            api_key=settings.ai.openai_api_key,
+            model=settings.ai.openai_model,
         )
     return _ai_provider
 
