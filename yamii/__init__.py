@@ -48,9 +48,9 @@ from .domain.ports import (
 
 # ===== Adapters (lazy import) =====
 # アダプターは依存関係が多いため遅延インポート
-def get_gemini_adapter():
-    from .adapters.ai.gemini import GeminiAdapter
-    return GeminiAdapter
+def get_openai_adapter():
+    from .adapters.ai.openai import OpenAIAdapter
+    return OpenAIAdapter
 
 def get_file_storage_adapter():
     from .adapters.storage.file import FileStorageAdapter
@@ -94,7 +94,7 @@ __all__ = [
     "IAIProvider",
     "IPlatformAdapter",
     # Adapters (lazy)
-    "get_gemini_adapter",
+    "get_openai_adapter",
     "get_file_storage_adapter",
     # API (lazy)
     "get_app",

@@ -1,6 +1,6 @@
 """
-Gemini AIアダプター
-Google Gemini APIへの接続実装
+OpenAI AIアダプター
+OpenAI API (GPT-4.1等) への接続実装
 """
 
 import aiohttp
@@ -9,26 +9,25 @@ from typing import Optional
 from ...domain.ports.ai_port import IAIProvider
 
 
-class GeminiAdapter(IAIProvider):
+class OpenAIAdapter(IAIProvider):
     """
-    Gemini AIアダプター
+    OpenAI AIアダプター
 
-    Google Gemini APIを使用してAI応答を生成。
+    OpenAI APIを使用してAI応答を生成。
+    GPT-4.1をデフォルトモデルとして使用。
     """
 
     def __init__(
         self,
         api_key: str,
-        model: str = "gemini-2.0-flash-exp",
-        timeout: int = 30,
+        model: str = "gpt-4.1",
+        timeout: int = 60,
+        base_url: str = "https://api.openai.com/v1",
     ):
         self.api_key = api_key
         self.model = model
         self.timeout = timeout
-        self.api_url = (
-            f"https://generativelanguage.googleapis.com/v1beta/models/"
-            f"{model}:generateContent"
-        )
+        self.base_url = base_url
 
     async def generate(
         self,
@@ -51,58 +50,59 @@ class GeminiAdapter(IAIProvider):
             Exception: API呼び出し失敗時
         """
         request_body = {
-            "contents": [{
-                "role": "user",
-                "parts": [{"text": message}]
-            }],
-            "systemInstruction": {
-                "role": "system",
-                "parts": [{"text": system_prompt}]
-            }
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": message},
+            ],
         }
 
         if max_tokens:
-            request_body["generationConfig"] = {
-                "maxOutputTokens": max_tokens
-            }
+            request_body["max_tokens"] = max_tokens
+
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
 
         timeout = aiohttp.ClientTimeout(total=self.timeout)
 
         async with aiohttp.ClientSession(timeout=timeout) as session:
             async with session.post(
-                self.api_url,
-                params={"key": self.api_key},
+                f"{self.base_url}/chat/completions",
+                headers=headers,
                 json=request_body,
             ) as response:
                 if response.status != 200:
                     error_text = await response.text()
-                    raise Exception(f"Gemini API error: HTTP {response.status} - {error_text}")
+                    raise Exception(
+                        f"OpenAI API error: HTTP {response.status} - {error_text}"
+                    )
 
                 response_data = await response.json()
 
-                if "candidates" not in response_data or not response_data["candidates"]:
-                    raise Exception("No candidates in Gemini response")
+                if "choices" not in response_data or not response_data["choices"]:
+                    raise Exception("No choices in OpenAI response")
 
-                candidate = response_data["candidates"][0]
-                if "content" not in candidate or "parts" not in candidate["content"]:
-                    raise Exception("Invalid response structure from Gemini API")
+                choice = response_data["choices"][0]
+                if "message" not in choice or "content" not in choice["message"]:
+                    raise Exception("Invalid response structure from OpenAI API")
 
-                response_text = candidate["content"]["parts"][0].get("text", "")
+                response_text = choice["message"]["content"]
 
-                if not response_text.strip():
-                    raise Exception("Empty response from Gemini API")
+                if not response_text or not response_text.strip():
+                    raise Exception("Empty response from OpenAI API")
 
                 return response_text
 
     async def health_check(self) -> bool:
         """
-        Gemini APIの健全性チェック
+        OpenAI APIの健全性チェック
 
         Returns:
             bool: 正常に動作しているか
         """
         try:
-            # 簡単なテストリクエスト
             response = await self.generate(
                 message="Hello",
                 system_prompt="Reply with 'OK' only.",
@@ -118,9 +118,9 @@ class GeminiAdapter(IAIProvider):
         return self.model
 
 
-class GeminiAdapterWithFallback(GeminiAdapter):
+class OpenAIAdapterWithFallback(OpenAIAdapter):
     """
-    フォールバック付きGeminiアダプター
+    フォールバック付きOpenAIアダプター
 
     API呼び出し失敗時にフォールバック応答を返す。
     """
@@ -128,11 +128,12 @@ class GeminiAdapterWithFallback(GeminiAdapter):
     def __init__(
         self,
         api_key: str,
-        model: str = "gemini-2.0-flash-exp",
-        timeout: int = 30,
+        model: str = "gpt-4.1",
+        timeout: int = 60,
+        base_url: str = "https://api.openai.com/v1",
         fallback_message: str = "申し訳ありません。今少し調子が悪いようです。",
     ):
-        super().__init__(api_key, model, timeout)
+        super().__init__(api_key, model, timeout, base_url)
         self.fallback_message = fallback_message
 
     async def generate(

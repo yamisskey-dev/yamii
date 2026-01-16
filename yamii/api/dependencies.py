@@ -13,17 +13,17 @@ from ..domain.services.emotion import EmotionService
 from ..domain.services.counseling import CounselingService
 from ..domain.services.outreach import ProactiveOutreachService
 from ..adapters.storage.file import FileStorageAdapter
-from ..adapters.ai.gemini import GeminiAdapterWithFallback
+from ..adapters.ai.openai import OpenAIAdapterWithFallback
 
 
 # === 設定 ===
 
 @lru_cache()
-def get_api_key() -> str:
-    """Gemini API キーを取得"""
-    api_key = os.getenv("GEMINI_API_KEY")
+def get_openai_api_key() -> str:
+    """OpenAI API キーを取得"""
+    api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
-        raise ValueError("GEMINI_API_KEY environment variable is required")
+        raise ValueError("OPENAI_API_KEY environment variable is required")
     return api_key
 
 
@@ -53,12 +53,12 @@ def get_storage() -> IStorage:
 
 
 def get_ai_provider() -> IAIProvider:
-    """AIプロバイダーを取得"""
+    """AIプロバイダーを取得（OpenAI GPT-4.1）"""
     global _ai_provider
     if _ai_provider is None:
-        _ai_provider = GeminiAdapterWithFallback(
-            api_key=get_api_key(),
-            model=os.getenv("GEMINI_MODEL", "gemini-2.0-flash-exp"),
+        _ai_provider = OpenAIAdapterWithFallback(
+            api_key=get_openai_api_key(),
+            model=os.getenv("OPENAI_MODEL", "gpt-4.1"),
         )
     return _ai_provider
 
