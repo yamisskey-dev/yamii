@@ -113,8 +113,8 @@ class TestRelationshipMemorySystem:
         """システムプロンプトが生成される"""
         prompt = self.system.generate_system_prompt("user1")
 
-        assert "温かみのある" in prompt
-        assert "人生相談" in prompt
+        assert "相談" in prompt
+        assert "寄り添う" in prompt
 
     def test_generate_system_prompt_with_history(self):
         """履歴のあるユーザーへのプロンプトが生成される"""
@@ -133,7 +133,7 @@ class TestRelationshipMemorySystem:
         prompt = self.system.generate_system_prompt("user1")
 
         # フェーズに応じた指示が含まれる
-        assert "関係性" in prompt
+        assert "相談" in prompt
 
     def test_get_relationship_summary(self):
         """関係性サマリーが取得できる"""

@@ -17,9 +17,9 @@ def mock_config():
     return YamiiMisskeyBotConfig(
         misskey_instance_url="https://test.misskey.io",
         misskey_access_token="test_token",
+        misskey_bot_user_id="bot123",
         yamii_api_url="http://localhost:8000",
         bot_name="test_yamii",
-        enable_crisis_support=True
     )
 
 
@@ -77,19 +77,20 @@ class TestYamiiMisskeyBot:
         """基本的なメンション処理をテスト"""
         bot = YamiiMisskeyBot(mock_config)
         
-        # Misskeyクライアントをモック
-        bot.misskey_client = AsyncMock()
+        # Misskeyクライアントをモック（同期メソッドはMock、非同期はAsyncMock）
+        bot.misskey_client = Mock()
         bot.misskey_client.is_mentioned.return_value = True
+        bot.misskey_client.is_direct_message.return_value = False
         bot.misskey_client.bot_user_id = "bot123"
         bot.misskey_client.extract_message_from_note.return_value = "こんにちは、悩みがあります"
-        
+
         # Yamiiクライアントをモック
         bot.yamii_client = AsyncMock()
         bot.yamii_client.send_counseling_request.return_value = sample_yamii_response
-        
+
         # _send_replyメソッドをモック
         bot._send_reply = AsyncMock()
-        
+
         await bot._handle_note(sample_note)
         
         # 応答が送信されたことを確認
@@ -117,17 +118,18 @@ class TestYamiiMisskeyBot:
             is_crisis=True
         )
         
-        # クライアントをモック
-        bot.misskey_client = AsyncMock()
+        # クライアントをモック（同期メソッドはMock）
+        bot.misskey_client = Mock()
         bot.misskey_client.is_mentioned.return_value = True
+        bot.misskey_client.is_direct_message.return_value = False
         bot.misskey_client.bot_user_id = "bot123"
         bot.misskey_client.extract_message_from_note.return_value = "もう疲れました"
-        
+
         bot.yamii_client = AsyncMock()
         bot.yamii_client.send_counseling_request.return_value = crisis_response
-        
+
         bot._send_reply = AsyncMock()
-        
+
         await bot._handle_note(sample_note)
         
         # クライシス対応が含まれた応答が送信されたことを確認
@@ -158,13 +160,14 @@ class TestYamiiMisskeyBot:
             reply_id=None
         )
         
-        bot.misskey_client = AsyncMock()
+        bot.misskey_client = Mock()
         bot.misskey_client.is_mentioned.return_value = True
+        bot.misskey_client.is_direct_message.return_value = False
         bot.misskey_client.bot_user_id = "bot123"
-        bot.misskey_client.extract_message_from_note.return_value = "yamii /help"
-        
+        bot.misskey_client.extract_message_from_note.return_value = "/help"
+
         bot._send_reply = AsyncMock()
-        
+
         await bot._handle_note(help_note)
         
         # ヘルプ応答が送信されたことを確認
@@ -182,15 +185,16 @@ class TestYamiiMisskeyBot:
         bot = YamiiMisskeyBot(mock_config)
         
         # 最初の相談
-        bot.misskey_client = AsyncMock()
+        bot.misskey_client = Mock()
         bot.misskey_client.is_mentioned.return_value = True
+        bot.misskey_client.is_direct_message.return_value = False
         bot.misskey_client.bot_user_id = "bot123"
         bot.misskey_client.extract_message_from_note.return_value = "悩みがあります"
-        
+
         bot.yamii_client = AsyncMock()
         bot.yamii_client.send_counseling_request.return_value = sample_yamii_response
         bot._send_reply = AsyncMock()
-        
+
         await bot._handle_note(sample_note)
         
         # セッションが開始されたことを確認
@@ -243,13 +247,14 @@ class TestYamiiMisskeyBot:
             reply_id=None
         )
         
-        bot.misskey_client = AsyncMock()
+        bot.misskey_client = Mock()
         bot.misskey_client.is_mentioned.return_value = True
+        bot.misskey_client.is_direct_message.return_value = False
         bot.misskey_client.bot_user_id = "bot123"
         bot.misskey_client.extract_message_from_note.return_value = "終了"
-        
+
         bot._send_reply = AsyncMock()
-        
+
         await bot._handle_note(end_note)
         
         # セッションが削除されたことを確認
@@ -280,12 +285,13 @@ class TestYamiiMisskeyBot:
             reply_id=None
         )
         
-        bot.misskey_client = AsyncMock()
+        bot.misskey_client = Mock()
         bot.misskey_client.is_mentioned.return_value = False
+        bot.misskey_client.is_direct_message.return_value = False
         bot.misskey_client.bot_user_id = "bot123"
-        
+
         bot._send_reply = AsyncMock()
-        
+
         await bot._handle_note(own_note)
         
         # 応答が送信されていないことを確認

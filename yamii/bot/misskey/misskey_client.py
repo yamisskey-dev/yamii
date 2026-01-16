@@ -26,6 +26,7 @@ class MisskeyNote:
     mentions: List[str]
     is_reply: bool
     reply_id: Optional[str]
+    visible_user_ids: Optional[List[str]] = None
 
 
 @dataclass
