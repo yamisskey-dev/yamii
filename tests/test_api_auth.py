@@ -196,30 +196,33 @@ class TestMiddlewareIntegration:
 class TestSecuritySettings:
     """セキュリティ設定のテスト"""
 
-    def test_api_keys_parsing_validator(self):
-        """カンマ区切りの API キーがパースされる（バリデーター直接テスト）"""
+    def test_api_keys_parsing(self, monkeypatch):
+        """カンマ区切りの API キーがパースされる"""
         from yamii.core.config import SecuritySettings
 
-        # バリデーターを直接テスト
-        parsed = SecuritySettings.parse_api_keys("key1, key2, key3")
-        assert parsed == ["key1", "key2", "key3"]
+        # 環境変数経由でテスト
+        monkeypatch.setenv("YAMII_API_KEYS", "key1, key2, key3")
+        settings = SecuritySettings()
+        assert settings.api_keys == ["key1", "key2", "key3"]
 
-        parsed = SecuritySettings.parse_api_keys("single-key")
-        assert parsed == ["single-key"]
-
-    def test_empty_api_keys_validator(self):
-        """空の API キー設定（バリデーター直接テスト）"""
+    def test_single_api_key(self, monkeypatch):
+        """単一の API キー"""
         from yamii.core.config import SecuritySettings
 
-        parsed = SecuritySettings.parse_api_keys("")
-        assert parsed == []
+        monkeypatch.setenv("YAMII_API_KEYS", "single-key")
+        settings = SecuritySettings()
+        assert settings.api_keys == ["single-key"]
 
-        parsed = SecuritySettings.parse_api_keys(None)
-        assert parsed == []
-
-    def test_list_input_passthrough(self):
-        """リスト入力はそのまま返される"""
+    def test_empty_api_keys(self):
+        """空の API キー設定"""
         from yamii.core.config import SecuritySettings
 
-        parsed = SecuritySettings.parse_api_keys(["key1", "key2"])
-        assert parsed == ["key1", "key2"]
+        settings = SecuritySettings()
+        assert settings.api_keys == []
+
+    def test_encryption_enabled_by_default(self):
+        """暗号化はデフォルトで有効"""
+        from yamii.core.config import SecuritySettings
+
+        settings = SecuritySettings()
+        assert settings.encryption_enabled is True

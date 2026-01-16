@@ -76,11 +76,15 @@ class SecuritySettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="YAMII_")
 
     # 暗号化
-    encryption_enabled: bool = Field(default=False, description="E2EE 暗号化を有効化")
+    encryption_enabled: bool = Field(default=True, description="E2EE 暗号化を有効化")
     master_key: Optional[str] = Field(default=None, alias="YAMII_MASTER_KEY", description="マスター暗号化キー (Base64)")
 
-    # API 認証
-    api_keys: List[str] = Field(default_factory=list, description="許可された API キー")
+    # API 認証（カンマ区切り文字列で指定）
+    api_keys_str: str = Field(
+        default="",
+        alias="YAMII_API_KEYS",
+        description="許可された API キー（カンマ区切り）"
+    )
     api_key_header: str = Field(default="X-API-Key", description="API キーヘッダー名")
 
     # レート制限
@@ -88,13 +92,12 @@ class SecuritySettings(BaseSettings):
     rate_limit_requests: int = Field(default=100, description="レート制限: リクエスト数")
     rate_limit_window: int = Field(default=60, description="レート制限: ウィンドウ(秒)")
 
-    @field_validator("api_keys", mode="before")
-    @classmethod
-    def parse_api_keys(cls, v):
-        """カンマ区切りの API キーをリストに変換"""
-        if isinstance(v, str):
-            return [k.strip() for k in v.split(",") if k.strip()]
-        return v or []
+    @property
+    def api_keys(self) -> List[str]:
+        """API キーリストを取得"""
+        if not self.api_keys_str:
+            return []
+        return [k.strip() for k in self.api_keys_str.split(",") if k.strip()]
 
 
 class YamiiSettings(BaseSettings):

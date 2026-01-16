@@ -72,10 +72,10 @@ def create_app() -> FastAPI:
     )
 
     # ミドルウェア（実行順序: 下から上）
-    # 1. CORS
+    # 1. CORS（内部 API なのでローカルホストのみ許可）
     application.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=["http://localhost:8000", "http://127.0.0.1:8000"],
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "DELETE"],
         allow_headers=["*"],
