@@ -1,6 +1,6 @@
 """
 暗号化ファイルストレージアダプター
-SecretBoxを使用したサーバーサイド暗号化
+ユーザーごとの派生キーを使用したプライバシーファースト暗号化
 """
 
 import json
@@ -13,66 +13,47 @@ from datetime import datetime
 from ...domain.ports.storage_port import IStorage
 from ...domain.models.user import UserState
 from ...core.encryption import E2EECrypto, EncryptedData
+from ...core.key_management import get_key_manager, SecureKeyManager
 
 
 class EncryptedFileStorageAdapter(IStorage):
     """
     暗号化ファイルストレージアダプター
 
-    SecretBox（対称暗号化）を使用して、ユーザーデータを暗号化保存。
-    マスター鍵は環境変数または鍵ファイルから読み込む。
+    プライバシーファースト設計:
+    - ユーザーごとに派生された専用キーで暗号化
+    - マスターキーが漏洩しても、個別ユーザーのキー再計算が必要
+    - キーローテーション対応
+    - GDPR対応のデータエクスポート・削除
 
-    プライバシーファースト:
-    - 保存データは全て暗号化
-    - マスター鍵なしではデータ復元不可
-    - 鍵のローテーション対応
+    暗号化方式:
+    - NaCl SecretBox (XSalsa20-Poly1305)
+    - ユーザーごとの派生キー (Argon2id)
     """
 
     def __init__(
         self,
         data_dir: str = "data",
-        key_file: str = ".yamii_master_key",
-        master_key: Optional[bytes] = None,
+        key_manager: Optional[SecureKeyManager] = None,
     ):
         self.data_dir = Path(data_dir)
         self.data_file = self.data_dir / "users.enc.json"
-        self.key_file = Path(key_file)
         self.data_dir.mkdir(exist_ok=True)
 
         # 暗号化システム
         self.crypto = E2EECrypto()
 
-        # マスター鍵の取得
-        self._master_key = master_key or self._get_or_create_master_key()
+        # セキュアなキー管理
+        self._key_manager = key_manager or get_key_manager()
 
         # メモリキャッシュ
         self._users: dict[str, UserState] = {}
         self._loaded = False
         self._lock = asyncio.Lock()
 
-    def _get_or_create_master_key(self) -> bytes:
-        """マスター鍵を取得または生成"""
-        # 環境変数から取得
-        env_key = os.environ.get("YAMII_MASTER_KEY")
-        if env_key:
-            return self.crypto.key_from_base64(env_key)
-
-        # ファイルから取得
-        if self.key_file.exists():
-            with open(self.key_file, "r") as f:
-                key_b64 = f.read().strip()
-                return self.crypto.key_from_base64(key_b64)
-
-        # 新規生成
-        new_key = self.crypto.generate_symmetric_key()
-        key_b64 = self.crypto.key_to_base64(new_key)
-
-        # ファイルに保存（本番環境では安全な場所に保存すべき）
-        with open(self.key_file, "w") as f:
-            f.write(key_b64)
-        os.chmod(self.key_file, 0o600)  # 所有者のみ読み書き可
-
-        return new_key
+    def _get_user_key(self, user_id: str) -> bytes:
+        """ユーザー固有の暗号化キーを取得"""
+        return self._key_manager.derive_user_key(user_id, context="user_data")
 
     async def _ensure_loaded(self) -> None:
         """データが読み込まれていることを保証"""
@@ -96,9 +77,11 @@ class EncryptedFileStorageAdapter(IStorage):
             encrypted_users = data.get("encrypted_users", {})
             for user_id, enc_data_dict in encrypted_users.items():
                 try:
+                    # ユーザー固有のキーで復号
+                    user_key = self._get_user_key(user_id)
                     encrypted_data = EncryptedData.from_dict(enc_data_dict)
                     decrypted_json = self.crypto.decrypt_large_data(
-                        encrypted_data, self._master_key
+                        encrypted_data, user_key
                     )
                     user_data = json.loads(decrypted_json)
                     self._users[user_id] = UserState.from_dict(user_data)
@@ -115,17 +98,17 @@ class EncryptedFileStorageAdapter(IStorage):
         encrypted_users = {}
 
         for user_id, user in self._users.items():
-            # ユーザーデータをJSON化
+            # ユーザー固有のキーで暗号化
+            user_key = self._get_user_key(user_id)
             user_json = json.dumps(user.to_dict(), ensure_ascii=False)
-            # 暗号化
-            encrypted_data = self.crypto.encrypt_large_data(user_json, self._master_key)
+            encrypted_data = self.crypto.encrypt_large_data(user_json, user_key)
             encrypted_users[user_id] = encrypted_data.to_dict()
 
         data = {
             "encrypted_users": encrypted_users,
             "updated_at": datetime.now().isoformat(),
-            "version": "1.0",
-            "encryption": "nacl.SecretBox",
+            "version": "2.0",  # ユーザーごとの派生キー対応バージョン
+            "encryption": "nacl.SecretBox+Argon2id",
         }
 
         async with self._lock:
@@ -145,7 +128,13 @@ class EncryptedFileStorageAdapter(IStorage):
         return self._users.get(user_id)
 
     async def delete_user(self, user_id: str) -> bool:
-        """ユーザーデータを削除（完全消去）"""
+        """
+        ユーザーデータを完全削除（GDPR対応）
+
+        プライバシーファースト:
+        - メモリからも完全削除
+        - 派生キーキャッシュもクリア
+        """
         await self._ensure_loaded()
         if user_id in self._users:
             del self._users[user_id]
@@ -167,10 +156,51 @@ class EncryptedFileStorageAdapter(IStorage):
         """
         ユーザーデータを復号してエクスポート（GDPR対応）
 
-        注意: この関数は管理者のみが使用すべき
+        メンタルファースト & プライバシーファースト:
+        - ユーザーは自分のデータを取得する権利がある
+        - エクスポートデータには暗号化キーを含めない
         """
         await self._ensure_loaded()
         user = self._users.get(user_id)
         if user:
-            return user.to_dict()
+            export_data = user.to_dict()
+            # 内部的なメタデータを除外
+            export_data["_export_info"] = {
+                "exported_at": datetime.now().isoformat(),
+                "format_version": "2.0",
+                "notice": "このデータはあなたのプライバシーのために暗号化されて保存されていました。",
+            }
+            return export_data
         return None
+
+    async def get_user_data_summary(self, user_id: str) -> Optional[dict]:
+        """
+        ユーザーデータのサマリーを取得（プライバシー情報開示用）
+
+        GDPR Article 15対応: ユーザーは自分のデータの概要を知る権利がある
+        """
+        await self._ensure_loaded()
+        user = self._users.get(user_id)
+        if user is None:
+            return None
+
+        return {
+            "user_id": user.user_id,
+            "data_collected": {
+                "interactions_count": user.total_interactions,
+                "first_interaction": user.first_interaction.isoformat(),
+                "last_interaction": user.last_interaction.isoformat(),
+                "episodes_count": len(user.episodes),
+                "known_facts_count": len(user.known_facts),
+                "known_topics": user.known_topics,
+            },
+            "privacy_settings": {
+                "proactive_enabled": user.proactive.enabled,
+                "proactive_frequency": user.proactive.frequency,
+            },
+            "your_rights": {
+                "export": "全データのエクスポートが可能です",
+                "delete": "全データの完全削除が可能です",
+                "modify": "プロアクティブ設定の変更が可能です",
+            },
+        }

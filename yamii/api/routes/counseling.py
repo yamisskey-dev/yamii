@@ -93,6 +93,23 @@ async def counseling(
         )
 
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        # メンタルファースト: 入力エラーも温かく
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "message": "うまく受け取れませんでした。もう一度お試しください。",
+                "error": str(e),
+                "suggestion": "メッセージが空でないか確認してください。",
+            }
+        )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")
+        # メンタルファースト: システムエラーでも安心感を
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "message": "申し訳ありません。一時的な問題が発生しました。",
+                "error": str(e),
+                "suggestion": "しばらく待ってからもう一度お試しください。問題が続く場合は、直接相談窓口へのご連絡もご検討ください。",
+                "resources": CRISIS_RESOURCES,
+            }
+        )

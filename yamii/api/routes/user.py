@@ -29,7 +29,13 @@ async def get_user(
     """
     user = await storage.load_user(user_id)
     if user is None:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "message": "まだお話ししたことがないようです。いつでもお気軽にどうぞ。",
+                "user_id": user_id,
+            }
+        )
 
     days_since_first = (datetime.now() - user.first_interaction).days
     top_topics = [t.topic for t in user.get_top_topics(5)]
@@ -63,7 +69,13 @@ async def update_user(
     """
     user = await storage.load_user(user_id)
     if user is None:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "message": "まだお話ししたことがないようです。先にお話ししてからプロフィールを設定できます。",
+                "user_id": user_id,
+            }
+        )
 
     if request.explicit_profile is not None:
         user.explicit_profile = request.explicit_profile
@@ -85,9 +97,18 @@ async def delete_user(
     """
     success = await storage.delete_user(user_id)
     if not success:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "message": "削除するデータがありません。",
+                "user_id": user_id,
+            }
+        )
 
-    return {"message": "User deleted successfully", "user_id": user_id}
+    return {
+        "message": "データを削除しました。また話したくなったら、いつでも戻ってきてください。",
+        "user_id": user_id,
+    }
 
 
 @router.get("/{user_id}/export", response_model=dict)
@@ -100,7 +121,23 @@ async def export_user_data(
     """
     data = await storage.export_user_data(user_id)
     if data is None:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "message": "エクスポートするデータがありません。いつでもお話ししてくださいね。",
+                "user_id": user_id,
+            }
+        )
+
+    # メンタルファースト: エクスポートにメッセージを追加
+    data["_export_info"] = {
+        "message": "これはあなたのデータです。プライバシーを守るために暗号化して保存されていました。",
+        "exported_at": datetime.now().isoformat(),
+        "your_rights": {
+            "delete": "/v1/users/{user_id} DELETE で完全削除できます",
+            "update": "/v1/users/{user_id} PUT でプロフィールを更新できます",
+        },
+    }
 
     return data
 
@@ -116,7 +153,13 @@ async def get_user_episodes(
     """
     user = await storage.load_user(user_id)
     if user is None:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "message": "まだエピソードがありません。お話しすると記録されていきます。",
+                "user_id": user_id,
+            }
+        )
 
     recent_episodes = user.get_recent_episodes(limit)
 
