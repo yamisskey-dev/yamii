@@ -1,31 +1,21 @@
 """
 Services module for Yamii - メンタルヘルス特化AI相談システム
-ビジネスロジック層のサービス群
+
+このモジュールは後方互換性のため維持されています。
+新しいコードでは yamii.domain.services を直接使用してください。
 """
 
-from .counseling_service import (
+# 新しいdomain層から再エクスポート
+from ..domain.services import (
+    EmotionService,
     CounselingService,
-    CounselingRequest,
-    CounselingResponse,
+    ProactiveOutreachService,
 )
-from .emotion_service import EmotionAnalysisService, EmotionType
-from .adaptive_counseling_service import (
-    AdaptiveCounselingService,
-    AdaptiveCounselingRequest,
-    AdaptiveCounselingResponse,
-    create_adaptive_counseling_service,
-)
+from ..domain.models import EmotionType
 
 __all__ = [
-    # 適応型カウンセリング（推奨）
-    "AdaptiveCounselingService",
-    "AdaptiveCounselingRequest",
-    "AdaptiveCounselingResponse",
-    "create_adaptive_counseling_service",
-    # 基本サービス
+    "EmotionService",
     "CounselingService",
-    "CounselingRequest",
-    "CounselingResponse",
-    "EmotionAnalysisService",
+    "ProactiveOutreachService",
     "EmotionType",
 ]
