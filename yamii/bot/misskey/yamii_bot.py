@@ -1,11 +1,12 @@
 """
 Yamii Misskey Bot
 シンプルなMisskeyボット - メンション・リプライ・DMに応答
+プロアクティブアウトリーチ機能付き
 """
 
 import asyncio
 import logging
-from typing import Dict, Set
+from typing import Dict, Set, Optional
 from datetime import datetime
 
 from .config import YamiiMisskeyBotConfig, load_config
@@ -21,6 +22,10 @@ class YamiiMisskeyBot:
     - ボットへのリプライ
     - DM（visibility=specified）
     - チャットメッセージ
+
+    プロアクティブ機能:
+    - 定期的にユーザーパターンを分析
+    - 必要に応じてチェックインメッセージを送信
     """
 
     def __init__(self, config: YamiiMisskeyBotConfig):
@@ -38,11 +43,15 @@ class YamiiMisskeyBot:
         self.processed_notes: Set[str] = set()
         self.processed_chat_messages: Set[str] = set()
 
+        # プロアクティブアウトリーチタスク
+        self._outreach_task: Optional[asyncio.Task] = None
+
     async def start(self):
         """ボットを開始"""
         self.logger.info("Starting Yamii Misskey Bot...")
         self.logger.info(f"Yamii API: {self.config.yamii_api_url}")
         self.logger.info(f"Misskey: {self.config.misskey_instance_url}")
+        self.logger.info(f"Proactive outreach: {self.config.enable_proactive_outreach}")
 
         try:
             await self.misskey_client.__aenter__()
@@ -55,6 +64,11 @@ class YamiiMisskeyBot:
             except Exception as e:
                 self.logger.warning(f"Health check failed: {e}")
 
+            # プロアクティブアウトリーチスケジューラを開始
+            if self.config.enable_proactive_outreach:
+                self._outreach_task = asyncio.create_task(self._proactive_outreach_loop())
+                self.logger.info(f"Proactive outreach scheduler started (interval: {self.config.proactive_check_interval}s)")
+
             # ストリーミング開始
             await self.misskey_client.start_streaming(self._on_streaming_message)
 
@@ -62,6 +76,14 @@ class YamiiMisskeyBot:
             self.logger.error(f"Bot startup error: {e}")
             raise
         finally:
+            # アウトリーチタスクをキャンセル
+            if self._outreach_task:
+                self._outreach_task.cancel()
+                try:
+                    await self._outreach_task
+                except asyncio.CancelledError:
+                    pass
+
             await self.misskey_client.__aexit__(None, None, None)
             await self.yamii_client.__aexit__(None, None, None)
 
@@ -182,17 +204,9 @@ class YamiiMisskeyBot:
             # セッション記録
             self.user_sessions[note.user_id] = response.session_id
 
-            # 危機対応
-            if response.is_crisis:
-                crisis_info = "\n\n".join([
-                    response.response,
-                    "⚠️ **相談窓口**",
-                    "📞 " + "\n📞 ".join(self.config.crisis_hotline_numbers),
-                    "あなたは一人ではありません。"
-                ])
-                await self._send_reply(note, crisis_info)
-            else:
-                await self._send_reply(note, response.response)
+            # formatted_responseを使用（危機対応情報を含む）
+            reply_text = response.formatted_response or response.response
+            await self._send_reply(note, reply_text)
         else:
             await self._send_reply(note, "現在サービスを利用できません。しばらくお待ちください。")
 
@@ -277,17 +291,9 @@ class YamiiMisskeyBot:
             # セッション記録
             self.user_sessions[user_id] = response.session_id
 
-            # 危機対応
-            if response.is_crisis:
-                crisis_info = "\n\n".join([
-                    response.response,
-                    "⚠️ 相談窓口",
-                    "📞 " + "\n📞 ".join(self.config.crisis_hotline_numbers),
-                    "あなたは一人ではありません。"
-                ])
-                await self._send_chat_reply(user_id, crisis_info)
-            else:
-                await self._send_chat_reply(user_id, response.response)
+            # formatted_responseを使用（危機対応情報を含む）
+            reply_text = response.formatted_response or response.response
+            await self._send_chat_reply(user_id, reply_text)
         else:
             await self._send_chat_reply(user_id, "現在サービスを利用できません。しばらくお待ちください。")
 
@@ -298,6 +304,62 @@ class YamiiMisskeyBot:
             self.logger.info(f"Sent chat reply to user {user_id}")
         except Exception as e:
             self.logger.error(f"Failed to send chat reply: {e}")
+
+    # === プロアクティブアウトリーチ ===
+
+    async def _proactive_outreach_loop(self):
+        """プロアクティブアウトリーチの定期実行ループ
+
+        Bot APIならではの差別化機能:
+        - ユーザーが連絡しなくても、パターン検出でBotから先にチェックイン
+        - 不在検出、センチメント悪化、フォローアップ、マイルストーンに対応
+        """
+        self.logger.info("Proactive outreach loop started")
+
+        while True:
+            try:
+                await asyncio.sleep(self.config.proactive_check_interval)
+                await self._execute_proactive_outreach()
+            except asyncio.CancelledError:
+                self.logger.info("Proactive outreach loop cancelled")
+                break
+            except Exception as e:
+                self.logger.error(f"Proactive outreach error: {e}")
+                # エラーが発生しても続行
+
+    async def _execute_proactive_outreach(self):
+        """プロアクティブアウトリーチを実行"""
+        self.logger.debug("Checking for users needing outreach...")
+
+        try:
+            # APIからアウトリーチが必要なユーザーを取得
+            users_needing_outreach = await self.yamii_client.get_all_users_needing_outreach()
+
+            if not users_needing_outreach:
+                self.logger.debug("No users need outreach at this time")
+                return
+
+            self.logger.info(f"Found {len(users_needing_outreach)} users needing outreach")
+
+            for outreach_data in users_needing_outreach:
+                user_id = outreach_data.get("user_id")
+                message = outreach_data.get("message")
+                reason = outreach_data.get("reason")
+
+                if not user_id or not message:
+                    continue
+
+                self.logger.info(f"Sending proactive outreach to {user_id} (reason: {reason})")
+
+                try:
+                    # チャットでメッセージを送信（プライバシー配慮）
+                    await self.misskey_client.send_chat_message(user_id, message)
+                    self.logger.info(f"Proactive outreach sent to {user_id}")
+                except Exception as e:
+                    self.logger.error(f"Failed to send outreach to {user_id}: {e}")
+
+        except Exception as e:
+            self.logger.error(f"Execute proactive outreach failed: {e}")
 
 
 def setup_logging(config: YamiiMisskeyBotConfig):

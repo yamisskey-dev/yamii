@@ -3,6 +3,7 @@
 """
 
 from datetime import datetime
+from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Depends
 
 from ..schemas import (
@@ -17,6 +18,26 @@ from ...domain.services.counseling import (
 )
 
 router = APIRouter(prefix="/v1/counseling", tags=["counseling"])
+
+# 危機対応リソース（日本）
+CRISIS_RESOURCES = [
+    "いのちの電話: 0570-783-556",
+    "よりそいホットライン: 0120-279-338",
+    "こころの健康相談統一ダイヤル: 0570-064-556",
+]
+
+
+def _format_crisis_response(response: str, resources: List[str]) -> str:
+    """危機対応レスポンスを整形"""
+    parts = [
+        response,
+        "",
+        "⚠️ **相談窓口**",
+        *[f"📞 {r}" for r in resources],
+        "",
+        "あなたは一人ではありません。",
+    ]
+    return "\n".join(parts)
 
 
 @router.post("", response_model=CounselingResponse)
@@ -41,6 +62,16 @@ async def counseling(
         # カウンセリング実行
         result = await service.generate_response(domain_request)
 
+        # 危機対応の場合は整形済みレスポンスを生成
+        formatted_response: Optional[str] = None
+        crisis_resources: Optional[List[str]] = None
+
+        if result.is_crisis:
+            crisis_resources = CRISIS_RESOURCES
+            formatted_response = _format_crisis_response(result.response, CRISIS_RESOURCES)
+        else:
+            formatted_response = result.response
+
         # APIレスポンスに変換
         return CounselingResponse(
             response=result.response,
@@ -57,6 +88,8 @@ async def counseling(
             advice_type=result.advice_type,
             follow_up_questions=result.follow_up_questions,
             is_crisis=result.is_crisis,
+            formatted_response=formatted_response,
+            crisis_resources=crisis_resources,
         )
 
     except ValueError as e:

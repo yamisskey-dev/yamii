@@ -13,6 +13,7 @@ from ..domain.services.emotion import EmotionService
 from ..domain.services.counseling import CounselingService
 from ..domain.services.outreach import ProactiveOutreachService
 from ..adapters.storage.file import FileStorageAdapter
+from ..adapters.storage.encrypted_file import EncryptedFileStorageAdapter
 from ..adapters.ai.openai import OpenAIAdapterWithFallback
 
 
@@ -44,11 +45,23 @@ _outreach_service: Optional[ProactiveOutreachService] = None
 
 # === 依存性取得関数 ===
 
+@lru_cache()
+def is_encryption_enabled() -> bool:
+    """暗号化が有効かどうか"""
+    return os.getenv("YAMII_ENCRYPTION_ENABLED", "false").lower() == "true"
+
+
 def get_storage() -> IStorage:
-    """ストレージを取得"""
+    """ストレージを取得
+
+    環境変数 YAMII_ENCRYPTION_ENABLED=true で暗号化ストレージを使用
+    """
     global _storage
     if _storage is None:
-        _storage = FileStorageAdapter(data_dir=get_data_dir())
+        if is_encryption_enabled():
+            _storage = EncryptedFileStorageAdapter(data_dir=get_data_dir())
+        else:
+            _storage = FileStorageAdapter(data_dir=get_data_dir())
     return _storage
 
 

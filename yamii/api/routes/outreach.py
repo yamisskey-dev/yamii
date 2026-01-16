@@ -3,7 +3,9 @@
 Bot APIの差別化機能
 """
 
+from typing import List
 from fastapi import APIRouter, HTTPException, Depends
+from pydantic import BaseModel
 
 from ..schemas import (
     ProactiveSettingsRequest,
@@ -16,6 +18,20 @@ from ...domain.ports.storage_port import IStorage
 from ...domain.services.outreach import ProactiveOutreachService
 
 router = APIRouter(prefix="/v1", tags=["outreach"])
+
+
+class PendingOutreachUser(BaseModel):
+    """アウトリーチ待ちユーザー"""
+    user_id: str
+    message: str
+    reason: str
+    priority: int
+
+
+class PendingOutreachResponse(BaseModel):
+    """アウトリーチ待ちユーザーリスト"""
+    users: List[PendingOutreachUser]
+    total: int
 
 
 @router.get("/users/{user_id}/outreach/settings", response_model=ProactiveSettingsResponse)
@@ -127,3 +143,37 @@ async def trigger_outreach(
         "triggered": False,
         "note": "No outreach needed at this time",
     }
+
+
+@router.get("/outreach/pending", response_model=PendingOutreachResponse)
+async def get_pending_outreach(
+    outreach_service: ProactiveOutreachService = Depends(get_outreach_service),
+) -> PendingOutreachResponse:
+    """
+    アウトリーチが必要な全ユーザーを取得
+
+    Bot側から定期的に呼び出して、チェックインが必要なユーザーを取得する。
+    """
+    decisions = await outreach_service.get_users_needing_outreach()
+
+    users = []
+    for decision in decisions:
+        # メッセージから [user_id] を抽出
+        message = decision.message or ""
+        user_id = ""
+        if message.startswith("[") and "]" in message:
+            user_id = message[1:message.index("]")]
+            message = message[message.index("]") + 2:]  # " ]" の後の空白もスキップ
+
+        if user_id:
+            users.append(PendingOutreachUser(
+                user_id=user_id,
+                message=message,
+                reason=decision.reason.value if decision.reason else "unknown",
+                priority=decision.priority,
+            ))
+
+    return PendingOutreachResponse(
+        users=users,
+        total=len(users),
+    )

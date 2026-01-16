@@ -22,6 +22,9 @@ class YamiiResponse:
     advice_type: str
     follow_up_questions: List[str]
     is_crisis: bool
+    # Bot向け整形済みレスポンス（危機対応情報を含む）
+    formatted_response: Optional[str] = None
+    crisis_resources: Optional[List[str]] = None
 
 
 @dataclass
@@ -94,7 +97,36 @@ class YamiiClient:
                     emotion_analysis=data["emotion_analysis"],
                     advice_type=data["advice_type"],
                     follow_up_questions=data["follow_up_questions"],
-                    is_crisis=data["is_crisis"]
+                    is_crisis=data["is_crisis"],
+                    formatted_response=data.get("formatted_response"),
+                    crisis_resources=data.get("crisis_resources"),
                 )
             error_text = await response.text()
             raise Exception(f"Counseling failed: {response.status} - {error_text}")
+
+    async def get_outreach_analysis(self, user_id: str) -> Optional[Dict[str, Any]]:
+        """ユーザーのアウトリーチ分析を取得"""
+        url = f"{self.config.yamii_api_url}/v1/users/{user_id}/outreach/analyze"
+
+        try:
+            async with self.session.get(url) as response:
+                if response.status == 200:
+                    return await response.json()
+                return None
+        except Exception as e:
+            self.logger.error(f"Outreach analysis failed: {e}")
+            return None
+
+    async def get_all_users_needing_outreach(self) -> List[Dict[str, Any]]:
+        """アウトリーチが必要な全ユーザーを取得"""
+        url = f"{self.config.yamii_api_url}/v1/outreach/pending"
+
+        try:
+            async with self.session.get(url) as response:
+                if response.status == 200:
+                    data = await response.json()
+                    return data.get("users", [])
+                return []
+        except Exception as e:
+            self.logger.error(f"Get pending outreach failed: {e}")
+            return []

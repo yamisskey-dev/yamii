@@ -177,7 +177,10 @@ class TestYamiiMisskeyBot:
             emotion_analysis={"primary_emotion": "crisis", "intensity": 0.9, "is_crisis": True},
             advice_type="crisis",
             follow_up_questions=[],
-            is_crisis=True
+            is_crisis=True,
+            # API側から返される整形済みレスポンス
+            formatted_response="心配です。あなたの安全が大切です。\n\n⚠️ **相談窓口**\n📞 いのちの電話: 0570-783-556\n\nあなたは一人ではありません。",
+            crisis_resources=["いのちの電話: 0570-783-556"],
         )
 
         bot.misskey_client = Mock()

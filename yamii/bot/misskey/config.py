@@ -11,36 +11,40 @@ from dataclasses import dataclass
 @dataclass
 class YamiiMisskeyBotConfig:
     """Yamii Misskeyボット設定クラス（独立設計）"""
-    
+
     # Yamii API設定
     yamii_api_url: str = "http://localhost:8000"
     yamii_api_timeout: int = 30
-    
+
     # ボット基本設定
     bot_name: str = "yamii"
     bot_username: str = "yamii"
-    
+
     # セッション設定
     session_timeout: int = 3600  # 1時間
-    
+
     # ログ設定
     log_level: str = "INFO"
     log_file: Optional[str] = None
-    
+
     # 機能設定
     enable_dm: bool = True
     enable_mentions: bool = True
     enable_timeline: bool = False
     enable_global_timeline: bool = False
-    
+
+    # プロアクティブアウトリーチ設定
+    enable_proactive_outreach: bool = True
+    proactive_check_interval: int = 3600  # 1時間ごとにチェック
+
     # 危機対応設定
     crisis_hotlines: list = None
-    
+
     # Misskey固有設定
     misskey_instance_url: str = ""
     misskey_access_token: str = ""
     misskey_bot_user_id: str = ""
-    
+
     # HTTP/WebSocket設定
     request_timeout: int = 30
     
@@ -109,7 +113,11 @@ def load_config() -> YamiiMisskeyBotConfig:
         enable_mentions=os.getenv("BOT_ENABLE_MENTIONS", "true").lower() == "true",
         enable_timeline=os.getenv("BOT_ENABLE_TIMELINE", "false").lower() == "true",
         enable_global_timeline=os.getenv("BOT_ENABLE_GLOBAL_TIMELINE", "false").lower() == "true",
-        
+
+        # プロアクティブアウトリーチ設定
+        enable_proactive_outreach=os.getenv("BOT_ENABLE_PROACTIVE", "true").lower() == "true",
+        proactive_check_interval=int(os.getenv("BOT_PROACTIVE_INTERVAL", "3600")),
+
         # Misskey固有設定
         misskey_instance_url=misskey_instance_url,
         misskey_access_token=misskey_access_token,

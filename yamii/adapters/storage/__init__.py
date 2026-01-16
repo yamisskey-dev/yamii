@@ -4,6 +4,13 @@ Storage Adapters
 
 使用例:
     from yamii.adapters.storage.file import FileStorageAdapter
+    from yamii.adapters.storage.encrypted_file import EncryptedFileStorageAdapter
 """
 
-__all__ = ["file"]
+from .file import FileStorageAdapter
+from .encrypted_file import EncryptedFileStorageAdapter
+
+__all__ = [
+    "FileStorageAdapter",
+    "EncryptedFileStorageAdapter",
+]

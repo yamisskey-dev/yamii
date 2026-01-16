@@ -37,6 +37,9 @@ class CounselingResponse(BaseModel):
     advice_type: str
     follow_up_questions: List[str]
     is_crisis: bool
+    # Bot向け: 危機対応情報を含む整形済みレスポンス
+    formatted_response: Optional[str] = Field(None, description="プラットフォーム表示用整形済みレスポンス")
+    crisis_resources: Optional[List[str]] = Field(None, description="危機対応リソース")
 
 
 # === ユーザー ===
