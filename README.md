@@ -2,29 +2,43 @@
 
 **やみ**の中の**Mii**へ
 
-## クイックスタート
+Misskey向け人生相談AIボット
 
-### 1. 環境設定
+## デプロイ（Docker）
 
 ```bash
-git clone <repository-url>
-cd yamii
+# 1. 環境変数を設定
+cp .env.example .env
+nano .env  # 4つの必須項目を設定
 
+# 2. 起動
+docker compose up -d
+
+# 3. 確認
+curl http://localhost:8000/v1/health
+```
+
+**必須環境変数** (`.env`):
+```bash
+OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxxxxxx
+MISSKEY_INSTANCE_URL=https://your-misskey-instance.com
+MISSKEY_ACCESS_TOKEN=your_misskey_access_token
+MISSKEY_BOT_USER_ID=your_bot_user_id
+```
+
+Misskey設定があればBotが自動起動します。
+
+## ローカル開発
+
+```bash
 # 依存関係インストール
 uv sync
 
-# 環境変数設定
-cp .env.example .env
-# .envでOPENAI_API_KEYを設定
-```
-
-### 2. サーバー起動
-
-```bash
+# サーバー起動
 uv run uvicorn yamii.api:app --reload --port 8000
 ```
 
-### 3. 動作確認
+### 動作確認
 
 ```bash
 # ヘルスチェック
@@ -147,12 +161,6 @@ yamii/
 ├── core/             # 暗号化、ログ、設定
 └── bot/misskey/      # Misskey Bot（薄型: API経由で処理）
 ```
-
-## ドキュメント
-
-- [アーキテクチャ](docs/architecture.md)
-- [Misskey Bot](docs/misskey-bot.md)
-- [プライバシー保護](docs/privacy.md)
 
 ## ライセンス
 
