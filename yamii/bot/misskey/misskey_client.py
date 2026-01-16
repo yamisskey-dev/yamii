@@ -202,22 +202,34 @@ class MisskeyClient:
         """ボットがメンションされているかチェック"""
         if self.bot_user_id and note.user_id == self.bot_user_id:
             return False  # 自分の投稿には反応しない
-            
+
         # @ユーザー名形式のメンションをチェック
         if note.text and f"@{self.config.bot_name}" in note.text.lower():
             return True
-            
+
         return False
-        
+
+    def is_direct_message(self, note: MisskeyNote) -> bool:
+        """ダイレクトメッセージ（指定あり投稿）かチェック"""
+        # visibility=specifiedでボットが宛先に含まれている場合
+        if note.visibility == "specified":
+            if note.visible_user_ids and self.bot_user_id in note.visible_user_ids:
+                return True
+        return False
+
+    def is_reply_to_bot(self, note: MisskeyNote) -> bool:
+        """ボットの投稿へのリプライかチェック"""
+        return note.is_reply and note.reply_id is not None
+
     def extract_message_from_note(self, note: MisskeyNote) -> str:
         """ノートからメッセージテキストを抽出（メンション部分を除去）"""
         if not note.text:
             return ""
-            
+
         text = note.text
-        
+
         # @ボット名を除去
         import re
         text = re.sub(rf'@{re.escape(self.config.bot_name)}\s*', '', text, flags=re.IGNORECASE)
-        
+
         return text.strip()

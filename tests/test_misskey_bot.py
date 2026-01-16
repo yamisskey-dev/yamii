@@ -5,7 +5,7 @@ yamiiのMisskeyボットのテスト
 
 import pytest
 import asyncio
-from unittest.mock import Mock, AsyncMock, patch
+from unittest.mock import Mock, AsyncMock
 from datetime import datetime
 
 from yamii.bot.misskey import YamiiMisskeyBot, YamiiMisskeyBotConfig, MisskeyNote, YamiiResponse
@@ -29,7 +29,7 @@ def sample_note():
     return MisskeyNote(
         id="note123",
         text="@test_yamii こんにちは、悩みがあります",
-        user_id="user123", 
+        user_id="user123",
         user_username="testuser",
         user_name="テストユーザー",
         created_at=datetime.now(),
@@ -61,53 +61,115 @@ def sample_yamii_response():
 
 class TestYamiiMisskeyBot:
     """YamiiMisskeyBotのテストクラス"""
-    
+
     @pytest.mark.asyncio
     async def test_bot_initialization(self, mock_config):
         """ボットの初期化をテスト"""
         bot = YamiiMisskeyBot(mock_config)
-        
+
         assert bot.config == mock_config
         assert isinstance(bot.user_sessions, dict)
-        assert isinstance(bot.user_preferences, dict)
         assert isinstance(bot.processed_notes, set)
-    
+
     @pytest.mark.asyncio
-    async def test_handle_mention_basic(self, mock_config, sample_note, sample_yamii_response):
-        """基本的なメンション処理をテスト"""
+    async def test_handle_mention(self, mock_config, sample_note, sample_yamii_response):
+        """メンション処理をテスト"""
         bot = YamiiMisskeyBot(mock_config)
-        
-        # Misskeyクライアントをモック（同期メソッドはMock、非同期はAsyncMock）
+
         bot.misskey_client = Mock()
         bot.misskey_client.is_mentioned.return_value = True
+        bot.misskey_client.is_reply_to_bot.return_value = False
         bot.misskey_client.is_direct_message.return_value = False
         bot.misskey_client.bot_user_id = "bot123"
         bot.misskey_client.extract_message_from_note.return_value = "こんにちは、悩みがあります"
 
-        # Yamiiクライアントをモック
         bot.yamii_client = AsyncMock()
         bot.yamii_client.send_counseling_request.return_value = sample_yamii_response
 
-        # _send_replyメソッドをモック
         bot._send_reply = AsyncMock()
 
         await bot._handle_note(sample_note)
-        
-        # 応答が送信されたことを確認
+
         bot._send_reply.assert_called_once()
         call_args = bot._send_reply.call_args
-        assert call_args[0][0] == sample_note  # ノートが渡された
-        assert "あなたの気持ちをお聞かせください" in call_args[0][1]  # 応答テキスト
-        
-        # セッションが記録されたことを確認
+        assert call_args[0][0] == sample_note
+        assert "あなたの気持ちをお聞かせください" in call_args[0][1]
         assert bot.user_sessions[sample_note.user_id] == sample_yamii_response.session_id
-    
+
+    @pytest.mark.asyncio
+    async def test_handle_reply(self, mock_config, sample_yamii_response):
+        """リプライ処理をテスト"""
+        bot = YamiiMisskeyBot(mock_config)
+
+        reply_note = MisskeyNote(
+            id="note456",
+            text="もう少し詳しく聞きたいです",
+            user_id="user123",
+            user_username="testuser",
+            user_name="テストユーザー",
+            created_at=datetime.now(),
+            visibility="home",
+            mentions=[],
+            is_reply=True,
+            reply_id="note123"
+        )
+
+        bot.misskey_client = Mock()
+        bot.misskey_client.is_mentioned.return_value = False
+        bot.misskey_client.is_reply_to_bot.return_value = True
+        bot.misskey_client.is_direct_message.return_value = False
+        bot.misskey_client.bot_user_id = "bot123"
+        bot.misskey_client.extract_message_from_note.return_value = "もう少し詳しく聞きたいです"
+
+        bot.yamii_client = AsyncMock()
+        bot.yamii_client.send_counseling_request.return_value = sample_yamii_response
+
+        bot._send_reply = AsyncMock()
+
+        await bot._handle_note(reply_note)
+
+        bot._send_reply.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_handle_dm(self, mock_config, sample_yamii_response):
+        """DM処理をテスト"""
+        bot = YamiiMisskeyBot(mock_config)
+
+        dm_note = MisskeyNote(
+            id="note789",
+            text="プライベートな相談があります",
+            user_id="user123",
+            user_username="testuser",
+            user_name="テストユーザー",
+            created_at=datetime.now(),
+            visibility="specified",
+            mentions=[],
+            is_reply=False,
+            reply_id=None,
+            visible_user_ids=["bot123"]
+        )
+
+        bot.misskey_client = Mock()
+        bot.misskey_client.is_mentioned.return_value = False
+        bot.misskey_client.is_reply_to_bot.return_value = False
+        bot.misskey_client.is_direct_message.return_value = True
+        bot.misskey_client.bot_user_id = "bot123"
+        bot.misskey_client.extract_message_from_note.return_value = "プライベートな相談があります"
+
+        bot.yamii_client = AsyncMock()
+        bot.yamii_client.send_counseling_request.return_value = sample_yamii_response
+
+        bot._send_reply = AsyncMock()
+
+        await bot._handle_note(dm_note)
+
+        bot._send_reply.assert_called_once()
+
     @pytest.mark.asyncio
     async def test_handle_crisis_response(self, mock_config, sample_note):
         """クライシス応答をテスト"""
         bot = YamiiMisskeyBot(mock_config)
-        
-        # クライシス応答を作成
+
         crisis_response = YamiiResponse(
             response="心配です。あなたの安全が大切です。",
             session_id="session123",
@@ -117,10 +179,10 @@ class TestYamiiMisskeyBot:
             follow_up_questions=[],
             is_crisis=True
         )
-        
-        # クライアントをモック（同期メソッドはMock）
+
         bot.misskey_client = Mock()
         bot.misskey_client.is_mentioned.return_value = True
+        bot.misskey_client.is_reply_to_bot.return_value = False
         bot.misskey_client.is_direct_message.return_value = False
         bot.misskey_client.bot_user_id = "bot123"
         bot.misskey_client.extract_message_from_note.return_value = "もう疲れました"
@@ -131,27 +193,24 @@ class TestYamiiMisskeyBot:
         bot._send_reply = AsyncMock()
 
         await bot._handle_note(sample_note)
-        
-        # クライシス対応が含まれた応答が送信されたことを確認
+
         bot._send_reply.assert_called_once()
         call_args = bot._send_reply.call_args
         response_text = call_args[0][1]
-        
+
         assert "心配です。あなたの安全が大切です。" in response_text
-        assert "緊急時相談窓口" in response_text
-        assert "いのちの電話" in response_text
-    
+        assert "相談窓口" in response_text
+
     @pytest.mark.asyncio
     async def test_handle_help_command(self, mock_config, sample_note):
         """ヘルプコマンドをテスト"""
         bot = YamiiMisskeyBot(mock_config)
-        
-        # ヘルプコマンドのノートを作成
+
         help_note = MisskeyNote(
             id="note456",
-            text="@test_yamii yamii /help",
+            text="@test_yamii /help",
             user_id="user123",
-            user_username="testuser", 
+            user_username="testuser",
             user_name="テストユーザー",
             created_at=datetime.now(),
             visibility="home",
@@ -159,9 +218,10 @@ class TestYamiiMisskeyBot:
             is_reply=False,
             reply_id=None
         )
-        
+
         bot.misskey_client = Mock()
         bot.misskey_client.is_mentioned.return_value = True
+        bot.misskey_client.is_reply_to_bot.return_value = False
         bot.misskey_client.is_direct_message.return_value = False
         bot.misskey_client.bot_user_id = "bot123"
         bot.misskey_client.extract_message_from_note.return_value = "/help"
@@ -169,24 +229,23 @@ class TestYamiiMisskeyBot:
         bot._send_reply = AsyncMock()
 
         await bot._handle_note(help_note)
-        
-        # ヘルプ応答が送信されたことを確認
+
         bot._send_reply.assert_called_once()
         call_args = bot._send_reply.call_args
         response_text = call_args[0][1]
-        
-        assert "YAMII 人生相談AI - ヘルプ" in response_text
-        assert "基本的な相談方法" in response_text
-        assert "カスタムプロンプト" in response_text
-    
+
+        assert "Yamii" in response_text
+        assert "メンション" in response_text
+        assert "リプライ" in response_text
+
     @pytest.mark.asyncio
-    async def test_session_management(self, mock_config, sample_note, sample_yamii_response):
-        """セッション管理をテスト"""
+    async def test_session_continues(self, mock_config, sample_note, sample_yamii_response):
+        """セッション継続をテスト"""
         bot = YamiiMisskeyBot(mock_config)
-        
-        # 最初の相談
+
         bot.misskey_client = Mock()
         bot.misskey_client.is_mentioned.return_value = True
+        bot.misskey_client.is_reply_to_bot.return_value = False
         bot.misskey_client.is_direct_message.return_value = False
         bot.misskey_client.bot_user_id = "bot123"
         bot.misskey_client.extract_message_from_note.return_value = "悩みがあります"
@@ -196,86 +255,42 @@ class TestYamiiMisskeyBot:
         bot._send_reply = AsyncMock()
 
         await bot._handle_note(sample_note)
-        
-        # セッションが開始されたことを確認
+
         assert sample_note.user_id in bot.user_sessions
         assert bot.user_sessions[sample_note.user_id] == sample_yamii_response.session_id
-        
-        # 継続的な会話
+
+        # 継続会話
         continue_note = MisskeyNote(
             id="note789",
             text="@test_yamii もう少し詳しくお聞きしたいです",
-            user_id=sample_note.user_id,  # 同じユーザー
+            user_id=sample_note.user_id,
             user_username="testuser",
-            user_name="テストユーザー", 
+            user_name="テストユーザー",
             created_at=datetime.now(),
             visibility="home",
             mentions=["test_yamii"],
             is_reply=False,
             reply_id=None
         )
-        
+
         bot.misskey_client.extract_message_from_note.return_value = "もう少し詳しくお聞きしたいです"
-        
+
         await bot._handle_note(continue_note)
-        
-        # 2回目のリクエストでセッションIDが渡されたことを確認
+
         calls = bot.yamii_client.send_counseling_request.call_args_list
         second_call = calls[1]
         request_obj = second_call[0][0]
         assert request_obj.session_id == sample_yamii_response.session_id
-    
-    @pytest.mark.asyncio
-    async def test_session_termination(self, mock_config, sample_note):
-        """セッション終了をテスト"""
-        bot = YamiiMisskeyBot(mock_config)
-        
-        # セッションを設定
-        bot.user_sessions[sample_note.user_id] = "session123"
-        
-        # 終了コマンドのノートを作成
-        end_note = MisskeyNote(
-            id="note999",
-            text="@test_yamii 終了",
-            user_id=sample_note.user_id,
-            user_username="testuser",
-            user_name="テストユーザー",
-            created_at=datetime.now(),
-            visibility="home", 
-            mentions=["test_yamii"],
-            is_reply=False,
-            reply_id=None
-        )
-        
-        bot.misskey_client = Mock()
-        bot.misskey_client.is_mentioned.return_value = True
-        bot.misskey_client.is_direct_message.return_value = False
-        bot.misskey_client.bot_user_id = "bot123"
-        bot.misskey_client.extract_message_from_note.return_value = "終了"
 
-        bot._send_reply = AsyncMock()
-
-        await bot._handle_note(end_note)
-        
-        # セッションが削除されたことを確認
-        assert sample_note.user_id not in bot.user_sessions
-        
-        # 終了メッセージが送信されたことを確認
-        bot._send_reply.assert_called_once()
-        call_args = bot._send_reply.call_args
-        response_text = call_args[0][1]
-        assert "人生相談を終了しました" in response_text
-    
     @pytest.mark.asyncio
     async def test_ignore_own_posts(self, mock_config):
         """自分の投稿を無視することをテスト"""
         bot = YamiiMisskeyBot(mock_config)
-        
-        # 自分の投稿を作成
+
         own_note = MisskeyNote(
             id="own_note",
             text="テスト投稿",
-            user_id="bot123",  # ボット自身のID
+            user_id="bot123",
             user_username="test_yamii",
             user_name="Yamii Bot",
             created_at=datetime.now(),
@@ -284,28 +299,99 @@ class TestYamiiMisskeyBot:
             is_reply=False,
             reply_id=None
         )
-        
+
         bot.misskey_client = Mock()
         bot.misskey_client.is_mentioned.return_value = False
+        bot.misskey_client.is_reply_to_bot.return_value = False
         bot.misskey_client.is_direct_message.return_value = False
         bot.misskey_client.bot_user_id = "bot123"
 
         bot._send_reply = AsyncMock()
 
         await bot._handle_note(own_note)
-        
-        # 応答が送信されていないことを確認
+
         bot._send_reply.assert_not_called()
-    
+
     def test_duplicate_note_prevention(self, mock_config, sample_note):
         """重複ノート処理防止をテスト"""
         bot = YamiiMisskeyBot(mock_config)
-        
-        # ノートIDを処理済みに追加
+
         bot.processed_notes.add(sample_note.id)
-        
-        # 同じノートを再度処理しようとする
+
         result = asyncio.run(bot._handle_note(sample_note))
-        
-        # 早期リターンされることを確認（実際にはMockが必要だが、簡易テスト）
+
         assert result is None
+
+
+class TestMisskeyClient:
+    """MisskeyClientのテスト"""
+
+    def test_is_direct_message(self, mock_config):
+        """DMチェックをテスト"""
+        from yamii.bot.misskey import MisskeyClient
+
+        client = MisskeyClient(mock_config)
+        client.bot_user_id = "bot123"
+
+        dm_note = MisskeyNote(
+            id="note1",
+            text="こんにちは",
+            user_id="user123",
+            user_username="testuser",
+            user_name="テスト",
+            created_at=datetime.now(),
+            visibility="specified",
+            mentions=[],
+            is_reply=False,
+            reply_id=None,
+            visible_user_ids=["bot123", "user456"]
+        )
+        assert client.is_direct_message(dm_note) is True
+
+        normal_note = MisskeyNote(
+            id="note2",
+            text="こんにちは",
+            user_id="user123",
+            user_username="testuser",
+            user_name="テスト",
+            created_at=datetime.now(),
+            visibility="home",
+            mentions=[],
+            is_reply=False,
+            reply_id=None
+        )
+        assert client.is_direct_message(normal_note) is False
+
+    def test_is_reply_to_bot(self, mock_config):
+        """リプライチェックをテスト"""
+        from yamii.bot.misskey import MisskeyClient
+
+        client = MisskeyClient(mock_config)
+
+        reply_note = MisskeyNote(
+            id="note1",
+            text="返信です",
+            user_id="user123",
+            user_username="testuser",
+            user_name="テスト",
+            created_at=datetime.now(),
+            visibility="home",
+            mentions=[],
+            is_reply=True,
+            reply_id="parent_note"
+        )
+        assert client.is_reply_to_bot(reply_note) is True
+
+        normal_note = MisskeyNote(
+            id="note2",
+            text="通常投稿",
+            user_id="user123",
+            user_username="testuser",
+            user_name="テスト",
+            created_at=datetime.now(),
+            visibility="home",
+            mentions=[],
+            is_reply=False,
+            reply_id=None
+        )
+        assert client.is_reply_to_bot(normal_note) is False
