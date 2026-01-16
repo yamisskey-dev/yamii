@@ -3,11 +3,12 @@ Yamii API Client
 yamiiサーバーとの通信を行うクライアント
 """
 
-import aiohttp
-from typing import Dict, List, Optional, Any
 import logging
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Any
+
+import aiohttp
 
 from .config import YamiiMisskeyBotConfig
 
@@ -18,13 +19,13 @@ class YamiiResponse:
     response: str
     session_id: str
     timestamp: datetime
-    emotion_analysis: Dict[str, Any]
+    emotion_analysis: dict[str, Any]
     advice_type: str
-    follow_up_questions: List[str]
+    follow_up_questions: list[str]
     is_crisis: bool
     # Bot向け整形済みレスポンス（危機対応情報を含む）
-    formatted_response: Optional[str] = None
-    crisis_resources: Optional[List[str]] = None
+    formatted_response: str | None = None
+    crisis_resources: list[str] | None = None
 
 
 @dataclass
@@ -32,9 +33,9 @@ class YamiiRequest:
     """yamiiサーバーへのリクエスト"""
     message: str
     user_id: str
-    user_name: Optional[str] = None
-    session_id: Optional[str] = None
-    context: Optional[Dict[str, Any]] = None
+    user_name: str | None = None
+    session_id: str | None = None
+    context: dict[str, Any] | None = None
 
 
 class YamiiClient:
@@ -62,7 +63,7 @@ class YamiiClient:
         if self.session:
             await self.session.close()
 
-    async def health_check(self) -> Dict[str, Any]:
+    async def health_check(self) -> dict[str, Any]:
         """yamiiサーバーのヘルスチェック"""
         url = f"{self.config.yamii_api_url}/v1/health"
         async with self.session.get(url) as response:
@@ -104,7 +105,7 @@ class YamiiClient:
             error_text = await response.text()
             raise Exception(f"Counseling failed: {response.status} - {error_text}")
 
-    async def get_outreach_analysis(self, user_id: str) -> Optional[Dict[str, Any]]:
+    async def get_outreach_analysis(self, user_id: str) -> dict[str, Any] | None:
         """ユーザーのアウトリーチ分析を取得"""
         url = f"{self.config.yamii_api_url}/v1/users/{user_id}/outreach/analyze"
 
@@ -117,7 +118,7 @@ class YamiiClient:
             self.logger.error(f"Outreach analysis failed: {e}")
             return None
 
-    async def get_all_users_needing_outreach(self) -> List[Dict[str, Any]]:
+    async def get_all_users_needing_outreach(self) -> list[dict[str, Any]]:
         """アウトリーチが必要な全ユーザーを取得"""
         url = f"{self.config.yamii_api_url}/v1/outreach/pending"
 
@@ -133,7 +134,7 @@ class YamiiClient:
 
     # === コマンドAPI（Bot薄型化） ===
 
-    async def classify_message(self, message: str, user_id: str, platform: str = "misskey") -> Dict[str, Any]:
+    async def classify_message(self, message: str, user_id: str, platform: str = "misskey") -> dict[str, Any]:
         """メッセージを分類（コマンド判定をAPI側で行う）"""
         url = f"{self.config.yamii_api_url}/v1/commands/classify"
 

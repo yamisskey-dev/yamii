@@ -3,8 +3,8 @@ Domain Services
 ビジネスロジックサービス
 """
 
-from .emotion import EmotionService
 from .counseling import CounselingService
+from .emotion import EmotionService
 from .outreach import ProactiveOutreachService
 
 __all__ = [

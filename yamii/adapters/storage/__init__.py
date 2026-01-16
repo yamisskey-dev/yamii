@@ -7,8 +7,8 @@ Storage Adapters
     from yamii.adapters.storage.encrypted_file import EncryptedFileStorageAdapter
 """
 
-from .file import FileStorageAdapter
 from .encrypted_file import EncryptedFileStorageAdapter
+from .file import FileStorageAdapter
 
 __all__ = [
     "FileStorageAdapter",

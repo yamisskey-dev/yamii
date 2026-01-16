@@ -2,20 +2,20 @@
 カウンセリングエンドポイント
 """
 
-from datetime import datetime
-from typing import List, Optional
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, Depends, HTTPException
 
+from ...domain.services.counseling import (
+    CounselingRequest as DomainRequest,
+)
+from ...domain.services.counseling import (
+    CounselingService,
+)
+from ..auth import verify_api_key
+from ..dependencies import get_counseling_service
 from ..schemas import (
     CounselingRequest,
     CounselingResponse,
     EmotionAnalysisResponse,
-)
-from ..dependencies import get_counseling_service
-from ..auth import verify_api_key
-from ...domain.services.counseling import (
-    CounselingService,
-    CounselingRequest as DomainRequest,
 )
 
 router = APIRouter(
@@ -32,7 +32,7 @@ CRISIS_RESOURCES = [
 ]
 
 
-def _format_crisis_response(response: str, resources: List[str]) -> str:
+def _format_crisis_response(response: str, resources: list[str]) -> str:
     """危機対応レスポンスを整形"""
     parts = [
         response,
@@ -68,8 +68,8 @@ async def counseling(
         result = await service.generate_response(domain_request)
 
         # 危機対応の場合は整形済みレスポンスを生成
-        formatted_response: Optional[str] = None
-        crisis_resources: Optional[List[str]] = None
+        formatted_response: str | None = None
+        crisis_resources: list[str] | None = None
 
         if result.is_crisis:
             crisis_resources = CRISIS_RESOURCES

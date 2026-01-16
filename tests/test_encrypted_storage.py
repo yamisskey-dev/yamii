@@ -7,18 +7,18 @@
 - GDPR対応エクスポート
 """
 
-import pytest
-import tempfile
-import shutil
 import os
+import shutil
+import tempfile
 from pathlib import Path
-from datetime import datetime
+
+import pytest
 
 from yamii.adapters.storage.encrypted_file import EncryptedFileStorageAdapter
-from yamii.domain.models.user import UserState
-from yamii.domain.models.relationship import RelationshipPhase
 from yamii.core.encryption import E2EECrypto
 from yamii.core.key_management import SecureKeyManager
+from yamii.domain.models.relationship import RelationshipPhase
+from yamii.domain.models.user import UserState
 
 
 @pytest.fixture
@@ -97,7 +97,7 @@ class TestEncryptedFileStorageAdapter:
 
         # ファイルを直接読み込み
         data_file = Path(temp_dir) / "users.enc.json"
-        with open(data_file, "r") as f:
+        with open(data_file) as f:
             content = f.read()
 
         # ユーザーIDは暗号化されていない（キーとして使用）

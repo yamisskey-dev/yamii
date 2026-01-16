@@ -4,9 +4,8 @@ Pydanticモデル定義
 """
 
 from datetime import datetime
-from typing import Dict, List, Optional, Any
-from pydantic import BaseModel, Field
 
+from pydantic import BaseModel, Field
 
 # === カウンセリング ===
 
@@ -14,8 +13,8 @@ class CounselingRequest(BaseModel):
     """カウンセリングリクエスト"""
     message: str = Field(..., min_length=1, description="相談メッセージ")
     user_id: str = Field(..., min_length=1, description="ユーザーID")
-    user_name: Optional[str] = Field(None, description="表示名")
-    session_id: Optional[str] = Field(None, description="セッションID")
+    user_name: str | None = Field(None, description="表示名")
+    session_id: str | None = Field(None, description="セッションID")
 
 
 class EmotionAnalysisResponse(BaseModel):
@@ -24,7 +23,7 @@ class EmotionAnalysisResponse(BaseModel):
     intensity: float
     stability: float
     is_crisis: bool
-    all_emotions: Dict[str, float]
+    all_emotions: dict[str, float]
     confidence: float
 
 
@@ -35,29 +34,29 @@ class CounselingResponse(BaseModel):
     timestamp: datetime
     emotion_analysis: EmotionAnalysisResponse
     advice_type: str
-    follow_up_questions: List[str]
+    follow_up_questions: list[str]
     is_crisis: bool
     # Bot向け: 危機対応情報を含む整形済みレスポンス
-    formatted_response: Optional[str] = Field(None, description="プラットフォーム表示用整形済みレスポンス")
-    crisis_resources: Optional[List[str]] = Field(None, description="危機対応リソース")
+    formatted_response: str | None = Field(None, description="プラットフォーム表示用整形済みレスポンス")
+    crisis_resources: list[str] | None = Field(None, description="危機対応リソース")
 
 
 # === ユーザー ===
 
 class ProactiveSettingsRequest(BaseModel):
     """プロアクティブ設定リクエスト"""
-    enabled: Optional[bool] = None
-    frequency: Optional[str] = Field(None, pattern="^(daily|weekly|never)$")
-    preferred_time: Optional[str] = Field(None, pattern="^[0-2][0-9]:[0-5][0-9]$")
+    enabled: bool | None = None
+    frequency: str | None = Field(None, pattern="^(daily|weekly|never)$")
+    preferred_time: str | None = Field(None, pattern="^[0-2][0-9]:[0-5][0-9]$")
 
 
 class ProactiveSettingsResponse(BaseModel):
     """プロアクティブ設定レスポンス"""
     enabled: bool
     frequency: str
-    preferred_time: Optional[str]
-    last_outreach: Optional[datetime]
-    next_scheduled: Optional[datetime]
+    preferred_time: str | None
+    last_outreach: datetime | None
+    next_scheduled: datetime | None
 
 
 class UserSummaryResponse(BaseModel):
@@ -68,14 +67,14 @@ class UserSummaryResponse(BaseModel):
     trust_score: float
     days_since_first: int
     episode_count: int
-    top_topics: List[str]
+    top_topics: list[str]
     proactive: ProactiveSettingsResponse
 
 
 class UserProfileRequest(BaseModel):
     """ユーザープロファイル設定リクエスト"""
-    explicit_profile: Optional[str] = Field(None, max_length=1000)
-    display_name: Optional[str] = Field(None, max_length=100)
+    explicit_profile: str | None = Field(None, max_length=1000)
+    display_name: str | None = Field(None, max_length=100)
 
 
 # === エピソード ===
@@ -85,7 +84,7 @@ class EpisodeResponse(BaseModel):
     id: str
     created_at: datetime
     summary: str
-    topics: List[str]
+    topics: list[str]
     emotion: str
     importance_score: float
     episode_type: str
@@ -93,7 +92,7 @@ class EpisodeResponse(BaseModel):
 
 class EpisodeListResponse(BaseModel):
     """エピソードリストレスポンス"""
-    episodes: List[EpisodeResponse]
+    episodes: list[EpisodeResponse]
     total: int
 
 
@@ -102,15 +101,15 @@ class EpisodeListResponse(BaseModel):
 class OutreachDecisionResponse(BaseModel):
     """アウトリーチ判断レスポンス"""
     should_reach_out: bool
-    reason: Optional[str]
-    message: Optional[str]
+    reason: str | None
+    message: str | None
     priority: int
 
 
 class TriggerOutreachRequest(BaseModel):
     """手動アウトリーチトリガーリクエスト"""
     user_id: str
-    message: Optional[str] = None
+    message: str | None = None
 
 
 # === システム ===
@@ -120,7 +119,7 @@ class HealthResponse(BaseModel):
     status: str
     timestamp: datetime
     version: str
-    components: Dict[str, bool]
+    components: dict[str, bool]
 
 
 class APIInfoResponse(BaseModel):
@@ -128,4 +127,4 @@ class APIInfoResponse(BaseModel):
     service: str
     version: str
     description: str
-    features: List[str]
+    features: list[str]

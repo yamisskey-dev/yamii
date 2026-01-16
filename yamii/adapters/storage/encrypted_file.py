@@ -3,16 +3,15 @@
 ユーザーごとの派生キーを使用したプライバシーファースト暗号化（遅延書き込み最適化）
 """
 
-import json
 import asyncio
-from pathlib import Path
-from typing import List, Optional
+import json
 from datetime import datetime
+from pathlib import Path
 
-from ...domain.ports.storage_port import IStorage
-from ...domain.models.user import UserState
 from ...core.encryption import E2EECrypto, EncryptedData
-from ...core.key_management import get_key_manager, SecureKeyManager
+from ...core.key_management import SecureKeyManager, get_key_manager
+from ...domain.models.user import UserState
+from ...domain.ports.storage_port import IStorage
 
 
 class EncryptedFileStorageAdapter(IStorage):
@@ -38,7 +37,7 @@ class EncryptedFileStorageAdapter(IStorage):
     def __init__(
         self,
         data_dir: str = "data",
-        key_manager: Optional[SecureKeyManager] = None,
+        key_manager: SecureKeyManager | None = None,
         save_delay: float = 1.0,
     ):
         self.data_dir = Path(data_dir)
@@ -59,7 +58,7 @@ class EncryptedFileStorageAdapter(IStorage):
         # 遅延書き込み
         self._save_delay = save_delay
         self._dirty = False
-        self._save_task: Optional[asyncio.Task] = None
+        self._save_task: asyncio.Task | None = None
 
     def _get_user_key(self, user_id: str) -> bytes:
         """ユーザー固有の暗号化キーを取得"""
@@ -106,7 +105,7 @@ class EncryptedFileStorageAdapter(IStorage):
 
     def _read_json_file(self) -> dict:
         """JSONファイルを同期的に読み込み（スレッドプール用）"""
-        with open(self.data_file, "r", encoding="utf-8") as f:
+        with open(self.data_file, encoding="utf-8") as f:
             return json.load(f)
 
     async def _schedule_save(self) -> None:
@@ -172,12 +171,12 @@ class EncryptedFileStorageAdapter(IStorage):
         self._users[user.user_id] = user
         await self._schedule_save()
 
-    async def load_user(self, user_id: str) -> Optional[UserState]:
+    async def load_user(self, user_id: str) -> UserState | None:
         """ユーザー状態を読み込み"""
         await self._ensure_loaded()
         return self._users.get(user_id)
 
-    async def load_users(self, user_ids: List[str]) -> dict[str, UserState]:
+    async def load_users(self, user_ids: list[str]) -> dict[str, UserState]:
         """複数ユーザーを一括読み込み"""
         await self._ensure_loaded()
         return {uid: self._users[uid] for uid in user_ids if uid in self._users}
@@ -197,7 +196,7 @@ class EncryptedFileStorageAdapter(IStorage):
             return True
         return False
 
-    async def list_users(self) -> List[str]:
+    async def list_users(self) -> list[str]:
         """全ユーザーIDのリストを取得"""
         await self._ensure_loaded()
         return list(self._users.keys())
@@ -214,7 +213,7 @@ class EncryptedFileStorageAdapter(IStorage):
                 self._save_task.cancel()
             await self._save_data_now()
 
-    async def export_decrypted(self, user_id: str) -> Optional[dict]:
+    async def export_decrypted(self, user_id: str) -> dict | None:
         """
         ユーザーデータを復号してエクスポート（GDPR対応）
 
@@ -234,7 +233,7 @@ class EncryptedFileStorageAdapter(IStorage):
             return export_data
         return None
 
-    async def get_user_data_summary(self, user_id: str) -> Optional[dict]:
+    async def get_user_data_summary(self, user_id: str) -> dict | None:
         """
         ユーザーデータのサマリーを取得（プライバシー情報開示用）
 

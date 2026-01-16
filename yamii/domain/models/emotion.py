@@ -3,9 +3,9 @@
 統合された感情分類と分析結果
 """
 
-from typing import Dict, Any
 from dataclasses import dataclass
 from enum import Enum
+from typing import Any
 
 
 class EmotionType(Enum):
@@ -35,10 +35,10 @@ class EmotionAnalysis:
     intensity: float  # 0.0-1.0（正規化）
     stability: float  # 0.0-1.0（感情の安定性）
     is_crisis: bool
-    all_emotions: Dict[str, float]
+    all_emotions: dict[str, float]
     confidence: float  # 0.0-1.0
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """辞書形式に変換"""
         return {
             "primary_emotion": self.primary_emotion.value,
@@ -50,7 +50,7 @@ class EmotionAnalysis:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "EmotionAnalysis":
+    def from_dict(cls, data: dict[str, Any]) -> "EmotionAnalysis":
         """辞書から生成"""
         return cls(
             primary_emotion=EmotionType(data.get("primary_emotion", "neutral")),

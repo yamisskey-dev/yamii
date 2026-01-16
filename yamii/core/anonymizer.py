@@ -4,15 +4,14 @@ OpenAIに送信前に個人情報をマスクし、応答後に復元する
 """
 
 import re
-from typing import Dict, List, Tuple
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 @dataclass
 class AnonymizationResult:
     """匿名化結果"""
     anonymized_text: str
-    mapping: Dict[str, str]  # placeholder -> original
+    mapping: dict[str, str]  # placeholder -> original
     pii_count: int
 
 
@@ -32,7 +31,7 @@ class PIIAnonymizer:
 
     def __init__(self):
         # PIIパターン定義（優先度順）
-        self._patterns: List[Tuple[str, str, re.Pattern]] = [
+        self._patterns: list[tuple[str, str, re.Pattern]] = [
             # マイナンバー（12桁）
             ("MYNUMBER", "マイナンバー",
              re.compile(r'\b\d{4}[-\s]?\d{4}[-\s]?\d{4}\b')),
@@ -80,9 +79,9 @@ class PIIAnonymizer:
         Returns:
             AnonymizationResult: 匿名化されたテキストとマッピング
         """
-        mapping: Dict[str, str] = {}
+        mapping: dict[str, str] = {}
         anonymized = text
-        counters: Dict[str, int] = {}
+        counters: dict[str, int] = {}
 
         # 標準PIIパターンの処理
         for pii_type, _, pattern in self._patterns:
@@ -118,7 +117,7 @@ class PIIAnonymizer:
             pii_count=len(mapping),
         )
 
-    def deanonymize(self, text: str, mapping: Dict[str, str]) -> str:
+    def deanonymize(self, text: str, mapping: dict[str, str]) -> str:
         """
         プレースホルダーを元の値に復元
 
@@ -134,7 +133,7 @@ class PIIAnonymizer:
             result = result.replace(placeholder, original)
         return result
 
-    def detect_pii(self, text: str) -> List[Dict[str, str]]:
+    def detect_pii(self, text: str) -> list[dict[str, str]]:
         """
         テキスト内のPIIを検出（匿名化なし）
 
@@ -176,6 +175,6 @@ def anonymize_text(text: str) -> AnonymizationResult:
     return get_anonymizer().anonymize(text)
 
 
-def deanonymize_text(text: str, mapping: Dict[str, str]) -> str:
+def deanonymize_text(text: str, mapping: dict[str, str]) -> str:
     """テキストを復元（便利関数）"""
     return get_anonymizer().deanonymize(text, mapping)

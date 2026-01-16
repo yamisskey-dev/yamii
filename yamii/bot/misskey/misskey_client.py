@@ -3,12 +3,11 @@ Misskey API Client
 MisskeyのAPI通信を行うクライアント
 """
 
-import aiohttp
-import asyncio
-from typing import Dict, List, Optional, Any
 import logging
 from dataclasses import dataclass
 from datetime import datetime
+
+import aiohttp
 
 from .config import YamiiMisskeyBotConfig
 
@@ -17,16 +16,16 @@ from .config import YamiiMisskeyBotConfig
 class MisskeyNote:
     """Misskeyノートの構造"""
     id: str
-    text: Optional[str]
+    text: str | None
     user_id: str
     user_username: str
-    user_name: Optional[str]
+    user_name: str | None
     created_at: datetime
     visibility: str
-    mentions: List[str]
+    mentions: list[str]
     is_reply: bool
-    reply_id: Optional[str]
-    visible_user_ids: Optional[List[str]] = None
+    reply_id: str | None
+    visible_user_ids: list[str] | None = None
 
 
 @dataclass
@@ -34,31 +33,31 @@ class MisskeyUser:
     """Misskeyユーザーの構造"""
     id: str
     username: str
-    name: Optional[str]
+    name: str | None
 
 
 @dataclass
 class MisskeyChatMessage:
     """Misskeyチャットメッセージの構造"""
     id: str
-    text: Optional[str]
+    text: str | None
     user_id: str
     user_username: str
-    user_name: Optional[str]
+    user_name: str | None
     created_at: datetime
     is_read: bool
-    file_id: Optional[str] = None
+    file_id: str | None = None
 
 
 class MisskeyClient:
     """Misskeyクライアント"""
-    
+
     def __init__(self, config: YamiiMisskeyBotConfig):
         self.config = config
         self.logger = logging.getLogger(__name__)
         self.bot_user_id = None
         self.session = None
-        
+
     async def __aenter__(self):
         """非同期コンテキストマネージャー開始"""
         self.session = aiohttp.ClientSession(
@@ -66,12 +65,12 @@ class MisskeyClient:
         )
         await self.initialize()
         return self
-        
+
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """非同期コンテキストマネージャー終了"""
         if self.session:
             await self.session.close()
-            
+
     async def initialize(self):
         """ボットの初期化"""
         try:
@@ -79,20 +78,20 @@ class MisskeyClient:
             user_info = await self.get_my_user_info()
             self.bot_user_id = user_info["id"]
             self.logger.info(f"Bot initialized: @{user_info['username']} ({user_info['name']})")
-            
+
         except Exception as e:
             self.logger.error(f"Failed to initialize bot: {e}")
             raise
-            
-    async def _api_request(self, endpoint: str, params: Dict = None) -> Dict:
+
+    async def _api_request(self, endpoint: str, params: dict = None) -> dict:
         """Misskey APIリクエストを送信"""
         if params is None:
             params = {}
-            
+
         params["i"] = self.config.misskey_access_token
-        
+
         url = f"{self.config.misskey_instance_url}/api/{endpoint}"
-        
+
         try:
             async with self.session.post(url, json=params) as response:
                 if response.status == 200:
@@ -100,53 +99,53 @@ class MisskeyClient:
                 else:
                     error_text = await response.text()
                     raise Exception(f"API request failed: {response.status} - {error_text}")
-                    
+
         except aiohttp.ClientError as e:
             self.logger.error(f"HTTP client error: {e}")
             raise Exception(f"HTTP request failed: {e}")
-            
-    async def get_my_user_info(self) -> Dict:
+
+    async def get_my_user_info(self) -> dict:
         """自分のユーザー情報を取得"""
         return await self._api_request("i")
-        
-    async def create_note(self, text: str, reply_id: Optional[str] = None, 
-                         visibility: str = "home") -> Dict:
+
+    async def create_note(self, text: str, reply_id: str | None = None,
+                         visibility: str = "home") -> dict:
         """ノートを投稿"""
         params = {
             "text": text,
             "visibility": visibility
         }
-        
+
         if reply_id:
             params["replyId"] = reply_id
-            
+
         return await self._api_request("notes/create", params)
-        
-    async def get_mentions(self, limit: int = 10) -> List[MisskeyNote]:
+
+    async def get_mentions(self, limit: int = 10) -> list[MisskeyNote]:
         """メンション通知を取得"""
         params = {
             "limit": limit,
             "includeTypes": ["mention", "reply"]
         }
-        
+
         notifications = await self._api_request("i/notifications", params)
-        
+
         notes = []
         for notif in notifications:
             if notif["type"] in ["mention", "reply"] and "note" in notif:
                 note_data = notif["note"]
                 notes.append(self._parse_note(note_data))
-                
+
         return notes
-        
-    async def get_timeline(self, limit: int = 10) -> List[MisskeyNote]:
+
+    async def get_timeline(self, limit: int = 10) -> list[MisskeyNote]:
         """ホームタイムラインを取得"""
         params = {"limit": limit}
         timeline = await self._api_request("notes/timeline", params)
 
         return [self._parse_note(note_data) for note_data in timeline]
 
-    async def send_chat_message(self, user_id: str, text: str) -> Dict:
+    async def send_chat_message(self, user_id: str, text: str) -> dict:
         """チャットメッセージを送信"""
         params = {
             "toUserId": user_id,
@@ -154,12 +153,12 @@ class MisskeyClient:
         }
         return await self._api_request("chat/messages/create-to-user", params)
 
-    async def read_chat_message(self, message_id: str) -> Dict:
+    async def read_chat_message(self, message_id: str) -> dict:
         """チャットメッセージを既読にする"""
         params = {"messageId": message_id}
         return await self._api_request("chat/messages/read", params)
 
-    def _parse_chat_message(self, data: Dict) -> MisskeyChatMessage:
+    def _parse_chat_message(self, data: dict) -> MisskeyChatMessage:
         """APIレスポンスからMisskeyChatMessageオブジェクトを作成"""
         return MisskeyChatMessage(
             id=data["id"],
@@ -171,15 +170,15 @@ class MisskeyClient:
             is_read=data.get("isRead", False),
             file_id=data.get("fileId")
         )
-        
-    def _parse_note(self, note_data: Dict) -> MisskeyNote:
+
+    def _parse_note(self, note_data: dict) -> MisskeyNote:
         """APIレスポンスからMisskeyNoteオブジェクトを作成"""
         mentions = []
         if note_data.get("text"):
             # @username の形式のメンションを抽出
             import re
             mentions = re.findall(r'@(\w+)', note_data["text"])
-            
+
         return MisskeyNote(
             id=note_data["id"],
             text=note_data.get("text"),
@@ -192,16 +191,17 @@ class MisskeyClient:
             is_reply=note_data.get("replyId") is not None,
             reply_id=note_data.get("replyId")
         )
-        
+
     async def start_streaming(self, on_message_callback):
-        import websockets
         import json
-        
+
+        import websockets
+
         # yuiと同じURL形式: /streaming?i=アクセストークン
         ws_url = f"{self.config.misskey_instance_url.replace('https://', 'wss://').replace('http://', 'ws://')}/streaming?i={self.config.misskey_access_token}"
-        
+
         self.logger.info(f"Connecting to WebSocket: {ws_url[:50]}...")
-        
+
         try:
             async with websockets.connect(ws_url) as websocket:
                 self.logger.info("WebSocket connection established")
@@ -237,7 +237,7 @@ class MisskeyClient:
             self.logger.error(f"Streaming connection failed: {e}")
             self.logger.error(f"WebSocket URL was: {ws_url[:80]}...")
             raise
-            
+
     def is_mentioned(self, note: MisskeyNote) -> bool:
         """ボットがメンションされているかチェック"""
         if self.bot_user_id and note.user_id == self.bot_user_id:

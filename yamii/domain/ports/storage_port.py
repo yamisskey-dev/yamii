@@ -4,7 +4,6 @@
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Optional
 
 from ..models.user import UserState
 
@@ -25,10 +24,9 @@ class IStorage(ABC):
         Args:
             user: 保存するユーザー状態
         """
-        pass
 
     @abstractmethod
-    async def load_user(self, user_id: str) -> Optional[UserState]:
+    async def load_user(self, user_id: str) -> UserState | None:
         """
         ユーザー状態を読み込み
 
@@ -38,7 +36,6 @@ class IStorage(ABC):
         Returns:
             Optional[UserState]: ユーザー状態（存在しない場合None）
         """
-        pass
 
     @abstractmethod
     async def delete_user(self, user_id: str) -> bool:
@@ -51,17 +48,15 @@ class IStorage(ABC):
         Returns:
             bool: 削除成功したか
         """
-        pass
 
     @abstractmethod
-    async def list_users(self) -> List[str]:
+    async def list_users(self) -> list[str]:
         """
         全ユーザーIDのリストを取得
 
         Returns:
             List[str]: ユーザーIDリスト
         """
-        pass
 
     @abstractmethod
     async def user_exists(self, user_id: str) -> bool:
@@ -74,7 +69,6 @@ class IStorage(ABC):
         Returns:
             bool: 存在するか
         """
-        pass
 
     async def get_or_create_user(self, user_id: str) -> UserState:
         """
@@ -92,7 +86,7 @@ class IStorage(ABC):
             await self.save_user(user)
         return user
 
-    async def export_user_data(self, user_id: str) -> Optional[dict]:
+    async def export_user_data(self, user_id: str) -> dict | None:
         """
         ユーザーデータをエクスポート（GDPR対応）
 

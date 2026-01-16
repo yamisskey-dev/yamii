@@ -4,21 +4,24 @@ Yamii API - メインアプリケーション
 """
 
 import asyncio
-from datetime import datetime
 from contextlib import asynccontextmanager
-from typing import Optional
+from datetime import datetime
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 
-from .routes import counseling_router, user_router, outreach_router, commands_router
-from .schemas import HealthResponse, APIInfoResponse
-from .dependencies import get_storage, get_ai_provider
-from .auth import RateLimitMiddleware, SecurityHeadersMiddleware, RequestLoggingMiddleware
 from ..core.config import get_settings
 from ..core.logging import YamiiLogger, get_logger
+from .auth import (
+    RateLimitMiddleware,
+    RequestLoggingMiddleware,
+    SecurityHeadersMiddleware,
+)
+from .dependencies import get_ai_provider, get_storage
+from .routes import commands_router, counseling_router, outreach_router, user_router
+from .schemas import APIInfoResponse, HealthResponse
 
 # ログシステムを初期化
 YamiiLogger.configure()
@@ -39,8 +42,8 @@ class APIVersionMiddleware(BaseHTTPMiddleware):
 
 async def run_misskey_bot() -> None:
     """Misskey Botを起動"""
-    from ..bot.misskey.yamii_bot import YamiiMisskeyBot
     from ..bot.misskey.config import YamiiMisskeyBotConfig
+    from ..bot.misskey.yamii_bot import YamiiMisskeyBot
 
     settings = get_settings()
 
@@ -56,7 +59,7 @@ async def run_misskey_bot() -> None:
 
 
 # グローバルBot タスク参照
-_bot_task: Optional[asyncio.Task] = None
+_bot_task: asyncio.Task | None = None
 
 
 @asynccontextmanager

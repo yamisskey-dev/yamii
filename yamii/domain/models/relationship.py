@@ -3,10 +3,10 @@
 ユーザーとの関係性フェーズ、トーン設定等を定義
 """
 
+from dataclasses import dataclass
 from datetime import datetime
-from typing import Dict, List, Optional, Any
-from dataclasses import dataclass, field
 from enum import Enum
+from typing import Any
 
 
 class RelationshipPhase(Enum):
@@ -44,7 +44,7 @@ class PhaseTransition:
     interaction_count: int
     trigger: str  # 遷移のきっかけ
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "from_phase": self.from_phase.value,
             "to_phase": self.to_phase.value,
@@ -54,7 +54,7 @@ class PhaseTransition:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "PhaseTransition":
+    def from_dict(cls, data: dict[str, Any]) -> "PhaseTransition":
         return cls(
             from_phase=RelationshipPhase(data["from_phase"]),
             to_phase=RelationshipPhase(data["to_phase"]),
@@ -70,9 +70,9 @@ class TopicAffinity:
     topic: str
     affinity_score: float = 0.0       # 関心度 (0.0-1.0)
     mention_count: int = 0
-    last_mentioned: Optional[datetime] = None
+    last_mentioned: datetime | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "topic": self.topic,
             "affinity_score": self.affinity_score,
@@ -81,7 +81,7 @@ class TopicAffinity:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "TopicAffinity":
+    def from_dict(cls, data: dict[str, Any]) -> "TopicAffinity":
         return cls(
             topic=data["topic"],
             affinity_score=data.get("affinity_score", 0.0),

@@ -8,25 +8,21 @@ CounselingService のテスト
 - フェーズ遷移が正しく動作するか
 """
 
-import pytest
-from datetime import datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock
-from typing import Optional
 
-from yamii.domain.services.counseling import (
-    CounselingService,
-    CounselingRequest,
-    CounselingResponse,
-    AdviceTypeClassifier,
-    FollowUpGenerator,
-)
-from yamii.domain.services.emotion import EmotionService
-from yamii.domain.models.user import UserState, ProactiveSettings
-from yamii.domain.models.emotion import EmotionType, EmotionAnalysis
-from yamii.domain.models.relationship import RelationshipPhase, ToneLevel, DepthLevel
+import pytest
+
+from yamii.domain.models.emotion import EmotionType
+from yamii.domain.models.relationship import RelationshipPhase
+from yamii.domain.models.user import UserState
 from yamii.domain.ports.ai_port import IAIProvider
 from yamii.domain.ports.storage_port import IStorage
-
+from yamii.domain.services.counseling import (
+    AdviceTypeClassifier,
+    CounselingRequest,
+    CounselingResponse,
+    CounselingService,
+    FollowUpGenerator,
+)
 
 # === モッククラス ===
 
@@ -41,7 +37,7 @@ class MockAIProvider(IAIProvider):
         self,
         message: str,
         system_prompt: str,
-        max_tokens: Optional[int] = None,
+        max_tokens: int | None = None,
     ) -> str:
         return self._response
 
@@ -59,7 +55,7 @@ class MockStorage(IStorage):
     def __init__(self):
         self._users: dict[str, UserState] = {}
 
-    async def load_user(self, user_id: str) -> Optional[UserState]:
+    async def load_user(self, user_id: str) -> UserState | None:
         return self._users.get(user_id)
 
     async def save_user(self, user: UserState) -> None:
@@ -77,7 +73,7 @@ class MockStorage(IStorage):
     async def user_exists(self, user_id: str) -> bool:
         return user_id in self._users
 
-    async def export_user_data(self, user_id: str) -> Optional[dict]:
+    async def export_user_data(self, user_id: str) -> dict | None:
         user = self._users.get(user_id)
         if user:
             return user.to_dict()
@@ -253,7 +249,7 @@ class TestCounselingService:
             user_id="existing_user",
         )
 
-        response = await service.generate_response(request)
+        await service.generate_response(request)
 
         # ユーザー状態が更新されている
         updated_user = await mock_storage.load_user("existing_user")

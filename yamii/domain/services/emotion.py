@@ -4,14 +4,12 @@
 """
 
 import re
-from typing import Dict, List, Optional, Set, Tuple
 
 from ..models.emotion import (
-    EmotionType,
-    EmotionAnalysis,
     NEGATIVE_EMOTIONS,
     POSITIVE_EMOTIONS,
-    CRISIS_EMOTIONS,
+    EmotionAnalysis,
+    EmotionType,
 )
 from ..models.user import UserState
 
@@ -99,17 +97,17 @@ class EmotionService:
         }
 
         # 危機キーワード（セットで高速検索）
-        self._crisis_keywords: Set[str] = {
+        self._crisis_keywords: set[str] = {
             "死にたい", "消えたい", "自殺", "生きる意味がない", "もう限界",
             "自分を傷つけ", "生きていく意味", "死んだ方がマシ", "終わりにしたい"
         }
 
         # 強調語・修飾語（セットで高速検索）
-        self._emphasis_words: Set[str] = {"すごく", "とても", "めちゃくちゃ", "超", "激", "死ぬほど", "マジで"}
-        self._negation_words: Set[str] = {"ない", "ません", "じゃない", "ではない", "違う", "ちがう"}
+        self._emphasis_words: set[str] = {"すごく", "とても", "めちゃくちゃ", "超", "激", "死ぬほど", "マジで"}
+        self._negation_words: set[str] = {"ない", "ません", "じゃない", "ではない", "違う", "ちがう"}
 
         # 事前コンパイル済みパターン
-        self._compiled_patterns: Dict[EmotionType, List[Tuple[re.Pattern, float]]] = {}
+        self._compiled_patterns: dict[EmotionType, list[tuple[re.Pattern, float]]] = {}
         for emotion_type, emotion_data in self._emotion_keywords.items():
             weight = emotion_data["weight"]
             patterns = [
@@ -173,7 +171,7 @@ class EmotionService:
         """危機状況の高速検出（一度のマッチで全キーワードチェック）"""
         return bool(self._crisis_pattern.search(message_lower))
 
-    def _calculate_emotion_scores_fast(self, message_lower: str) -> Dict[EmotionType, float]:
+    def _calculate_emotion_scores_fast(self, message_lower: str) -> dict[EmotionType, float]:
         """各感情のスコアを高速計算（事前コンパイル済みパターン使用）"""
         scores = {emotion: 0.0 for emotion in EmotionType}
 
@@ -186,7 +184,7 @@ class EmotionService:
 
         return scores
 
-    def _apply_modifiers_fast(self, message: str, scores: Dict[EmotionType, float]) -> Dict[EmotionType, float]:
+    def _apply_modifiers_fast(self, message: str, scores: dict[EmotionType, float]) -> dict[EmotionType, float]:
         """修飾語による感情スコアの高速調整"""
         modified_scores = scores.copy()
 
@@ -251,7 +249,7 @@ class EmotionService:
             return "declining"
         return "stable"
 
-    def _determine_primary_emotion(self, scores: Dict[EmotionType, float]) -> tuple[EmotionType, float]:
+    def _determine_primary_emotion(self, scores: dict[EmotionType, float]) -> tuple[EmotionType, float]:
         """主要感情と強度を決定"""
         max_score = max(scores.values()) if scores.values() else 0
 
@@ -282,7 +280,7 @@ class EmotionService:
 
         return EmotionType.NEUTRAL, 0.0
 
-    def _calculate_stability(self, scores: Dict[EmotionType, float]) -> float:
+    def _calculate_stability(self, scores: dict[EmotionType, float]) -> float:
         """感情の安定性を計算"""
         non_zero_scores = [s for s in scores.values() if s > 0]
         if len(non_zero_scores) <= 1:
@@ -297,7 +295,7 @@ class EmotionService:
         concentration = max_score / total_score
         return concentration
 
-    def _calculate_confidence(self, scores: Dict[EmotionType, float], message: str) -> float:
+    def _calculate_confidence(self, scores: dict[EmotionType, float], message: str) -> float:
         """分析の信頼度を計算"""
         total_score = sum(scores.values())
         max_score = max(scores.values()) if scores.values() else 0

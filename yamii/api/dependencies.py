@@ -5,21 +5,19 @@ API Dependencies
 
 import os
 from functools import lru_cache
-from typing import Optional
 
-from ..domain.ports.storage_port import IStorage
-from ..domain.ports.ai_port import IAIProvider
-from ..domain.services.emotion import EmotionService
-from ..domain.services.counseling import CounselingService
-from ..domain.services.outreach import ProactiveOutreachService
-from ..adapters.storage.file import FileStorageAdapter
-from ..adapters.storage.encrypted_file import EncryptedFileStorageAdapter
 from ..adapters.ai.openai import OpenAIAdapterWithFallback
-
+from ..adapters.storage.encrypted_file import EncryptedFileStorageAdapter
+from ..adapters.storage.file import FileStorageAdapter
+from ..domain.ports.ai_port import IAIProvider
+from ..domain.ports.storage_port import IStorage
+from ..domain.services.counseling import CounselingService
+from ..domain.services.emotion import EmotionService
+from ..domain.services.outreach import ProactiveOutreachService
 
 # === 設定 ===
 
-@lru_cache()
+@lru_cache
 def get_openai_api_key() -> str:
     """OpenAI API キーを取得"""
     api_key = os.getenv("OPENAI_API_KEY")
@@ -28,7 +26,7 @@ def get_openai_api_key() -> str:
     return api_key
 
 
-@lru_cache()
+@lru_cache
 def get_data_dir() -> str:
     """データディレクトリを取得"""
     return os.getenv("YAMII_DATA_DIR", "data")
@@ -36,16 +34,16 @@ def get_data_dir() -> str:
 
 # === シングルトンインスタンス ===
 
-_storage: Optional[IStorage] = None
-_ai_provider: Optional[IAIProvider] = None
-_emotion_service: Optional[EmotionService] = None
-_counseling_service: Optional[CounselingService] = None
-_outreach_service: Optional[ProactiveOutreachService] = None
+_storage: IStorage | None = None
+_ai_provider: IAIProvider | None = None
+_emotion_service: EmotionService | None = None
+_counseling_service: CounselingService | None = None
+_outreach_service: ProactiveOutreachService | None = None
 
 
 # === 依存性取得関数 ===
 
-@lru_cache()
+@lru_cache
 def is_encryption_enabled() -> bool:
     """暗号化が有効かどうか"""
     return os.getenv("YAMII_ENCRYPTION_ENABLED", "false").lower() == "true"

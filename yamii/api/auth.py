@@ -8,14 +8,14 @@ API 認証・認可
 
 import time
 from collections import defaultdict
-from typing import Callable, Optional
-from fastapi import HTTPException, Security, Request
+from collections.abc import Callable
+
+from fastapi import HTTPException, Request, Security
 from fastapi.security import APIKeyHeader
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 
 from ..core.config import get_settings
-
 
 # === API キー認証 ===
 
@@ -23,7 +23,7 @@ api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
 
 async def verify_api_key(
-    api_key: Optional[str] = Security(api_key_header),
+    api_key: str | None = Security(api_key_header),
 ) -> str:
     """
     API キーを検証
@@ -80,7 +80,7 @@ class RateLimiter:
         self.window_seconds = window_seconds
         self._requests: dict[str, list[float]] = defaultdict(list)
 
-    def _get_client_id(self, request: Request, api_key: Optional[str] = None) -> str:
+    def _get_client_id(self, request: Request, api_key: str | None = None) -> str:
         """クライアント識別子を取得"""
         # API キーがあればそれを使用、なければ IP アドレス
         if api_key and api_key != "development-mode":
@@ -105,7 +105,7 @@ class RateLimiter:
             t for t in self._requests[client_id] if t > cutoff
         ]
 
-    def is_allowed(self, request: Request, api_key: Optional[str] = None) -> tuple[bool, dict]:
+    def is_allowed(self, request: Request, api_key: str | None = None) -> tuple[bool, dict]:
         """
         リクエストが許可されるか確認
 
@@ -138,7 +138,7 @@ class RateLimiter:
 
 
 # グローバルレートリミッターインスタンス
-_rate_limiter: Optional[RateLimiter] = None
+_rate_limiter: RateLimiter | None = None
 
 
 def get_rate_limiter() -> RateLimiter:

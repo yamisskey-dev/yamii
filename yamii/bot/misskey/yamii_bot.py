@@ -7,11 +7,9 @@ Yamii Misskey Bot
 import asyncio
 import logging
 from collections import OrderedDict
-from typing import Dict, Optional
-from datetime import datetime
 
 from .config import YamiiMisskeyBotConfig, load_config
-from .misskey_client import MisskeyClient, MisskeyNote, MisskeyChatMessage
+from .misskey_client import MisskeyClient, MisskeyNote
 from .yamii_client import YamiiClient, YamiiRequest
 
 
@@ -57,14 +55,14 @@ class YamiiMisskeyBot:
         self.yamii_client = YamiiClient(config)
 
         # ユーザーセッション（user_id -> session_id）
-        self.user_sessions: Dict[str, str] = {}
+        self.user_sessions: dict[str, str] = {}
 
         # 処理済みメッセージ管理（重複処理防止、LRUで自動クリーンアップ）
         self.processed_notes = LRUSet(maxsize=1000)
         self.processed_chat_messages = LRUSet(maxsize=1000)
 
         # プロアクティブアウトリーチタスク
-        self._outreach_task: Optional[asyncio.Task] = None
+        self._outreach_task: asyncio.Task | None = None
 
     async def start(self):
         """ボットを開始"""

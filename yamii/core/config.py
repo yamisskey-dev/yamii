@@ -8,7 +8,7 @@ pydantic-settings を使用した型安全な設定管理
 """
 
 from functools import lru_cache
-from typing import List, Optional
+
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -77,7 +77,7 @@ class SecuritySettings(BaseSettings):
 
     # 暗号化
     encryption_enabled: bool = Field(default=True, description="E2EE 暗号化を有効化")
-    master_key: Optional[str] = Field(default=None, alias="YAMII_MASTER_KEY", description="マスター暗号化キー (Base64)")
+    master_key: str | None = Field(default=None, alias="YAMII_MASTER_KEY", description="マスター暗号化キー (Base64)")
 
     # API 認証（カンマ区切り文字列で指定）
     api_keys_str: str = Field(
@@ -93,7 +93,7 @@ class SecuritySettings(BaseSettings):
     rate_limit_window: int = Field(default=60, description="レート制限: ウィンドウ(秒)")
 
     @property
-    def api_keys(self) -> List[str]:
+    def api_keys(self) -> list[str]:
         """API キーリストを取得"""
         if not self.api_keys_str:
             return []
@@ -135,7 +135,7 @@ class YamiiSettings(BaseSettings):
         )
 
 
-@lru_cache()
+@lru_cache
 def get_settings() -> YamiiSettings:
     """
     設定を取得（キャッシュ付き）

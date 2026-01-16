@@ -4,7 +4,6 @@ yamiiのMisskeyボット設定
 """
 
 import os
-from typing import Optional
 from dataclasses import dataclass
 
 
@@ -25,7 +24,7 @@ class YamiiMisskeyBotConfig:
 
     # ログ設定
     log_level: str = "INFO"
-    log_file: Optional[str] = None
+    log_file: str | None = None
 
     # 機能設定
     enable_dm: bool = True
@@ -47,7 +46,7 @@ class YamiiMisskeyBotConfig:
 
     # HTTP/WebSocket設定
     request_timeout: int = 30
-    
+
     def __post_init__(self):
         """設定の後処理"""
         if self.crisis_hotlines is None:
@@ -55,7 +54,7 @@ class YamiiMisskeyBotConfig:
                 "いのちの電話: 0570-783-556",
                 "こころの健康相談統一ダイヤル: 0570-064-556"
             ]
-        
+
         # Misskey固有の検証
         if not self.misskey_instance_url:
             raise ValueError("misskey_instance_url is required")
@@ -63,7 +62,7 @@ class YamiiMisskeyBotConfig:
             raise ValueError("misskey_access_token is required")
         if not self.misskey_bot_user_id:
             raise ValueError("misskey_bot_user_id is required")
-    
+
     @property
     def crisis_hotline_numbers(self):
         """危機対応ホットライン番号リスト"""
@@ -72,34 +71,34 @@ class YamiiMisskeyBotConfig:
 
 def load_config() -> YamiiMisskeyBotConfig:
     """環境変数から設定を読み込む"""
-    
+
     # Misskeyボット有効化チェック
     enable_bot = os.getenv("ENABLE_MISSKEY_BOT", "false").lower() == "true"
     if not enable_bot:
         raise ValueError("ENABLE_MISSKEY_BOT is set to false. Set it to true to enable the Misskey bot.")
-    
+
     # 必須環境変数のチェック
     misskey_instance_url = os.getenv("MISSKEY_INSTANCE_URL")
     misskey_access_token = os.getenv("MISSKEY_ACCESS_TOKEN")
     misskey_bot_user_id = os.getenv("MISSKEY_BOT_USER_ID")
-    
+
     if not misskey_instance_url:
         raise ValueError("MISSKEY_INSTANCE_URL environment variable is required when ENABLE_MISSKEY_BOT=true")
     if not misskey_access_token:
         raise ValueError("MISSKEY_ACCESS_TOKEN environment variable is required when ENABLE_MISSKEY_BOT=true")
     if not misskey_bot_user_id:
         raise ValueError("MISSKEY_BOT_USER_ID environment variable is required when ENABLE_MISSKEY_BOT=true")
-    
+
     # URLの正規化
     if not misskey_instance_url.startswith(('http://', 'https://')):
         misskey_instance_url = f"https://{misskey_instance_url}"
-    
+
     # カスタム緊急時相談窓口の読み込み
     crisis_hotlines = []
     hotlines_env = os.getenv("BOT_CRISIS_HOTLINES")
     if hotlines_env:
         crisis_hotlines = [line.strip() for line in hotlines_env.split(",")]
-    
+
     config = YamiiMisskeyBotConfig(
         # 共通設定（ベースクラス）
         yamii_api_url=os.getenv("YAMII_API_URL", "http://localhost:8000"),
@@ -123,11 +122,11 @@ def load_config() -> YamiiMisskeyBotConfig:
         misskey_access_token=misskey_access_token,
         misskey_bot_user_id=misskey_bot_user_id,
     )
-    
+
     # カスタム緊急時相談窓口を設定
     if crisis_hotlines:
         config.crisis_hotlines = crisis_hotlines
-    
+
     return config
 
 

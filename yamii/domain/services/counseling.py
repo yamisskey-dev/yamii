@@ -4,28 +4,24 @@
 """
 
 import uuid
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
+from datetime import datetime, timedelta
+from typing import Any
 
-from ..models.user import UserState
 from ..models.conversation import (
     Episode,
     EpisodeType,
-    Message,
-    ConversationContext,
-    ConversationPhase,
 )
-from ..models.emotion import EmotionType, EmotionAnalysis
+from ..models.emotion import EmotionAnalysis, EmotionType
 from ..models.relationship import (
+    DepthLevel,
     RelationshipPhase,
     ToneLevel,
-    DepthLevel,
-    get_phase_instruction,
 )
-from .emotion import EmotionService
+from ..models.user import UserState
 from ..ports.ai_port import IAIProvider
 from ..ports.storage_port import IStorage
+from .emotion import EmotionService
 
 
 @dataclass
@@ -33,8 +29,8 @@ class CounselingRequest:
     """カウンセリングリクエスト"""
     message: str
     user_id: str
-    session_id: Optional[str] = None
-    user_name: Optional[str] = None
+    session_id: str | None = None
+    user_name: str | None = None
 
     def __post_init__(self):
         if not self.message or not self.message.strip():
@@ -52,7 +48,7 @@ class CounselingResponse:
     session_id: str
     emotion_analysis: EmotionAnalysis
     advice_type: str
-    follow_up_questions: List[str]
+    follow_up_questions: list[str]
     timestamp: datetime = None
 
     def __post_init__(self):
@@ -63,7 +59,7 @@ class CounselingResponse:
     def is_crisis(self) -> bool:
         return self.emotion_analysis.is_crisis
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "response": self.response,
             "session_id": self.session_id,
@@ -166,7 +162,7 @@ class FollowUpGenerator:
             ]
         }
 
-    def generate(self, advice_type: str) -> List[str]:
+    def generate(self, advice_type: str) -> list[str]:
         """フォローアップ質問を生成"""
         templates = self._templates.get(advice_type, self._templates["general_support"])
         return templates[:2]
@@ -187,7 +183,7 @@ class CounselingService:
         self,
         ai_provider: IAIProvider,
         storage: IStorage,
-        emotion_service: Optional[EmotionService] = None,
+        emotion_service: EmotionService | None = None,
     ):
         self.ai_provider = ai_provider
         self.storage = storage
@@ -296,31 +292,30 @@ class CounselingService:
 
     def _get_phase_specific_instruction(self, user: UserState) -> str:
         """フェーズに応じた詳細な指示"""
-        phase = user.phase
-
-        if phase == RelationshipPhase.STRANGER:
-            return """【初対面の対応】
+        match user.phase:
+            case RelationshipPhase.STRANGER:
+                return """【初対面の対応】
 - 丁寧な言葉遣いを心がける
 - まずは安心感を与える
 - 押しつけがましいアドバイスは避ける
 - 「よかったら教えてください」など配慮のある言い回しを使う"""
 
-        elif phase == RelationshipPhase.ACQUAINTANCE:
-            return """【顔見知りとしての対応】
+            case RelationshipPhase.ACQUAINTANCE:
+                return """【顔見知りとしての対応】
 - 前回の会話を軽く参照してよい
 - 少し親しみを込めた言葉遣いが可能
 - 「以前〇〇とおっしゃっていましたね」など過去の文脈を活かす
 - ただし踏み込みすぎない"""
 
-        elif phase == RelationshipPhase.FAMILIAR:
-            return """【親しい関係としての対応】
+            case RelationshipPhase.FAMILIAR:
+                return """【親しい関係としての対応】
 - 自然体で会話できる
 - 過去の会話を積極的に参照
 - 「〇〇さんらしいですね」など相手をよく知っている前提で話す
 - 具体的なアドバイスも可能"""
 
-        else:  # TRUSTED
-            return """【信頼関係に基づく対応】
+            case RelationshipPhase.TRUSTED:
+                return """【信頼関係に基づく対応】
 - 率直で正直なやり取りが可能
 - 必要であれば厳しいことも伝えられる
 - 長期的な視点でのアドバイスが可能

@@ -2,7 +2,8 @@
 標準化されたAPIリクエスト形式
 """
 
-from typing import Optional, Dict, Any, Union
+from typing import Any
+
 from pydantic import BaseModel, Field, model_validator
 
 from .context import ContextMetadata
@@ -15,23 +16,23 @@ class CounselingAPIRequestV2(BaseModel):
     """
     message: str = Field(description="相談メッセージ")
     user_id: str = Field(description="ユーザーID")
-    user_name: Optional[str] = Field(
+    user_name: str | None = Field(
         default=None,
         description="ユーザー表示名"
     )
-    session_id: Optional[str] = Field(
+    session_id: str | None = Field(
         default=None,
         description="セッションID"
     )
-    context: Optional[ContextMetadata] = Field(
+    context: ContextMetadata | None = Field(
         default=None,
         description="プラットフォームコンテキスト"
     )
-    custom_prompt_id: Optional[str] = Field(
+    custom_prompt_id: str | None = Field(
         default=None,
         description="カスタムプロンプトID"
     )
-    prompt_id: Optional[str] = Field(
+    prompt_id: str | None = Field(
         default=None,
         description="プロンプトID"
     )
@@ -59,7 +60,7 @@ class CounselingAPIRequestV2(BaseModel):
         """Misskeyからのリクエストかどうか"""
         return self.context is not None and self.context.is_misskey_platform()
 
-    def to_legacy_dict(self) -> Dict[str, Any]:
+    def to_legacy_dict(self) -> dict[str, Any]:
         """
         旧形式のdictに変換
         既存のcounseling_serviceとの互換性のため

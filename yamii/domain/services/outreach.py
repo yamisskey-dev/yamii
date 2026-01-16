@@ -11,15 +11,15 @@ ChatGPT/Claude/Gemini WebUIやAwarefy/Ubieが提供できない
 - 危機予防のための早期介入
 """
 
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any
-from dataclasses import dataclass
-from enum import Enum
 import random
+from dataclasses import dataclass
+from datetime import datetime
+from enum import Enum
+from typing import Any
 
-from ..models.user import UserState
+from ..models.emotion import NEGATIVE_EMOTIONS
 from ..models.relationship import RelationshipPhase
-from ..models.emotion import EmotionType, NEGATIVE_EMOTIONS
+from ..models.user import UserState
 from ..ports.storage_port import IStorage
 from .emotion import EmotionService
 
@@ -38,12 +38,12 @@ class OutreachReason(Enum):
 class OutreachDecision:
     """アウトリーチ判断結果"""
     should_reach_out: bool
-    reason: Optional[OutreachReason] = None
-    message: Optional[str] = None
+    reason: OutreachReason | None = None
+    message: str | None = None
     priority: int = 0  # 0-10, 高いほど優先
-    user_id: Optional[str] = None  # ユーザーID（バッチ処理用）
+    user_id: str | None = None  # ユーザーID（バッチ処理用）
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "should_reach_out": self.should_reach_out,
             "reason": self.reason.value if self.reason else None,
@@ -61,9 +61,9 @@ class ScheduledOutreach:
     reason: OutreachReason
     message: str
     executed: bool = False
-    executed_at: Optional[datetime] = None
+    executed_at: datetime | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "user_id": self.user_id,
             "scheduled_at": self.scheduled_at.isoformat(),
@@ -90,7 +90,7 @@ class ProactiveOutreachService:
     def __init__(
         self,
         storage: IStorage,
-        emotion_service: Optional[EmotionService] = None,
+        emotion_service: EmotionService | None = None,
     ):
         self.storage = storage
         self.emotion_service = emotion_service or EmotionService()
@@ -446,7 +446,7 @@ class ProactiveOutreachService:
 
         return OutreachDecision(should_reach_out=False)
 
-    async def get_users_needing_outreach(self) -> List[OutreachDecision]:
+    async def get_users_needing_outreach(self) -> list[OutreachDecision]:
         """
         チェックインが必要なすべてのユーザーを取得
 
@@ -571,9 +571,9 @@ class ProactiveOutreachService:
     async def update_outreach_settings(
         self,
         user_id: str,
-        enabled: Optional[bool] = None,
-        frequency: Optional[str] = None,
-        preferred_time: Optional[str] = None,
+        enabled: bool | None = None,
+        frequency: str | None = None,
+        preferred_time: str | None = None,
     ) -> bool:
         """
         ユーザーのプロアクティブ設定を更新

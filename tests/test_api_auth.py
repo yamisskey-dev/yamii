@@ -2,16 +2,15 @@
 API 認証・レート制限のテスト
 """
 
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
 
 from yamii.api.auth import (
-    verify_api_key,
     RateLimiter,
-    RateLimitMiddleware,
     SecurityHeadersMiddleware,
+    verify_api_key,
 )
-
 
 # === RateLimiter テスト ===
 

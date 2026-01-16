@@ -3,7 +3,8 @@
 """
 
 from datetime import datetime
-from typing import Optional, List, Dict, Any
+from typing import Any
+
 from pydantic import BaseModel, Field, field_serializer
 
 
@@ -26,7 +27,7 @@ class SessionContext(BaseModel):
         default_factory=datetime.now,
         description="最終インタラクション時刻"
     )
-    platform_metadata: Optional[Dict[str, Any]] = Field(
+    platform_metadata: dict[str, Any] | None = Field(
         default=None,
         description="プラットフォーム固有メタデータ"
     )
@@ -34,12 +35,12 @@ class SessionContext(BaseModel):
         default=0,
         description="インタラクション回数"
     )
-    mood_trajectory: List[str] = Field(
+    mood_trajectory: list[str] = Field(
         default_factory=list,
         description="感情推移履歴"
     )
 
-    def add_interaction(self, emotion: Optional[str] = None) -> None:
+    def add_interaction(self, emotion: str | None = None) -> None:
         """インタラクションを記録"""
         self.interaction_count += 1
         self.last_interaction = datetime.now()
@@ -51,9 +52,9 @@ class SessionContext(BaseModel):
         elapsed = (datetime.now() - self.last_interaction).total_seconds()
         return elapsed > timeout_seconds
 
-    def get_mood_summary(self) -> Dict[str, int]:
+    def get_mood_summary(self) -> dict[str, int]:
         """感情の出現回数サマリーを取得"""
-        summary: Dict[str, int] = {}
+        summary: dict[str, int] = {}
         for mood in self.mood_trajectory:
             summary[mood] = summary.get(mood, 0) + 1
         return summary

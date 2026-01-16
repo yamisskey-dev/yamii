@@ -4,7 +4,7 @@
 """
 
 from abc import ABC, abstractmethod
-from typing import Optional, Callable, Awaitable
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 
 
@@ -14,16 +14,16 @@ class PlatformMessage:
     id: str
     user_id: str
     content: str
-    user_name: Optional[str] = None
+    user_name: str | None = None
     platform: str = "unknown"
-    raw_data: Optional[dict] = None
+    raw_data: dict | None = None
 
 
 @dataclass
 class PlatformResponse:
     """プラットフォームへの応答"""
     content: str
-    reply_to_id: Optional[str] = None
+    reply_to_id: str | None = None
     visibility: str = "public"
 
 
@@ -38,19 +38,17 @@ class IPlatformAdapter(ABC):
     @abstractmethod
     async def connect(self) -> None:
         """プラットフォームに接続"""
-        pass
 
     @abstractmethod
     async def disconnect(self) -> None:
         """プラットフォームから切断"""
-        pass
 
     @abstractmethod
     async def send_message(
         self,
         user_id: str,
         message: str,
-        reply_to: Optional[str] = None,
+        reply_to: str | None = None,
     ) -> bool:
         """
         メッセージを送信
@@ -63,12 +61,11 @@ class IPlatformAdapter(ABC):
         Returns:
             bool: 送信成功したか
         """
-        pass
 
     @abstractmethod
     async def start_listening(
         self,
-        message_handler: Callable[[PlatformMessage], Awaitable[Optional[str]]],
+        message_handler: Callable[[PlatformMessage], Awaitable[str | None]],
     ) -> None:
         """
         メッセージ受信を開始
@@ -77,12 +74,10 @@ class IPlatformAdapter(ABC):
             message_handler: メッセージ受信時のコールバック
                             戻り値は応答メッセージ（Noneなら応答なし）
         """
-        pass
 
     @abstractmethod
     async def stop_listening(self) -> None:
         """メッセージ受信を停止"""
-        pass
 
     @property
     @abstractmethod
@@ -93,7 +88,6 @@ class IPlatformAdapter(ABC):
         Returns:
             str: "misskey", "discord", "slack" 等
         """
-        pass
 
     @property
     @abstractmethod
@@ -104,4 +98,3 @@ class IPlatformAdapter(ABC):
         Returns:
             bool: 接続中か
         """
-        pass

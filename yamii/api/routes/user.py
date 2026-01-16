@@ -3,19 +3,19 @@
 """
 
 from datetime import datetime
-from typing import List
-from fastapi import APIRouter, HTTPException, Depends
 
-from ..schemas import (
-    UserSummaryResponse,
-    UserProfileRequest,
-    ProactiveSettingsResponse,
-    EpisodeResponse,
-    EpisodeListResponse,
-)
-from ..dependencies import get_storage
-from ..auth import verify_api_key
+from fastapi import APIRouter, Depends, HTTPException
+
 from ...domain.ports.storage_port import IStorage
+from ..auth import verify_api_key
+from ..dependencies import get_storage
+from ..schemas import (
+    EpisodeListResponse,
+    EpisodeResponse,
+    ProactiveSettingsResponse,
+    UserProfileRequest,
+    UserSummaryResponse,
+)
 
 router = APIRouter(
     prefix="/v1/users",

@@ -6,14 +6,12 @@
 - キーローテーション対応
 """
 
-import os
 import base64
 import hashlib
-import hmac
-from pathlib import Path
-from typing import Optional, Tuple
+import os
 from dataclasses import dataclass
 from datetime import datetime
+from pathlib import Path
 
 import nacl.secret
 import nacl.utils
@@ -46,7 +44,7 @@ class SecureKeyManager:
 
     def __init__(
         self,
-        master_key: Optional[bytes] = None,
+        master_key: bytes | None = None,
         key_file: str = ".yamii_master_key",
     ):
         self._key_file = Path(key_file)
@@ -68,7 +66,7 @@ class SecureKeyManager:
                 raise PermissionError(
                     f"マスターキーファイルのパーミッションが危険です: {oct(mode)}。0o600にしてください。"
                 )
-            with open(self._key_file, "r") as f:
+            with open(self._key_file) as f:
                 return base64.b64decode(f.read().strip())
 
         # 新規生成（32バイト = 256ビット）
@@ -102,7 +100,7 @@ class SecureKeyManager:
             return self._derived_keys[cache_key].key
 
         # ユーザーID + コンテキスト から salt を生成
-        salt_input = f"yamii:{user_id}:{context}".encode("utf-8")
+        salt_input = f"yamii:{user_id}:{context}".encode()
         salt = hashlib.sha256(salt_input).digest()[:16]  # 16バイト salt
 
         # Argon2idでキー派生
@@ -140,7 +138,7 @@ class SecureKeyManager:
         # Python ではメモリの完全消去は保証されないが、参照を削除
         self._derived_keys.clear()
 
-    def rotate_master_key(self, new_key: bytes) -> Tuple[bytes, bytes]:
+    def rotate_master_key(self, new_key: bytes) -> tuple[bytes, bytes]:
         """
         マスターキーをローテーション
 
@@ -162,7 +160,7 @@ class SecureKeyManager:
 
         return old_key, new_key
 
-    def generate_export_key(self, user_id: str) -> Tuple[bytes, str]:
+    def generate_export_key(self, user_id: str) -> tuple[bytes, str]:
         """
         GDPR対応: データエクスポート用の一時キーを生成
 
@@ -175,7 +173,7 @@ class SecureKeyManager:
 
 
 # グローバルインスタンス（遅延初期化）
-_key_manager: Optional[SecureKeyManager] = None
+_key_manager: SecureKeyManager | None = None
 
 
 def get_key_manager() -> SecureKeyManager:

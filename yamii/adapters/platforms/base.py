@@ -4,7 +4,7 @@
 """
 
 from abc import ABC
-from typing import Optional, Callable, Awaitable
+from collections.abc import Awaitable, Callable
 
 from ...domain.ports.platform_port import IPlatformAdapter, PlatformMessage
 
@@ -19,7 +19,7 @@ class BasePlatformAdapter(IPlatformAdapter, ABC):
 
     def __init__(self):
         self._connected = False
-        self._message_handler: Optional[Callable[[PlatformMessage], Awaitable[Optional[str]]]] = None
+        self._message_handler: Callable[[PlatformMessage], Awaitable[str | None]] | None = None
 
     @property
     def is_connected(self) -> bool:

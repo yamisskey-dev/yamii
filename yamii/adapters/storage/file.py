@@ -3,14 +3,13 @@
 JSONファイルベースのデータ永続化（遅延書き込み最適化）
 """
 
-import json
 import asyncio
-from pathlib import Path
-from typing import List, Optional
+import json
 from datetime import datetime
+from pathlib import Path
 
-from ...domain.ports.storage_port import IStorage
 from ...domain.models.user import UserState
+from ...domain.ports.storage_port import IStorage
 
 
 class FileStorageAdapter(IStorage):
@@ -34,7 +33,7 @@ class FileStorageAdapter(IStorage):
         # 遅延書き込み
         self._save_delay = save_delay
         self._dirty = False
-        self._save_task: Optional[asyncio.Task] = None
+        self._save_task: asyncio.Task | None = None
 
     async def _ensure_loaded(self) -> None:
         """データが読み込まれていることを保証"""
@@ -62,7 +61,7 @@ class FileStorageAdapter(IStorage):
 
     def _read_json_file(self) -> dict:
         """JSONファイルを同期的に読み込み（スレッドプール用）"""
-        with open(self.data_file, "r", encoding="utf-8") as f:
+        with open(self.data_file, encoding="utf-8") as f:
             return json.load(f)
 
     async def _schedule_save(self) -> None:
@@ -117,12 +116,12 @@ class FileStorageAdapter(IStorage):
         self._users[user.user_id] = user
         await self._schedule_save()
 
-    async def load_user(self, user_id: str) -> Optional[UserState]:
+    async def load_user(self, user_id: str) -> UserState | None:
         """ユーザー状態を読み込み"""
         await self._ensure_loaded()
         return self._users.get(user_id)
 
-    async def load_users(self, user_ids: List[str]) -> dict[str, UserState]:
+    async def load_users(self, user_ids: list[str]) -> dict[str, UserState]:
         """複数ユーザーを一括読み込み"""
         await self._ensure_loaded()
         return {uid: self._users[uid] for uid in user_ids if uid in self._users}
@@ -136,7 +135,7 @@ class FileStorageAdapter(IStorage):
             return True
         return False
 
-    async def list_users(self) -> List[str]:
+    async def list_users(self) -> list[str]:
         """全ユーザーIDのリストを取得"""
         await self._ensure_loaded()
         return list(self._users.keys())

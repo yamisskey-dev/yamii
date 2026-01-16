@@ -17,8 +17,6 @@ Misskey Bot 経由でメッセージを送信する。
 
 import asyncio
 import sys
-from datetime import datetime
-from typing import Optional
 
 import aiohttp
 

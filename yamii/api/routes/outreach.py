@@ -3,20 +3,20 @@
 Bot APIの差別化機能
 """
 
-from typing import List
-from fastapi import APIRouter, HTTPException, Depends
+
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from ..schemas import (
-    ProactiveSettingsRequest,
-    ProactiveSettingsResponse,
-    OutreachDecisionResponse,
-    TriggerOutreachRequest,
-)
-from ..dependencies import get_storage, get_outreach_service
-from ..auth import verify_api_key
 from ...domain.ports.storage_port import IStorage
 from ...domain.services.outreach import ProactiveOutreachService
+from ..auth import verify_api_key
+from ..dependencies import get_outreach_service, get_storage
+from ..schemas import (
+    OutreachDecisionResponse,
+    ProactiveSettingsRequest,
+    ProactiveSettingsResponse,
+    TriggerOutreachRequest,
+)
 
 router = APIRouter(
     prefix="/v1",
@@ -35,7 +35,7 @@ class PendingOutreachUser(BaseModel):
 
 class PendingOutreachResponse(BaseModel):
     """アウトリーチ待ちユーザーリスト"""
-    users: List[PendingOutreachUser]
+    users: list[PendingOutreachUser]
     total: int
 
 

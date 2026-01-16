@@ -3,18 +3,18 @@
 統合されたユーザー状態（RelationshipState + AdaptiveProfile + UserProfile）
 """
 
-from datetime import datetime
-from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
+from datetime import datetime
+from typing import Any
 
+from .conversation import Episode
 from .relationship import (
-    RelationshipPhase,
-    ToneLevel,
     DepthLevel,
     PhaseTransition,
+    RelationshipPhase,
+    ToneLevel,
     TopicAffinity,
 )
-from .conversation import Episode
 
 
 @dataclass
@@ -25,9 +25,9 @@ class ProactiveSettings:
     """
     enabled: bool = False
     frequency: str = "weekly"  # "daily", "weekly", "never"
-    preferred_time: Optional[str] = None  # "09:00" 形式
-    last_outreach: Optional[datetime] = None
-    next_scheduled: Optional[datetime] = None
+    preferred_time: str | None = None  # "09:00" 形式
+    last_outreach: datetime | None = None
+    next_scheduled: datetime | None = None
 
     # チェックイン種類の設定
     absence_check_enabled: bool = True  # 不在時チェックイン
@@ -35,7 +35,7 @@ class ProactiveSettings:
     sentiment_check_enabled: bool = True  # センチメント悪化時チェックイン
     follow_up_enabled: bool = True  # フォローアップチェックイン
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "enabled": self.enabled,
             "frequency": self.frequency,
@@ -49,7 +49,7 @@ class ProactiveSettings:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ProactiveSettings":
+    def from_dict(cls, data: dict[str, Any]) -> "ProactiveSettings":
         return cls(
             enabled=data.get("enabled", False),
             frequency=data.get("frequency", "weekly"),
@@ -85,17 +85,17 @@ class UserState:
     rapport_score: float = 0.0        # 親密度
 
     # フェーズ履歴
-    phase_history: List[PhaseTransition] = field(default_factory=list)
+    phase_history: list[PhaseTransition] = field(default_factory=list)
 
     # === 学習された好み（AdaptiveProfileから） ===
     preferred_tone: ToneLevel = ToneLevel.BALANCED
     preferred_depth: DepthLevel = DepthLevel.MEDIUM
 
     # トピック関心度
-    topic_affinities: Dict[str, TopicAffinity] = field(default_factory=dict)
+    topic_affinities: dict[str, TopicAffinity] = field(default_factory=dict)
 
     # 感情パターン（過去の感情の統計）
-    emotional_patterns: Dict[str, int] = field(default_factory=dict)
+    emotional_patterns: dict[str, int] = field(default_factory=dict)
 
     # 好み設定 (0.0-1.0)
     likes_questions: float = 0.5      # 質問を好むか
@@ -107,15 +107,15 @@ class UserState:
     confidence_score: float = 0.0     # 学習の確信度 (0.0-1.0)
 
     # === 明示的プロファイル（UserProfileから） ===
-    explicit_profile: Optional[str] = None  # ユーザーが設定した自由形式プロファイル
-    display_name: Optional[str] = None
+    explicit_profile: str | None = None  # ユーザーが設定した自由形式プロファイル
+    display_name: str | None = None
 
     # === 既知情報 ===
-    known_facts: List[str] = field(default_factory=list)  # 「〇〇さんは東京在住」等
-    known_topics: List[str] = field(default_factory=list)  # 話したことのあるトピック
+    known_facts: list[str] = field(default_factory=list)  # 「〇〇さんは東京在住」等
+    known_topics: list[str] = field(default_factory=list)  # 話したことのあるトピック
 
     # === エピソード（長期記憶） ===
-    episodes: List[Episode] = field(default_factory=list)
+    episodes: list[Episode] = field(default_factory=list)
 
     # === プロアクティブケア設定 ===
     proactive: ProactiveSettings = field(default_factory=ProactiveSettings)
@@ -163,7 +163,7 @@ class UserState:
         """感情パターンを更新"""
         self.emotional_patterns[emotion] = self.emotional_patterns.get(emotion, 0) + 1
 
-    def get_top_topics(self, n: int = 5) -> List[TopicAffinity]:
+    def get_top_topics(self, n: int = 5) -> list[TopicAffinity]:
         """上位トピックを取得"""
         sorted_topics = sorted(
             self.topic_affinities.values(),
@@ -172,7 +172,7 @@ class UserState:
         )
         return sorted_topics[:n]
 
-    def get_recent_episodes(self, n: int = 5) -> List[Episode]:
+    def get_recent_episodes(self, n: int = 5) -> list[Episode]:
         """最近のエピソードを取得"""
         sorted_episodes = sorted(
             self.episodes,
@@ -181,7 +181,7 @@ class UserState:
         )
         return sorted_episodes[:n]
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "user_id": self.user_id,
             # 関係性
@@ -219,7 +219,7 @@ class UserState:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "UserState":
+    def from_dict(cls, data: dict[str, Any]) -> "UserState":
         return cls(
             user_id=data["user_id"],
             # 関係性

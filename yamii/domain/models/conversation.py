@@ -3,10 +3,10 @@
 エピソード（長期記憶）、メッセージ、会話コンテキストを定義
 """
 
-from datetime import datetime
-from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
+from datetime import datetime
 from enum import Enum
+from typing import Any
 
 from .emotion import EmotionType
 
@@ -34,10 +34,10 @@ class Message:
     role: str  # "user" or "assistant"
     content: str
     timestamp: datetime = field(default_factory=datetime.now)
-    emotion: Optional[EmotionType] = None
+    emotion: EmotionType | None = None
     emotion_intensity: float = 0.0
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "role": self.role,
@@ -48,7 +48,7 @@ class Message:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Message":
+    def from_dict(cls, data: dict[str, Any]) -> "Message":
         return cls(
             id=data["id"],
             role=data["role"],
@@ -71,9 +71,9 @@ class Episode:
 
     # コンテンツ
     summary: str                              # 会話の要約
-    user_shared: List[str] = field(default_factory=list)  # ユーザーが共有した情報
+    user_shared: list[str] = field(default_factory=list)  # ユーザーが共有した情報
     emotional_context: str = ""               # 感情的文脈
-    topics: List[str] = field(default_factory=list)
+    topics: list[str] = field(default_factory=list)
 
     # メタデータ
     importance_score: float = 0.5             # 重要度 (0.0-1.0)
@@ -82,9 +82,9 @@ class Episode:
     emotion: EmotionType = EmotionType.NEUTRAL
 
     # 検索用
-    keywords: List[str] = field(default_factory=list)
+    keywords: list[str] = field(default_factory=list)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "id": self.id,
             "user_id": self.user_id,
@@ -101,7 +101,7 @@ class Episode:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Episode":
+    def from_dict(cls, data: dict[str, Any]) -> "Episode":
         return cls(
             id=data["id"],
             user_id=data["user_id"],
@@ -128,7 +128,7 @@ class ConversationContext:
     session_id: str
 
     # 現在の状態
-    current_topic: Optional[str] = None
+    current_topic: str | None = None
     topic_depth: int = 0  # 同じトピックでの会話回数
     phase: ConversationPhase = ConversationPhase.GREETING
 
@@ -138,11 +138,11 @@ class ConversationContext:
     emotion_stability: float = 1.0
 
     # 履歴（直近N件）
-    recent_messages: List[Message] = field(default_factory=list)
+    recent_messages: list[Message] = field(default_factory=list)
 
     # 継続性
-    unresolved_questions: List[str] = field(default_factory=list)
-    pending_follow_ups: List[str] = field(default_factory=list)
+    unresolved_questions: list[str] = field(default_factory=list)
+    pending_follow_ups: list[str] = field(default_factory=list)
 
     # タイムスタンプ
     started_at: datetime = field(default_factory=datetime.now)
@@ -156,7 +156,7 @@ class ConversationContext:
         if len(self.recent_messages) > 20:
             self.recent_messages = self.recent_messages[-20:]
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "user_id": self.user_id,
             "session_id": self.session_id,
@@ -174,7 +174,7 @@ class ConversationContext:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ConversationContext":
+    def from_dict(cls, data: dict[str, Any]) -> "ConversationContext":
         return cls(
             user_id=data["user_id"],
             session_id=data["session_id"],

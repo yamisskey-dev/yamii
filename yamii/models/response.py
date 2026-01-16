@@ -3,9 +3,9 @@
 """
 
 from datetime import datetime
-from typing import Generic, TypeVar, Optional, List, Any, Dict
-from pydantic import BaseModel, Field, ConfigDict, field_serializer
+from typing import Any, Generic, TypeVar
 
+from pydantic import BaseModel, ConfigDict, Field, field_serializer
 
 T = TypeVar("T")
 
@@ -14,26 +14,26 @@ class FieldError(BaseModel):
     """フィールドエラー詳細"""
     field: str = Field(description="エラーが発生したフィールド名")
     message: str = Field(description="エラーメッセージ")
-    code: Optional[str] = Field(default=None, description="エラーコード")
+    code: str | None = Field(default=None, description="エラーコード")
 
 
 class ApiError(BaseModel):
     """APIエラー詳細"""
     code: str = Field(description="エラーコード")
     message: str = Field(description="エラーメッセージ")
-    details: Optional[Dict[str, Any]] = Field(
+    details: dict[str, Any] | None = Field(
         default=None,
         description="追加のエラー詳細"
     )
-    field_errors: Optional[List[FieldError]] = Field(
+    field_errors: list[FieldError] | None = Field(
         default=None,
         description="フィールドごとのエラー詳細"
     )
-    retry_after: Optional[int] = Field(
+    retry_after: int | None = Field(
         default=None,
         description="リトライまでの秒数"
     )
-    troubleshooting_steps: Optional[List[str]] = Field(
+    troubleshooting_steps: list[str] | None = Field(
         default=None,
         description="トラブルシューティング手順"
     )
@@ -45,8 +45,8 @@ class ApiResponse(BaseModel, Generic[T]):
     成功/失敗を一貫した形式で返す
     """
     success: bool = Field(description="処理成功フラグ")
-    data: Optional[T] = Field(default=None, description="レスポンスデータ")
-    error: Optional[ApiError] = Field(default=None, description="エラー詳細")
+    data: T | None = Field(default=None, description="レスポンスデータ")
+    error: ApiError | None = Field(default=None, description="エラー詳細")
     api_version: str = Field(default="1.0.0", description="APIバージョン")
     timestamp: datetime = Field(
         default_factory=datetime.now,
@@ -64,7 +64,7 @@ class CounselingAPIResponseV2(BaseModel):
     response: str = Field(description="AI応答テキスト")
     session_id: str = Field(description="セッションID")
     timestamp: datetime = Field(description="タイムスタンプ")
-    emotion_analysis: Dict[str, Any] = Field(
+    emotion_analysis: dict[str, Any] = Field(
         description="感情分析結果",
         default_factory=lambda: {
             "primary_emotion": "neutral",
@@ -77,7 +77,7 @@ class CounselingAPIResponseV2(BaseModel):
         default="supportive",
         description="アドバイスタイプ"
     )
-    follow_up_questions: List[str] = Field(
+    follow_up_questions: list[str] = Field(
         default_factory=list,
         description="フォローアップ質問リスト"
     )
@@ -91,7 +91,7 @@ class CounselingAPIResponseV2(BaseModel):
         default="1.0.0",
         description="APIバージョン"
     )
-    platform_specific: Optional[Dict[str, Any]] = Field(
+    platform_specific: dict[str, Any] | None = Field(
         default=None,
         description="プラットフォーム固有の追加情報"
     )

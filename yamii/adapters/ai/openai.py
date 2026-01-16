@@ -4,11 +4,11 @@ OpenAI API (GPT-4.1等) への接続実装
 PII匿名化機能付き
 """
 
-import aiohttp
-from typing import Optional, Dict
 
-from ...domain.ports.ai_port import IAIProvider
+import aiohttp
+
 from ...core.anonymizer import PIIAnonymizer, get_anonymizer
+from ...domain.ports.ai_port import IAIProvider
 
 
 class OpenAIAdapter(IAIProvider):
@@ -33,7 +33,7 @@ class OpenAIAdapter(IAIProvider):
         self.timeout = timeout
         self.base_url = base_url
         self.enable_anonymization = enable_anonymization
-        self._anonymizer: Optional[PIIAnonymizer] = None
+        self._anonymizer: PIIAnonymizer | None = None
 
     @property
     def anonymizer(self) -> PIIAnonymizer:
@@ -46,7 +46,7 @@ class OpenAIAdapter(IAIProvider):
         self,
         message: str,
         system_prompt: str,
-        max_tokens: Optional[int] = None,
+        max_tokens: int | None = None,
     ) -> str:
         """
         AI応答を生成
@@ -63,7 +63,7 @@ class OpenAIAdapter(IAIProvider):
             Exception: API呼び出し失敗時
         """
         # PII匿名化
-        mapping: Dict[str, str] = {}
+        mapping: dict[str, str] = {}
         processed_message = message
 
         if self.enable_anonymization:
@@ -84,7 +84,7 @@ class OpenAIAdapter(IAIProvider):
         self,
         message: str,
         system_prompt: str,
-        max_tokens: Optional[int] = None,
+        max_tokens: int | None = None,
     ) -> str:
         """OpenAI APIを呼び出し"""
         request_body = {
@@ -179,7 +179,7 @@ class OpenAIAdapterWithFallback(OpenAIAdapter):
         self,
         message: str,
         system_prompt: str,
-        max_tokens: Optional[int] = None,
+        max_tokens: int | None = None,
     ) -> str:
         """
         AI応答を生成（フォールバック付き）

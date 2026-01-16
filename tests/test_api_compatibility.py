@@ -3,11 +3,10 @@ API互換性向上のためのテスト
 Yuiなど他プロジェクトとの互換性を確保するためのテスト
 """
 
-import pytest
 from datetime import datetime
-from typing import Literal, Optional, Dict, Any, List
-from pydantic import BaseModel, ValidationError as PydanticValidationError
+
 import httpx
+import pytest
 
 
 class TestPlatformContextMetadata:
@@ -86,7 +85,7 @@ class TestStandardizedAPIResponse:
 
     def test_api_response_wrapper_error(self):
         """エラーレスポンスのラッパー形式"""
-        from yamii.models.response import ApiResponse, ApiError
+        from yamii.models.response import ApiError, ApiResponse
 
         error = ApiError(
             code="VALIDATION_ERROR",
@@ -187,8 +186,8 @@ class TestCounselingRequestContextValidation:
 
     def test_request_with_typed_context(self):
         """型付けされたコンテキストを持つリクエスト"""
-        from yamii.models.request import CounselingAPIRequestV2
         from yamii.models.context import ContextMetadata
+        from yamii.models.request import CounselingAPIRequestV2
 
         context = ContextMetadata(
             platform="misskey",

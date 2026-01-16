@@ -4,7 +4,6 @@ LLM APIへのアクセスを抽象化
 """
 
 from abc import ABC, abstractmethod
-from typing import Optional
 
 
 class IAIProvider(ABC):
@@ -20,7 +19,7 @@ class IAIProvider(ABC):
         self,
         message: str,
         system_prompt: str,
-        max_tokens: Optional[int] = None,
+        max_tokens: int | None = None,
     ) -> str:
         """
         AI応答を生成
@@ -33,7 +32,6 @@ class IAIProvider(ABC):
         Returns:
             str: AI応答テキスト
         """
-        pass
 
     @abstractmethod
     async def health_check(self) -> bool:
@@ -43,7 +41,6 @@ class IAIProvider(ABC):
         Returns:
             bool: 正常に動作しているか
         """
-        pass
 
     @property
     @abstractmethod
@@ -54,4 +51,3 @@ class IAIProvider(ABC):
         Returns:
             str: モデル名
         """
-        pass

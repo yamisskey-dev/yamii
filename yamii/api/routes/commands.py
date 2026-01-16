@@ -8,15 +8,15 @@ Bot薄型化: コマンド処理をAPI側で行う
 - /settings: プロアクティブ設定を変更
 """
 
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
-from typing import Optional, Dict, Any, List
 from datetime import datetime
+from typing import Any
 
-from ..dependencies import get_storage
-from ..auth import verify_api_key
+from fastapi import APIRouter, Depends
+from pydantic import BaseModel, Field
+
 from ...domain.ports.storage_port import IStorage
-
+from ..auth import verify_api_key
+from ..dependencies import get_storage
 
 router = APIRouter(
     prefix="/v1/commands",
@@ -43,7 +43,7 @@ class MessageRequest(BaseModel):
 class MessageClassification(BaseModel):
     """メッセージ分類結果"""
     is_command: bool = Field(..., description="コマンドかどうか")
-    command_type: Optional[str] = Field(None, description="コマンドタイプ")
+    command_type: str | None = Field(None, description="コマンドタイプ")
     is_empty: bool = Field(..., description="空メッセージかどうか")
     should_counsel: bool = Field(..., description="カウンセリングに回すべきか")
 
@@ -187,7 +187,7 @@ async def classify_message(
         )
 
     # プライバシーコマンド: 設定
-    if message.startswith("/settings") or message.startswith("設定"):
+    if message.startswith(("/settings", "設定")):
         return MessageClassification(
             is_command=True,
             command_type="settings",
@@ -223,8 +223,8 @@ class ExportResponse(BaseModel):
     """エクスポートレスポンス"""
     response: str = Field(..., description="レスポンスメッセージ")
     command: str = Field("export", description="コマンド名")
-    data_summary: Optional[Dict[str, Any]] = Field(None, description="データサマリー")
-    full_export_url: Optional[str] = Field(None, description="完全エクスポートURL")
+    data_summary: dict[str, Any] | None = Field(None, description="データサマリー")
+    full_export_url: str | None = Field(None, description="完全エクスポートURL")
 
 
 class SettingsRequest(BaseModel):
@@ -237,7 +237,7 @@ class SettingsResponse(BaseModel):
     """設定レスポンス"""
     response: str = Field(..., description="レスポンスメッセージ")
     command: str = Field("settings", description="コマンド名")
-    current_settings: Optional[Dict[str, Any]] = Field(None, description="現在の設定")
+    current_settings: dict[str, Any] | None = Field(None, description="現在の設定")
 
 
 class ClearDataRequest(BaseModel):

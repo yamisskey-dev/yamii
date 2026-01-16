@@ -2,9 +2,9 @@
 プラットフォームコンテキストメタデータの型定義
 """
 
-from typing import Literal, Optional, Any, Dict
-from pydantic import BaseModel, Field, ConfigDict
+from typing import Any, Literal
 
+from pydantic import BaseModel, ConfigDict, Field
 
 PlatformType = Literal["misskey", "mastodon", "web", "cli", "other"]
 
@@ -20,11 +20,11 @@ class ContextMetadata(BaseModel):
         default="other",
         description="プラットフォーム識別子"
     )
-    bot_name: Optional[str] = Field(
+    bot_name: str | None = Field(
         default=None,
         description="ボット名"
     )
-    client_version: Optional[str] = Field(
+    client_version: str | None = Field(
         default=None,
         description="クライアントバージョン"
     )
@@ -34,17 +34,17 @@ class ContextMetadata(BaseModel):
     )
 
     # Misskey固有フィールド
-    note_visibility: Optional[str] = Field(
+    note_visibility: str | None = Field(
         default=None,
         description="Misskeyノートの可視性 (public/home/followers/direct)"
     )
-    note_id: Optional[str] = Field(
+    note_id: str | None = Field(
         default=None,
         description="元ノートのID"
     )
 
     # 追加メタデータ
-    extra: Optional[Dict[str, Any]] = Field(
+    extra: dict[str, Any] | None = Field(
         default=None,
         description="その他のプラットフォーム固有メタデータ"
     )
