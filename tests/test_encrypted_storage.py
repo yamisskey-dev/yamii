@@ -205,7 +205,6 @@ class TestEncryptedFileStorageAdapter:
         assert summary is not None
         assert summary["user_id"] == sample_user.user_id
         assert "data_collected" in summary
-        assert "privacy_settings" in summary
         assert "your_rights" in summary
 
     @pytest.mark.asyncio

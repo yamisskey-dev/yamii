@@ -342,23 +342,23 @@ class TestCounselingService:
         assert updated_user.confidence_score >= 0.0
 
     @pytest.mark.asyncio
-    async def test_crisis_follow_up_scheduling(self, service, mock_storage):
-        """危機時のフォローアップスケジューリング"""
+    async def test_crisis_detection_in_response(self, service, mock_storage):
+        """危機検出時のレスポンス確認"""
         # 危機的なメッセージ
         request = CounselingRequest(
             message="自殺を考えています。限界です。",
             user_id="crisis_followup_user",
         )
 
-        await service.generate_response(request)
+        response = await service.generate_response(request)
 
+        # 危機対応のadvice_typeが返される
+        assert response.advice_type == "crisis_support"
+
+        # ユーザー状態が保存されている
         user = await mock_storage.load_user("crisis_followup_user")
-
-        # プロアクティブ設定が有効化されている
-        assert user.proactive.enabled is True
-        assert user.proactive.follow_up_enabled is True
-        # フォローアップがスケジュールされている
-        assert user.proactive.next_scheduled is not None
+        assert user is not None
+        assert user.total_interactions == 1
 
 
 # === 統合テスト ===

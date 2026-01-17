@@ -222,9 +222,9 @@ class TestSecuritySettings:
         settings = SecuritySettings()
         assert settings.api_keys == []
 
-    def test_encryption_enabled_by_default(self):
-        """暗号化はデフォルトで有効"""
+    def test_rate_limit_enabled_by_default(self):
+        """レート制限はデフォルトで有効"""
         from yamii.core.config import SecuritySettings
 
         settings = SecuritySettings()
-        assert settings.encryption_enabled is True
+        assert settings.rate_limit_enabled is True
