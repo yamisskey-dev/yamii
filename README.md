@@ -1,15 +1,47 @@
 # Yamii
 
-**やみ**の中の**Mii**へ
+Zero-Knowledge メンタルヘルスAI相談API
 
-Misskey向け人生相談AIボット
+## 特徴
+
+- **Zero-Knowledge**: サーバーは会話内容を保存・閲覧しない
+- **クライアント側暗号化**: ユーザーデータはユーザーのみ復号可能
+- **ノーログ**: 会話履歴はセッション中のみ保持
+- **Misskey OAuth**: Misskeyアカウントで認証
+- **汎用API**: 任意のフロントエンドから利用可能
+
+## アーキテクチャ
+
+```
+Yamix（または、任意のWebアプリ）
+    ├── Misskeyログイン（OAuth）
+    ├── クライアント側暗号化（Web Crypto API）
+    └── 会話はブラウザ内のみ（ノーログ）
+              ↓
+Yamii API v3.0.0
+    ├── /v1/auth/*       - Misskey OAuth認証
+    ├── /v1/user-data/*  - 暗号化Blob保存（Zero-Knowledge）
+    ├── /v1/counseling   - AIカウンセリング（ノーログ）
+    └── /v1/health       - ヘルスチェック
+              ↓
+OpenAI API
+```
+
+## 関連プロジェクト
+
+| プロジェクト | 説明 |
+|-------------|------|
+| **Yamii** (このリポジトリ) | Zero-Knowledge API サーバー |
+| [**Yamix**](https://github.com/yamisskey-dev/yamix) | 公式フロントエンド Webアプリ |
+
+Yamiiは汎用的なAPIサーバーとして設計されているため、Yamix以外のフロントエンドからも利用できます。
 
 ## デプロイ（Docker）
 
 ```bash
 # 1. 環境変数を設定
 cp .env.example .env
-nano .env  # 4つの必須項目を設定
+nano .env  # OPENAI_API_KEY を設定
 
 # 2. 起動
 docker compose up -d
@@ -21,12 +53,7 @@ curl http://localhost:8000/v1/health
 **必須環境変数** (`.env`):
 ```bash
 OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxxxxxx
-MISSKEY_INSTANCE_URL=https://your-misskey-instance.com
-MISSKEY_ACCESS_TOKEN=your_misskey_access_token
-MISSKEY_BOT_USER_ID=your_bot_user_id
 ```
-
-Misskey設定があればBotが自動起動します。
 
 ## ローカル開発
 
@@ -38,19 +65,31 @@ uv sync
 uv run fastapi dev yamii/api/main.py
 ```
 
-### 動作確認
+## APIドキュメント
 
-```bash
-# ヘルスチェック
-curl http://localhost:8000/v1/health
+サーバー起動後、以下のURLでAPIドキュメントを確認できます：
 
-# カウンセリング
-curl -X POST http://localhost:8000/v1/counseling \
-  -H "Content-Type: application/json" \
-  -d '{"message": "最近仕事でストレスを感じています", "user_id": "user123"}'
+- **Swagger UI**: http://localhost:8000/docs
+- **ReDoc**: http://localhost:8000/redoc
+
+## 主要エンドポイント
+
+### 認証
+
+```
+POST /v1/auth/start     # Misskey OAuth開始
+POST /v1/auth/callback  # OAuth コールバック
+GET  /v1/auth/session   # セッション情報取得
+POST /v1/auth/logout    # ログアウト
 ```
 
-## API
+### ユーザーデータ（Zero-Knowledge）
+
+```
+PUT    /v1/user-data/blob   # 暗号化データ保存
+GET    /v1/user-data/blob   # 暗号化データ取得
+DELETE /v1/user-data/blob   # データ削除（GDPR対応）
+```
 
 ### カウンセリング
 
@@ -63,7 +102,7 @@ POST /v1/counseling
 {
   "message": "相談内容",
   "user_id": "ユーザーID",
-  "session_id": "セッションID（継続会話時）"
+  "custom_prompt": "（オプション）ユーザーについての情報"
 }
 ```
 
@@ -76,22 +115,8 @@ POST /v1/counseling
     "primary_emotion": "stress",
     "intensity": 0.6,
     "is_crisis": false
-  },
-  "is_crisis": false
+  }
 }
-```
-
-### ユーザー管理
-
-```
-GET  /v1/users/{user_id}      # ユーザー情報取得
-DELETE /v1/users/{user_id}    # データ削除（GDPR対応）
-```
-
-### ヘルスチェック
-
-```
-GET /v1/health
 ```
 
 ## 主要機能
@@ -126,11 +151,15 @@ OpenAI APIへの送信前に個人情報を自動マスク:
 
 ## 環境変数
 
-```bash
-OPENAI_API_KEY=sk-...          # 必須
-OPENAI_MODEL=gpt-4.1           # デフォルト: gpt-4.1
-YAMII_DATA_DIR=data            # データ保存先
-```
+| 変数 | 必須 | デフォルト | 説明 |
+|------|------|-----------|------|
+| `OPENAI_API_KEY` | ✅ | - | OpenAI APIキー |
+| `OPENAI_MODEL` | - | gpt-4.1 | 使用モデル |
+| `YAMII_DATA_DIR` | - | data | データ保存先 |
+| `YAMII_DEBUG` | - | false | デバッグモード |
+| `YAMII_API_KEYS` | - | - | API認証キー（カンマ区切り） |
+| `API_HOST` | - | http://localhost:8000 | APIベースURL |
+| `FRONTEND_URL` | - | http://localhost:3000 | フロントエンドURL |
 
 ## 開発
 
@@ -145,21 +174,20 @@ uv run ty check yamii/
 uv run ruff format yamii/ tests/
 ```
 
-## アーキテクチャ
+## プロジェクト構造
 
 ```
 yamii/
 ├── api/              # FastAPI エンドポイント
-│   └── routes/       # counseling, user, outreach, commands
+│   └── routes/       # auth, counseling, user, user_data, commands
 ├── domain/           # ドメインモデル・サービス
-│   ├── models/       # UserState（統合ユーザー状態）, Episode, Relationship
-│   ├── services/     # Emotion, Counseling, Outreach
-│   └── ports/        # インターフェース定義（IAIProvider, IStorage）
+│   ├── models/       # UserState, Relationship, Emotion
+│   ├── services/     # Emotion, Counseling
+│   └── ports/        # インターフェース定義
 ├── adapters/         # 外部サービス実装
 │   ├── ai/           # OpenAI（PII匿名化付き）
-│   └── storage/      # ファイル / 暗号化ストレージ
-├── core/             # 暗号化、ログ、設定
-└── bot/misskey/      # Misskey Bot（薄型: API経由で処理）
+│   └── storage/      # ファイル / 暗号化Blobストレージ
+└── core/             # ログ、設定
 ```
 
 ## ライセンス

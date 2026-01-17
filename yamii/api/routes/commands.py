@@ -1,11 +1,10 @@
 """
 Bot コマンドエンドポイント
-Bot薄型化: コマンド処理をAPI側で行う
+Zero-Knowledge アーキテクチャ対応版
 
 プライバシーファースト対応:
 - /export: 自分のデータをエクスポート
 - /clear_data: 自分のデータを削除
-- /settings: プロアクティブ設定を変更
 """
 
 from datetime import datetime
@@ -53,26 +52,6 @@ class MessageClassification(BaseModel):
 
 # === ヘルプテキスト定義 ===
 
-HELP_TEXT_MISSKEY = """**Yamii - 相談AI**
-
-話しかけるだけで相談できます。
-- メンション: @yamii 相談内容
-- リプライ: 会話を続ける
-- DM: プライベートな相談
-
-**プライバシーコマンド:**
-- `/export` - 自分のデータをエクスポート
-- `/clear_data` - 自分のデータを削除
-- `/settings` - 通知設定を表示
-- `/settings on/off` - チェックイン通知を変更
-
-何でもお気軽にどうぞ。"""
-
-HELP_TEXT_MISSKEY_CHAT = """Yamii - 相談AI
-
-チャットで相談できます。
-何でもお気軽にどうぞ。"""
-
 HELP_TEXT_GENERIC = """Yamii - 相談AI
 
 メッセージを送信して相談できます。
@@ -80,7 +59,6 @@ HELP_TEXT_GENERIC = """Yamii - 相談AI
 **プライバシーコマンド:**
 - /export - 自分のデータをエクスポート
 - /clear_data - 自分のデータを削除
-- /settings - 通知設定を表示
 
 何でもお気軽にどうぞ。"""
 
@@ -94,20 +72,9 @@ async def get_help(
 ) -> CommandResponse:
     """
     ヘルプメッセージを取得
-
-    - platform: misskey, generic
-    - context: note, chat (Misskey用)
     """
-    if platform == "misskey":
-        if context == "chat":
-            help_text = HELP_TEXT_MISSKEY_CHAT
-        else:
-            help_text = HELP_TEXT_MISSKEY
-    else:
-        help_text = HELP_TEXT_GENERIC
-
     return CommandResponse(
-        response=help_text,
+        response=HELP_TEXT_GENERIC,
         command="help",
         is_command=True,
     )
@@ -140,7 +107,7 @@ async def classify_message(
     """
     メッセージを分類
 
-    Bot側でコマンド判定ロジックを持たず、API側で判定する。
+    クライアント側でコマンド判定ロジックを持たず、API側で判定する。
     """
     message = request.message.strip().lower() if request.message else ""
 
@@ -189,15 +156,6 @@ async def classify_message(
             should_counsel=False,
         )
 
-    # プライバシーコマンド: 設定
-    if message.startswith(("/settings", "設定")):
-        return MessageClassification(
-            is_command=True,
-            command_type="settings",
-            is_empty=False,
-            should_counsel=False,
-        )
-
     # 通常メッセージ → カウンセリング
     return MessageClassification(
         is_command=False,
@@ -229,21 +187,6 @@ class ExportResponse(BaseModel):
     command: str = Field("export", description="コマンド名")
     data_summary: dict[str, Any] | None = Field(None, description="データサマリー")
     full_export_url: str | None = Field(None, description="完全エクスポートURL")
-
-
-class SettingsRequest(BaseModel):
-    """設定変更リクエスト"""
-
-    user_id: str = Field(..., description="ユーザーID")
-    action: str = Field("show", description="アクション: show, on, off")
-
-
-class SettingsResponse(BaseModel):
-    """設定レスポンス"""
-
-    response: str = Field(..., description="レスポンスメッセージ")
-    command: str = Field("settings", description="コマンド名")
-    current_settings: dict[str, Any] | None = Field(None, description="現在の設定")
 
 
 class ClearDataRequest(BaseModel):
@@ -282,14 +225,13 @@ async def export_user_data(
             data_summary=None,
         )
 
-    # データサマリー（Bot向けの簡易版）
+    # データサマリー
     days_active = (datetime.now() - user.first_interaction).days
     data_summary = {
         "あなたのデータ": {
             "会話回数": user.total_interactions,
             "利用開始日": user.first_interaction.strftime("%Y年%m月%d日"),
             "利用日数": f"{days_active}日",
-            "記録されたエピソード数": len(user.episodes),
             "信頼フェーズ": user.phase.value,
         },
         "プライバシー情報": {
@@ -322,77 +264,6 @@ async def export_user_data(
     )
 
 
-@router.post("/settings", response_model=SettingsResponse)
-async def update_settings(
-    request: SettingsRequest,
-    storage: IStorage = Depends(get_storage),
-) -> SettingsResponse:
-    """
-    プロアクティブ設定を表示/変更
-
-    プライバシーファースト:
-    - ユーザーは通知を完全にコントロールできる
-    - オプトアウトは簡単に
-    """
-    user = await storage.load_user(request.user_id)
-
-    if user is None:
-        return SettingsResponse(
-            response="まだデータがありません。いつでもお話ししてくださいね。",
-            command="settings",
-            current_settings=None,
-        )
-
-    # 設定変更
-    if request.action == "on":
-        user.proactive.enabled = True
-        await storage.save_user(user)
-        return SettingsResponse(
-            response="✅ チェックイン通知を**有効**にしました。\n\n定期的に様子を伺いますね。いつでも `/settings off` で無効にできます。",
-            command="settings",
-            current_settings={"proactive_enabled": True},
-        )
-
-    elif request.action == "off":
-        user.proactive.enabled = False
-        await storage.save_user(user)
-        return SettingsResponse(
-            response="🔕 チェックイン通知を**無効**にしました。\n\nこちらから連絡することはありません。いつでも `/settings on` で有効にできます。",
-            command="settings",
-            current_settings={"proactive_enabled": False},
-        )
-
-    # 設定表示
-    status = "有効" if user.proactive.enabled else "無効"
-    frequency_text = {
-        "daily": "毎日",
-        "weekly": "週1回",
-        "monthly": "月1回",
-        "never": "なし",
-    }.get(user.proactive.frequency, user.proactive.frequency)
-
-    response_text = f"""⚙️ **あなたの設定**
-
-🔔 チェックイン通知: {status}
-📆 頻度: {frequency_text}
-
-**変更方法:**
-- `/settings on` - 通知を有効化
-- `/settings off` - 通知を無効化
-
-あなたのプライバシーを尊重します。"""
-
-    return SettingsResponse(
-        response=response_text,
-        command="settings",
-        current_settings={
-            "proactive_enabled": user.proactive.enabled,
-            "frequency": user.proactive.frequency,
-            "preferred_time": user.proactive.preferred_time,
-        },
-    )
-
-
 @router.post("/clear_data", response_model=ClearDataResponse)
 async def clear_user_data(
     request: ClearDataRequest,
@@ -410,9 +281,8 @@ async def clear_user_data(
             response="""⚠️ **データ削除の確認**
 
 この操作は取り消せません。以下のデータがすべて削除されます:
-- 会話履歴
+- 学習された好み
 - 感情パターン
-- 記録されたエピソード
 - 関係性データ
 
 **本当に削除しますか？**

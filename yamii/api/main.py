@@ -1,11 +1,10 @@
 """
 Yamii API - メインアプリケーション
-簡素化されたFastAPI アプリケーション
+Zero-Knowledge アーキテクチャ対応 FastAPI アプリケーション
 """
 
 from __future__ import annotations
 
-import asyncio
 from contextlib import asynccontextmanager
 from datetime import datetime
 
@@ -22,7 +21,13 @@ from .auth import (
     SecurityHeadersMiddleware,
 )
 from .dependencies import get_ai_provider, get_storage
-from .routes import commands_router, counseling_router, outreach_router, user_router
+from .routes import (
+    auth_router,
+    commands_router,
+    counseling_router,
+    user_data_router,
+    user_router,
+)
 from .schemas import APIInfoResponse, HealthResponse
 
 # ログシステムを初期化
@@ -30,7 +35,7 @@ YamiiLogger.configure()
 logger = get_logger("api.main")
 
 # バージョン
-API_VERSION = "2.0.0"
+API_VERSION = "3.0.0"
 
 
 class APIVersionMiddleware(BaseHTTPMiddleware):
@@ -42,62 +47,23 @@ class APIVersionMiddleware(BaseHTTPMiddleware):
         return response
 
 
-async def run_misskey_bot() -> None:
-    """Misskey Botを起動"""
-    from ..bot.misskey.config import YamiiMisskeyBotConfig
-    from ..bot.misskey.yamii_bot import YamiiMisskeyBot
-
-    settings = get_settings()
-
-    config = YamiiMisskeyBotConfig(
-        misskey_instance_url=settings.misskey.instance_url,
-        misskey_access_token=settings.misskey.access_token,
-        misskey_bot_user_id=settings.misskey.bot_user_id,
-    )
-
-    logger.info(f"Misskey Bot starting: {settings.misskey.instance_url}")
-    bot = YamiiMisskeyBot(config)
-    await bot.start()
-
-
-# グローバルBot タスク参照
-_bot_task: asyncio.Task | None = None
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """アプリケーションライフサイクル"""
-    global _bot_task
     settings = get_settings()
 
     # 起動時
     logger.info(f"Yamii API v{API_VERSION} starting...")
     logger.info(f"Debug mode: {settings.debug}")
-    logger.info(f"Encryption enabled: {settings.security.encryption_enabled}")
     logger.info(f"Rate limiting: {settings.security.rate_limit_enabled}")
     logger.info(f"API keys configured: {len(settings.security.api_keys)} key(s)")
 
     if not settings.security.api_keys:
         logger.warning("No API keys configured - running in development mode (no auth)")
 
-    # Misskey Botを起動（設定があれば）
-    if settings.misskey.is_configured:
-        logger.info("Misskey Bot: 起動中...")
-        _bot_task = asyncio.create_task(run_misskey_bot())
-    else:
-        logger.info("Misskey Bot: 設定なし（スキップ）")
-
     yield
 
     # 終了時
-    if _bot_task and not _bot_task.done():
-        logger.info("Misskey Bot: 停止中...")
-        _bot_task.cancel()
-        try:
-            await _bot_task
-        except asyncio.CancelledError:
-            pass
-
     logger.info("Yamii API shutting down...")
 
 
@@ -106,23 +72,24 @@ def create_app() -> FastAPI:
     application = FastAPI(
         title="Yamii API",
         description=(
-            "メンタルヘルス特化AI相談システム\n\n"
+            "Zero-Knowledge メンタルヘルスAI相談システム\n\n"
             "**特徴:**\n"
-            "- プロアクティブケア: ユーザーに先にチェックイン\n"
-            "- 継続的関係性構築: STRANGER→TRUSTEDフェーズ\n"
-            "- プライバシーファースト: E2EE対応\n"
+            "- Zero-Knowledge: サーバーは会話内容を保存・閲覧しない\n"
+            "- クライアント側暗号化: カスタムプロンプトはユーザーのみ復号可能\n"
+            "- ノーログ: 会話履歴はセッション中のみ保持\n"
+            "- Misskey OAuth: Misskeyアカウントで認証\n"
         ),
         version=API_VERSION,
         lifespan=lifespan,
     )
 
     # ミドルウェア（実行順序: 下から上）
-    # 1. CORS（内部 API なのでローカルホストのみ許可）
+    # 1. CORS（フロントエンドからのアクセスを許可）
     application.add_middleware(
         CORSMiddleware,
-        allow_origins=["http://localhost:8000", "http://127.0.0.1:8000"],
+        allow_origins=["*"],  # フロントエンドのデプロイ先に応じて設定
         allow_credentials=True,
-        allow_methods=["GET", "POST", "PUT", "DELETE"],
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         allow_headers=["*"],
     )
     # 2. セキュリティヘッダー
@@ -135,9 +102,10 @@ def create_app() -> FastAPI:
     application.add_middleware(APIVersionMiddleware)
 
     # ルーター登録
+    application.include_router(auth_router)
     application.include_router(counseling_router)
     application.include_router(user_router)
-    application.include_router(outreach_router)
+    application.include_router(user_data_router)
     application.include_router(commands_router)
 
     # ルートエンドポイント
@@ -145,16 +113,15 @@ def create_app() -> FastAPI:
     async def root() -> APIInfoResponse:
         """API情報を取得"""
         return APIInfoResponse(
-            service="Yamii - メンタルヘルスAI相談API",
+            service="Yamii - Zero-Knowledge メンタルヘルスAI相談API",
             version=API_VERSION,
-            description="プロアクティブケアを提供するBot APIサーバー",
+            description="プライバシーファーストのAI相談APIサーバー",
             features=[
                 "カウンセリング相談",
                 "感情分析",
                 "危機検出",
-                "関係性フェーズ管理",
-                "プロアクティブチェックイン",
-                "GDPR対応データ管理",
+                "Zero-Knowledge暗号化",
+                "ノーログ設計",
             ],
         )
 

@@ -1,13 +1,13 @@
 """
 ユーザーモデル
-統合されたユーザー状態（RelationshipState + AdaptiveProfile + UserProfile）
+Zero-Knowledge対応ユーザー状態
+クライアント側で暗号化されてサーバーに保存される
 """
 
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
-from .conversation import Episode
 from .relationship import (
     DepthLevel,
     PhaseTransition,
@@ -18,72 +18,19 @@ from .relationship import (
 
 
 @dataclass
-class ProactiveSettings:
-    """
-    プロアクティブケア設定
-    Bot APIならではの機能 - ユーザーに先にチェックインする設定
-    """
-
-    enabled: bool = False
-    frequency: str = "weekly"  # "daily", "weekly", "never"
-    preferred_time: str | None = None  # "09:00" 形式
-    last_outreach: datetime | None = None
-    next_scheduled: datetime | None = None
-
-    # チェックイン種類の設定
-    absence_check_enabled: bool = True  # 不在時チェックイン
-    absence_threshold_days: int = 3
-    sentiment_check_enabled: bool = True  # センチメント悪化時チェックイン
-    follow_up_enabled: bool = True  # フォローアップチェックイン
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "enabled": self.enabled,
-            "frequency": self.frequency,
-            "preferred_time": self.preferred_time,
-            "last_outreach": self.last_outreach.isoformat()
-            if self.last_outreach
-            else None,
-            "next_scheduled": self.next_scheduled.isoformat()
-            if self.next_scheduled
-            else None,
-            "absence_check_enabled": self.absence_check_enabled,
-            "absence_threshold_days": self.absence_threshold_days,
-            "sentiment_check_enabled": self.sentiment_check_enabled,
-            "follow_up_enabled": self.follow_up_enabled,
-        }
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "ProactiveSettings":
-        return cls(
-            enabled=data.get("enabled", False),
-            frequency=data.get("frequency", "weekly"),
-            preferred_time=data.get("preferred_time"),
-            last_outreach=datetime.fromisoformat(data["last_outreach"])
-            if data.get("last_outreach")
-            else None,
-            next_scheduled=datetime.fromisoformat(data["next_scheduled"])
-            if data.get("next_scheduled")
-            else None,
-            absence_check_enabled=data.get("absence_check_enabled", True),
-            absence_threshold_days=data.get("absence_threshold_days", 3),
-            sentiment_check_enabled=data.get("sentiment_check_enabled", True),
-            follow_up_enabled=data.get("follow_up_enabled", True),
-        )
-
-
-@dataclass
 class UserState:
     """
-    統合ユーザー状態
-    RelationshipState + AdaptiveProfile + UserProfile + ProactiveSettings を統合
+    Zero-Knowledge ユーザー状態
 
-    これが単一の真実の源泉 (Single Source of Truth)
+    このデータはクライアント側で暗号化されてサーバーに保存される。
+    サーバーは暗号化されたBlobとして保持するのみで、内容を読むことはできない。
+
+    注意: 会話ログ（Episodes）は保存しない（ノーログ設計）
     """
 
     user_id: str
 
-    # === 関係性フェーズ（RelationshipStateから） ===
+    # === 関係性フェーズ ===
     phase: RelationshipPhase = RelationshipPhase.STRANGER
     total_interactions: int = 0
     first_interaction: datetime = field(default_factory=datetime.now)
@@ -97,7 +44,7 @@ class UserState:
     # フェーズ履歴
     phase_history: list[PhaseTransition] = field(default_factory=list)
 
-    # === 学習された好み（AdaptiveProfileから） ===
+    # === 学習された好み ===
     preferred_tone: ToneLevel = ToneLevel.BALANCED
     preferred_depth: DepthLevel = DepthLevel.MEDIUM
 
@@ -116,19 +63,13 @@ class UserState:
     # 学習状態
     confidence_score: float = 0.0  # 学習の確信度 (0.0-1.0)
 
-    # === 明示的プロファイル（UserProfileから） ===
+    # === 明示的プロファイル（カスタムプロンプト） ===
     explicit_profile: str | None = None  # ユーザーが設定した自由形式プロファイル
     display_name: str | None = None
 
     # === 既知情報 ===
     known_facts: list[str] = field(default_factory=list)  # 「〇〇さんは東京在住」等
     known_topics: list[str] = field(default_factory=list)  # 話したことのあるトピック
-
-    # === エピソード（長期記憶） ===
-    episodes: list[Episode] = field(default_factory=list)
-
-    # === プロアクティブケア設定 ===
-    proactive: ProactiveSettings = field(default_factory=ProactiveSettings)
 
     # === メタデータ ===
     created_at: datetime = field(default_factory=datetime.now)
@@ -139,15 +80,6 @@ class UserState:
         self.total_interactions += 1
         self.last_interaction = datetime.now()
         self.updated_at = datetime.now()
-
-    def add_episode(self, episode: Episode) -> None:
-        """エピソードを追加（最大100件保持）"""
-        self.episodes.append(episode)
-        if len(self.episodes) > 100:
-            # 重要度の低いものを優先的に削除
-            self.episodes.sort(key=lambda e: e.importance_score, reverse=True)
-            self.episodes = self.episodes[:100]
-            self.episodes.sort(key=lambda e: e.created_at)
 
     def add_known_fact(self, fact: str) -> None:
         """既知の事実を追加"""
@@ -182,15 +114,6 @@ class UserState:
         )
         return sorted_topics[:n]
 
-    def get_recent_episodes(self, n: int = 5) -> list[Episode]:
-        """最近のエピソードを取得"""
-        sorted_episodes = sorted(
-            self.episodes,
-            key=lambda e: e.created_at,
-            reverse=True,
-        )
-        return sorted_episodes[:n]
-
     def to_dict(self) -> dict[str, Any]:
         return {
             "user_id": self.user_id,
@@ -221,10 +144,6 @@ class UserState:
             # 既知情報
             "known_facts": self.known_facts,
             "known_topics": self.known_topics,
-            # エピソード
-            "episodes": [e.to_dict() for e in self.episodes],
-            # プロアクティブ
-            "proactive": self.proactive.to_dict(),
             # メタデータ
             "created_at": self.created_at.isoformat(),
             "updated_at": self.updated_at.isoformat(),
@@ -268,10 +187,6 @@ class UserState:
             # 既知情報
             known_facts=data.get("known_facts", []),
             known_topics=data.get("known_topics", []),
-            # エピソード
-            episodes=[Episode.from_dict(e) for e in data.get("episodes", [])],
-            # プロアクティブ
-            proactive=ProactiveSettings.from_dict(data.get("proactive", {})),
             # メタデータ
             created_at=datetime.fromisoformat(
                 data.get("created_at", datetime.now().isoformat())

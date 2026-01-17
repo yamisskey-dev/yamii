@@ -8,10 +8,6 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any
 
-from ..models.conversation import (
-    Episode,
-    EpisodeType,
-)
 from ..models.emotion import EmotionAnalysis, EmotionType
 from ..models.relationship import (
     DepthLevel,
@@ -290,17 +286,17 @@ class CounselingService:
         最適化: リスト結合で空セクションを除外
         """
         # 各セクションを収集（空文字列は除外）
+        # Note: エピソードコンテキストはZero-Knowledge設計のため削除（ノーログ）
         sections = [
             self._get_base_prompt(user),
             self._get_phase_specific_instruction(user),
             self._get_personalization_instruction(user),
             self._get_context_info(user, emotion_analysis, advice_type),
-            self._get_episode_context(user),
         ]
 
         # 危機対応（最優先で末尾に追加）
         if emotion_analysis.is_crisis:
-            sections.append(self._get_crisis_instruction(user))
+            sections.append(self._get_crisis_instruction())
 
         # 空文字列を除外して結合
         return "\n\n".join(s for s in sections if s)
@@ -428,39 +424,10 @@ class CounselingService:
 
         return info
 
-    def _get_episode_context(self, user: UserState) -> str:
-        """最近のエピソードからのコンテキスト"""
-        recent = user.get_recent_episodes(3)
-        if not recent:
-            return ""
-
-        episode_texts = []
-        for ep in recent:
-            days_ago = (datetime.now() - ep.created_at).days
-            if days_ago == 0:
-                time_desc = "今日"
-            elif days_ago == 1:
-                time_desc = "昨日"
-            else:
-                time_desc = f"{days_ago}日前"
-
-            episode_texts.append(
-                f"  - {time_desc}: {ep.summary[:50]}...（{ep.emotional_context}）"
-            )
-
-        return f"""【最近の会話】
-{chr(10).join(episode_texts)}
-
-※ 同じアドバイスの繰り返しは避け、前回の続きとして話す"""
-
-    def _get_crisis_instruction(self, user: UserState) -> str:
+    def _get_crisis_instruction(self) -> str:
         """危機対応の特別指示"""
-        # 過去の危機エピソードを確認
-        crisis_history = [
-            ep for ep in user.episodes if ep.episode_type == EpisodeType.CRISIS
-        ]
-
-        instruction = """
+        # Note: 過去の危機履歴はZero-Knowledge設計のため参照不可（ノーログ）
+        return """
 ⚠️ 【最優先: 危機対応】
 この方は今、とても辛い状況にいる可能性があります。
 
@@ -482,14 +449,6 @@ class CounselingService:
    - 「また話しかけてください」
    - 「あなたのことを心配しています」
 """
-
-        if crisis_history:
-            instruction += f"""
-【重要】この方は過去にも辛い時期がありました（{len(crisis_history)}回）
-より丁寧に、継続的なサポートを意識してください。
-"""
-
-        return instruction
 
     async def _update_user_state(
         self,
@@ -522,14 +481,8 @@ class CounselingService:
         # フェーズ更新チェック
         self._update_phase_if_needed(user)
 
-        # エピソード生成（重要な会話の場合）
-        if self._should_create_episode(emotion_analysis, advice_type):
-            episode = self._create_episode(user, request, emotion_analysis, advice_type)
-            user.add_episode(episode)
-
-        # 危機時のフォローアップをスケジュール
-        if emotion_analysis.is_crisis:
-            self._schedule_crisis_follow_up(user)
+        # Note: エピソード生成は Zero-Knowledge 設計のため削除（ノーログ）
+        # Note: 危機時のフォローアップスケジュールは Proactive 機能削除のため削除
 
         # 保存
         await self.storage.save_user(user)
@@ -607,60 +560,3 @@ class CounselingService:
             )
             user.phase_history.append(transition)
             user.phase = new_phase
-
-    def _should_create_episode(
-        self,
-        emotion_analysis: EmotionAnalysis,
-        advice_type: str,
-    ) -> bool:
-        """エピソードを作成すべきか判定"""
-        # 危機的状況
-        if emotion_analysis.is_crisis:
-            return True
-        # 高い感情強度
-        if emotion_analysis.intensity > 0.6:  # 閾値を下げて記録を増やす
-            return True
-        # 重要なトピック
-        important_types = {"crisis_support", "mental_health", "relationship", "family"}
-        if advice_type in important_types:
-            return True
-        return False
-
-    def _create_episode(
-        self,
-        user: UserState,
-        request: CounselingRequest,
-        emotion_analysis: EmotionAnalysis,
-        advice_type: str,
-    ) -> Episode:
-        """エピソードを作成"""
-        # エピソードタイプ判定
-        if emotion_analysis.is_crisis:
-            episode_type = EpisodeType.CRISIS
-        elif emotion_analysis.intensity > 0.8:
-            episode_type = EpisodeType.INSIGHT
-        else:
-            episode_type = EpisodeType.GENERAL
-
-        return Episode(
-            id=str(uuid.uuid4()),
-            user_id=user.user_id,
-            created_at=datetime.now(),
-            summary=request.message[:200],  # 最初の200文字
-            topics=[advice_type],
-            emotional_context=emotion_analysis.primary_emotion.value,
-            importance_score=emotion_analysis.intensity,
-            emotional_intensity=emotion_analysis.intensity,
-            episode_type=episode_type,
-            emotion=emotion_analysis.primary_emotion,
-            keywords=[advice_type],
-        )
-
-    def _schedule_crisis_follow_up(self, user: UserState) -> None:
-        """危機時のフォローアップをスケジュール"""
-        # プロアクティブ設定を強制有効化（危機対応）
-        user.proactive.enabled = True
-        user.proactive.follow_up_enabled = True
-
-        # 24時間以内のフォローアップをスケジュール
-        user.proactive.next_scheduled = datetime.now() + timedelta(hours=24)

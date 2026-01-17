@@ -37,37 +37,10 @@ class AISettings(BaseSettings):
         return v
 
 
-class MisskeySettings(BaseSettings):
-    """Misskey Bot 設定"""
-
-    model_config = SettingsConfigDict(env_file=".env", env_prefix="MISSKEY_", extra="ignore")
-
-    instance_url: str = Field(default="", description="Misskey インスタンス URL")
-    access_token: str = Field(default="", description="Misskey アクセストークン")
-    bot_user_id: str = Field(default="", description="Bot ユーザー ID")
-
-    # 動作設定
-    stream_reconnect_delay: int = Field(default=5, description="再接続遅延(秒)")
-    max_reconnect_attempts: int = Field(default=10, description="最大再接続試行回数")
-
-    @property
-    def is_configured(self) -> bool:
-        """Misskey が設定済みか"""
-        return bool(self.instance_url and self.access_token and self.bot_user_id)
-
-
 class SecuritySettings(BaseSettings):
     """セキュリティ設定"""
 
     model_config = SettingsConfigDict(env_file=".env", env_prefix="YAMII_", extra="ignore")
-
-    # 暗号化
-    encryption_enabled: bool = Field(default=True, description="E2EE 暗号化を有効化")
-    master_key: str | None = Field(
-        default=None,
-        alias="YAMII_MASTER_KEY",
-        description="マスター暗号化キー (Base64)",
-    )
 
     # API 認証（カンマ区切り文字列で指定）
     api_keys_str: str = Field(
@@ -114,15 +87,21 @@ class YamiiSettings(BaseSettings):
 
     # サブ設定
     ai: AISettings = Field(default_factory=AISettings)
-    misskey: MisskeySettings = Field(default_factory=MisskeySettings)
     security: SecuritySettings = Field(default_factory=SecuritySettings)
 
     # API サーバー設定
     api_host: str = Field(
-        default="0.0.0.0", alias="API_HOST", description="API サーバーホスト"
+        default="http://localhost:8000", alias="API_HOST", description="API サーバーベースURL"
     )
     api_port: int = Field(
         default=8000, alias="API_PORT", description="API サーバーポート"
+    )
+
+    # フロントエンド設定
+    frontend_url: str = Field(
+        default="http://localhost:3000",
+        alias="FRONTEND_URL",
+        description="フロントエンドのベースURL",
     )
 
     @classmethod
@@ -130,7 +109,6 @@ class YamiiSettings(BaseSettings):
         """設定をロード（サブ設定も含む）"""
         return cls(
             ai=AISettings(),
-            misskey=MisskeySettings(),
             security=SecuritySettings(),
         )
 
@@ -143,7 +121,6 @@ def get_settings() -> YamiiSettings:
     使用例:
         settings = get_settings()
         print(settings.ai.openai_api_key)
-        print(settings.misskey.instance_url)
     """
     return YamiiSettings.load()
 

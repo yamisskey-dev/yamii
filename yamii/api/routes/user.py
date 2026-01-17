@@ -1,20 +1,18 @@
 """
 ユーザー管理エンドポイント
+Zero-Knowledge対応版 - サーバー側でのユーザーデータ管理
 """
 
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 
+from ...domain.models.user import UserState
 from ...domain.ports.storage_port import IStorage
 from ..auth import verify_api_key
 from ..dependencies import get_storage
 from ..schemas import (
-    EpisodeListResponse,
-    EpisodeResponse,
-    ProactiveSettingsResponse,
     UserProfileRequest,
-    UserSummaryResponse,
 )
 
 router = APIRouter(
@@ -24,13 +22,17 @@ router = APIRouter(
 )
 
 
-@router.get("/{user_id}", response_model=UserSummaryResponse)
+@router.get("/{user_id}")
 async def get_user(
     user_id: str,
     storage: IStorage = Depends(get_storage),
-) -> UserSummaryResponse:
+) -> dict:
     """
-    ユーザー情報を取得
+    ユーザー基本情報を取得
+
+    Note: Zero-Knowledge設計のため、詳細なユーザー情報は
+    クライアント側で暗号化されたBlobとして管理されます。
+    このエンドポイントはサーバー側で保持する最小限の情報のみ返します。
     """
     user = await storage.load_user(user_id)
     if user is None:
@@ -45,25 +47,18 @@ async def get_user(
     days_since_first = (datetime.now() - user.first_interaction).days
     top_topics = [t.topic for t in user.get_top_topics(5)]
 
-    return UserSummaryResponse(
-        user_id=user.user_id,
-        phase=user.phase.value,
-        total_interactions=user.total_interactions,
-        trust_score=user.trust_score,
-        days_since_first=days_since_first,
-        episode_count=len(user.episodes),
-        top_topics=top_topics,
-        proactive=ProactiveSettingsResponse(
-            enabled=user.proactive.enabled,
-            frequency=user.proactive.frequency,
-            preferred_time=user.proactive.preferred_time,
-            last_outreach=user.proactive.last_outreach,
-            next_scheduled=user.proactive.next_scheduled,
-        ),
-    )
+    return {
+        "user_id": user.user_id,
+        "phase": user.phase.value,
+        "total_interactions": user.total_interactions,
+        "trust_score": user.trust_score,
+        "days_since_first": days_since_first,
+        "top_topics": top_topics,
+        "display_name": user.display_name,
+    }
 
 
-@router.put("/{user_id}", response_model=dict)
+@router.put("/{user_id}")
 async def update_user(
     user_id: str,
     request: UserProfileRequest,
@@ -92,7 +87,7 @@ async def update_user(
     return {"message": "User updated successfully", "user_id": user_id}
 
 
-@router.delete("/{user_id}", response_model=dict)
+@router.delete("/{user_id}")
 async def delete_user(
     user_id: str,
     storage: IStorage = Depends(get_storage),
@@ -116,13 +111,16 @@ async def delete_user(
     }
 
 
-@router.get("/{user_id}/export", response_model=dict)
+@router.get("/{user_id}/export")
 async def export_user_data(
     user_id: str,
     storage: IStorage = Depends(get_storage),
 ) -> dict:
     """
     ユーザーデータをエクスポート（GDPR対応）
+
+    Note: Zero-Knowledge設計のため、暗号化されたBlobは
+    /v1/user-data/blob から別途取得してください。
     """
     data = await storage.export_user_data(user_id)
     if data is None:
@@ -141,47 +139,8 @@ async def export_user_data(
         "your_rights": {
             "delete": "/v1/users/{user_id} DELETE で完全削除できます",
             "update": "/v1/users/{user_id} PUT でプロフィールを更新できます",
+            "encrypted_data": "/v1/user-data/blob で暗号化データを取得できます",
         },
     }
 
     return data
-
-
-@router.get("/{user_id}/episodes", response_model=EpisodeListResponse)
-async def get_user_episodes(
-    user_id: str,
-    limit: int = 10,
-    storage: IStorage = Depends(get_storage),
-) -> EpisodeListResponse:
-    """
-    ユーザーのエピソードを取得
-    """
-    user = await storage.load_user(user_id)
-    if user is None:
-        raise HTTPException(
-            status_code=404,
-            detail={
-                "message": "まだエピソードがありません。お話しすると記録されていきます。",
-                "user_id": user_id,
-            },
-        )
-
-    recent_episodes = user.get_recent_episodes(limit)
-
-    episodes = [
-        EpisodeResponse(
-            id=ep.id,
-            created_at=ep.created_at,
-            summary=ep.summary,
-            topics=ep.topics,
-            emotion=ep.emotion.value,
-            importance_score=ep.importance_score,
-            episode_type=ep.episode_type.value,
-        )
-        for ep in recent_episodes
-    ]
-
-    return EpisodeListResponse(
-        episodes=episodes,
-        total=len(user.episodes),
-    )

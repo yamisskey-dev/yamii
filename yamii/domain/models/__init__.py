@@ -5,8 +5,6 @@ Domain Models
 
 from .conversation import (
     ConversationContext,
-    Episode,
-    EpisodeType,
     Message,
 )
 from .emotion import (
@@ -21,7 +19,6 @@ from .relationship import (
     TopicAffinity,
 )
 from .user import (
-    ProactiveSettings,
     UserState,
 )
 
@@ -32,14 +29,11 @@ __all__ = [
     "DepthLevel",
     "PhaseTransition",
     "TopicAffinity",
-    # 会話
-    "EpisodeType",
-    "Episode",
+    # 会話（セッション中のみ使用、保存しない）
     "Message",
     "ConversationContext",
     # ユーザー
     "UserState",
-    "ProactiveSettings",
     # 感情
     "EmotionType",
     "EmotionAnalysis",

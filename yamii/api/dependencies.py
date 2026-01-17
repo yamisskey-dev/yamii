@@ -6,14 +6,12 @@ API Dependencies
 from __future__ import annotations
 
 from ..adapters.ai.openai import OpenAIAdapterWithFallback
-from ..adapters.storage.encrypted_file import EncryptedFileStorageAdapter
 from ..adapters.storage.file import FileStorageAdapter
 from ..core.config import get_settings
 from ..domain.ports.ai_port import IAIProvider
 from ..domain.ports.storage_port import IStorage
 from ..domain.services.counseling import CounselingService
 from ..domain.services.emotion import EmotionService
-from ..domain.services.outreach import ProactiveOutreachService
 
 # === シングルトンインスタンス ===
 
@@ -21,7 +19,6 @@ _storage: IStorage | None = None
 _ai_provider: IAIProvider | None = None
 _emotion_service: EmotionService | None = None
 _counseling_service: CounselingService | None = None
-_outreach_service: ProactiveOutreachService | None = None
 
 
 # === 依存性取得関数 ===
@@ -30,15 +27,13 @@ _outreach_service: ProactiveOutreachService | None = None
 def get_storage() -> IStorage:
     """ストレージを取得
 
-    設定で暗号化が有効ならEncryptedFileStorageAdapterを使用
+    注意: Zero-Knowledge設計では、このストレージは主にセッション管理等に使用。
+    ユーザーデータはEncryptedBlobFileAdapterで暗号化Blobとして保存される。
     """
     global _storage
     if _storage is None:
         settings = get_settings()
-        if settings.security.encryption_enabled:
-            _storage = EncryptedFileStorageAdapter(data_dir=settings.data_dir)
-        else:
-            _storage = FileStorageAdapter(data_dir=settings.data_dir)
+        _storage = FileStorageAdapter(data_dir=settings.data_dir)
     return _storage
 
 
@@ -76,17 +71,6 @@ def get_counseling_service() -> CounselingService:
     return _counseling_service
 
 
-def get_outreach_service() -> ProactiveOutreachService:
-    """プロアクティブアウトリーチサービスを取得"""
-    global _outreach_service
-    if _outreach_service is None:
-        _outreach_service = ProactiveOutreachService(
-            storage=get_storage(),
-            emotion_service=get_emotion_service(),
-        )
-    return _outreach_service
-
-
 # === テスト用リセット関数 ===
 
 
@@ -96,13 +80,11 @@ def reset_dependencies() -> None:
         _storage, \
         _ai_provider, \
         _emotion_service, \
-        _counseling_service, \
-        _outreach_service
+        _counseling_service
     _storage = None
     _ai_provider = None
     _emotion_service = None
     _counseling_service = None
-    _outreach_service = None
 
 
 def set_storage(storage: IStorage) -> None:

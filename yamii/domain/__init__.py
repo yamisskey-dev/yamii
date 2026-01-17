@@ -9,19 +9,12 @@ from .models import (
     ConversationContext,
     DepthLevel,
     EmotionAnalysis,
-    # 感情
     EmotionType,
-    Episode,
-    # 会話
-    EpisodeType,
     Message,
     PhaseTransition,
-    ProactiveSettings,
-    # 関係性
     RelationshipPhase,
     ToneLevel,
     TopicAffinity,
-    # ユーザー
     UserState,
 )
 
@@ -32,14 +25,11 @@ __all__ = [
     "DepthLevel",
     "PhaseTransition",
     "TopicAffinity",
-    # 会話
-    "EpisodeType",
-    "Episode",
+    # 会話（セッション中のみ、保存しない）
     "Message",
     "ConversationContext",
     # ユーザー
     "UserState",
-    "ProactiveSettings",
     # 感情
     "EmotionType",
     "EmotionAnalysis",

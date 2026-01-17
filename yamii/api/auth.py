@@ -220,6 +220,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     OWASP 推奨のセキュリティヘッダーを設定。
     """
 
+    # Swagger UI / ReDoc が使用する CDN
+    DOCS_PATHS = {"/docs", "/redoc", "/openapi.json"}
+
     async def dispatch(self, request: Request, call_next: Callable):
         response = await call_next(request)
 
@@ -229,8 +232,19 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
 
-        # API なので CSP は緩め
-        response.headers["Content-Security-Policy"] = "default-src 'self'"
+        # CSP: ドキュメントページは CDN を許可、それ以外は厳格に
+        if request.url.path in self.DOCS_PATHS:
+            # Swagger UI / ReDoc 用の緩和された CSP
+            response.headers["Content-Security-Policy"] = (
+                "default-src 'self'; "
+                "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+                "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+                "img-src 'self' data: https://cdn.jsdelivr.net https://fastapi.tiangolo.com; "
+                "font-src 'self' https://cdn.jsdelivr.net;"
+            )
+        else:
+            # API エンドポイント用の厳格な CSP
+            response.headers["Content-Security-Policy"] = "default-src 'self'"
 
         return response
 

@@ -52,7 +52,7 @@ COPY yamii/ ./yamii/
 COPY README.md ./
 
 # Create directories for data persistence
-RUN mkdir -p /app/data /app/.yamii_keys && chown -R yamii:yamii /app
+RUN mkdir -p /app/data /app/data/blobs && chown -R yamii:yamii /app
 
 # Switch to non-root user
 USER yamii
@@ -64,5 +64,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
 # Expose port
 EXPOSE 8000
 
-# Run with FastAPI CLI (Bot auto-starts via lifespan)
+# Run with FastAPI CLI
 CMD ["fastapi", "run", "yamii/api/main.py", "--host", "0.0.0.0", "--port", "8000"]

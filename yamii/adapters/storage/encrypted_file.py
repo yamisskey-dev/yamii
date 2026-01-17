@@ -253,17 +253,11 @@ class EncryptedFileStorageAdapter(IStorage):
                 "interactions_count": user.total_interactions,
                 "first_interaction": user.first_interaction.isoformat(),
                 "last_interaction": user.last_interaction.isoformat(),
-                "episodes_count": len(user.episodes),
                 "known_facts_count": len(user.known_facts),
                 "known_topics": user.known_topics,
-            },
-            "privacy_settings": {
-                "proactive_enabled": user.proactive.enabled,
-                "proactive_frequency": user.proactive.frequency,
             },
             "your_rights": {
                 "export": "全データのエクスポートが可能です",
                 "delete": "全データの完全削除が可能です",
-                "modify": "プロアクティブ設定の変更が可能です",
             },
         }

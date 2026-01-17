@@ -1,4 +1,4 @@
-# Yamii 人生相談Bot - API + Misskey Bot 統合構成
+# Yamii - Zero-Knowledge メンタルヘルスAI相談API
 services:
   yamii:
     build: .
@@ -9,7 +9,6 @@ services:
       - .env
     volumes:
       - yamii_data:/app/data
-      - yamii_keys:/app/.yamii_keys
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8000/v1/health || exit 1"]
@@ -20,6 +19,4 @@ services:
 
 volumes:
   yamii_data:
-    driver: local
-  yamii_keys:
     driver: local
