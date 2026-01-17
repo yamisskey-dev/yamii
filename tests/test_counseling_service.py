@@ -13,7 +13,7 @@ import pytest
 from yamii.domain.models.emotion import EmotionType
 from yamii.domain.models.relationship import RelationshipPhase
 from yamii.domain.models.user import UserState
-from yamii.domain.ports.ai_port import IAIProvider
+from yamii.domain.ports.ai_port import ChatMessage, IAIProvider
 from yamii.domain.ports.storage_port import IStorage
 from yamii.domain.services.counseling import (
     AdviceTypeClassifier,
@@ -37,6 +37,7 @@ class MockAIProvider(IAIProvider):
         message: str,
         system_prompt: str,
         max_tokens: int | None = None,
+        conversation_history: list[ChatMessage] | None = None,
     ) -> str:
         return self._response
 
@@ -177,10 +178,11 @@ class TestFollowUpGenerator:
         return FollowUpGenerator()
 
     def test_crisis_follow_up(self, generator):
-        """危機対応のフォローアップ質問が生成される"""
+        """危機対応のフォローアップ質問が生成される（傾聴重視）"""
         questions = generator.generate("crisis_support")
         assert len(questions) == 2
-        assert any("信頼できる人" in q for q in questions)
+        # 傾聴重視のフォローアップ
+        assert any("聴かせ" in q or "気持ち" in q for q in questions)
 
     def test_relationship_follow_up(self, generator):
         """恋愛相談のフォローアップ質問が生成される"""

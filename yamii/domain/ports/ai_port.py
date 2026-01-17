@@ -4,6 +4,15 @@ LLM APIへのアクセスを抽象化
 """
 
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
+
+
+@dataclass
+class ChatMessage:
+    """チャットメッセージ"""
+
+    role: str  # "user" or "assistant"
+    content: str
 
 
 class IAIProvider(ABC):
@@ -20,6 +29,7 @@ class IAIProvider(ABC):
         message: str,
         system_prompt: str,
         max_tokens: int | None = None,
+        conversation_history: list[ChatMessage] | None = None,
     ) -> str:
         """
         AI応答を生成
@@ -28,6 +38,7 @@ class IAIProvider(ABC):
             message: ユーザーメッセージ
             system_prompt: システムプロンプト
             max_tokens: 最大トークン数（オプション）
+            conversation_history: 会話履歴（オプション、セッション内文脈保持用）
 
         Returns:
             str: AI応答テキスト

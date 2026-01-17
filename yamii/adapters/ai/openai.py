@@ -7,7 +7,7 @@ PII匿名化機能付き
 import aiohttp
 
 from ...core.anonymizer import PIIAnonymizer, get_anonymizer
-from ...domain.ports.ai_port import IAIProvider
+from ...domain.ports.ai_port import ChatMessage, IAIProvider
 
 
 class OpenAIAdapter(IAIProvider):
@@ -46,6 +46,7 @@ class OpenAIAdapter(IAIProvider):
         message: str,
         system_prompt: str,
         max_tokens: int | None = None,
+        conversation_history: list[ChatMessage] | None = None,
     ) -> str:
         """
         AI応答を生成
@@ -54,6 +55,7 @@ class OpenAIAdapter(IAIProvider):
             message: ユーザーメッセージ
             system_prompt: システムプロンプト
             max_tokens: 最大トークン数（オプション）
+            conversation_history: 会話履歴（オプション、セッション内文脈保持用）
 
         Returns:
             str: AI応答テキスト（PII復元済み）
@@ -64,15 +66,28 @@ class OpenAIAdapter(IAIProvider):
         # PII匿名化
         mapping: dict[str, str] = {}
         processed_message = message
+        processed_history: list[ChatMessage] | None = None
 
         if self.enable_anonymization:
             result = self.anonymizer.anonymize(message)
             processed_message = result.anonymized_text
             mapping = result.mapping
 
+            # 会話履歴も匿名化
+            if conversation_history:
+                processed_history = []
+                for msg in conversation_history:
+                    history_result = self.anonymizer.anonymize(msg.content)
+                    processed_history.append(
+                        ChatMessage(role=msg.role, content=history_result.anonymized_text)
+                    )
+                    mapping.update(history_result.mapping)
+        else:
+            processed_history = conversation_history
+
         # API呼び出し
         response_text = await self._call_api(
-            processed_message, system_prompt, max_tokens
+            processed_message, system_prompt, max_tokens, processed_history
         )
 
         # PII復元（応答にプレースホルダーが含まれている場合）
@@ -86,14 +101,23 @@ class OpenAIAdapter(IAIProvider):
         message: str,
         system_prompt: str,
         max_tokens: int | None = None,
+        conversation_history: list[ChatMessage] | None = None,
     ) -> str:
         """OpenAI APIを呼び出し"""
+        # メッセージリストを構築
+        messages = [{"role": "system", "content": system_prompt}]
+
+        # 会話履歴があれば追加（セッション内文脈保持）
+        if conversation_history:
+            for msg in conversation_history:
+                messages.append({"role": msg.role, "content": msg.content})
+
+        # 現在のユーザーメッセージを追加
+        messages.append({"role": "user", "content": message})
+
         request_body = {
             "model": self.model,
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": message},
-            ],
+            "messages": messages,
         }
 
         if max_tokens:
@@ -181,11 +205,14 @@ class OpenAIAdapterWithFallback(OpenAIAdapter):
         message: str,
         system_prompt: str,
         max_tokens: int | None = None,
+        conversation_history: list[ChatMessage] | None = None,
     ) -> str:
         """
         AI応答を生成（フォールバック付き）
         """
         try:
-            return await super().generate(message, system_prompt, max_tokens)
+            return await super().generate(
+                message, system_prompt, max_tokens, conversation_history
+            )
         except Exception:
             return self.fallback_message

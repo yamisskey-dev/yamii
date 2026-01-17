@@ -15,9 +15,17 @@ from ..models.relationship import (
     ToneLevel,
 )
 from ..models.user import UserState
-from ..ports.ai_port import IAIProvider
+from ..ports.ai_port import ChatMessage, IAIProvider
 from ..ports.storage_port import IStorage
 from .emotion import EmotionService
+
+
+@dataclass
+class ConversationMessage:
+    """会話履歴の1メッセージ"""
+
+    role: str  # "user" or "assistant"
+    content: str
 
 
 @dataclass
@@ -28,6 +36,8 @@ class CounselingRequest:
     user_id: str
     session_id: str | None = None
     user_name: str | None = None
+    # セッション内文脈保持: クライアントが管理する会話履歴
+    conversation_history: list[ConversationMessage] | None = None
 
     def __post_init__(self):
         if not self.message or not self.message.strip():
@@ -175,8 +185,8 @@ class FollowUpGenerator:
     def __init__(self):
         self._templates = {
             "crisis_support": [
-                "今、誰か信頼できる人はそばにいますか？",
-                "専門のカウンセラーや医師に相談することを考えてみませんか？",
+                "もう少し聴かせてもらえますか？",
+                "今の気持ちを言葉にするとしたら、どんな感じですか？",
             ],
             "mental_health": [
                 "この状況はいつ頃から続いていますか？",
@@ -253,10 +263,19 @@ class CounselingService:
             user, emotion_analysis, advice_type
         )
 
-        # 5. AI応答生成
+        # 5. AI応答生成（セッション内文脈保持）
+        # 会話履歴をChatMessage形式に変換
+        chat_history: list[ChatMessage] | None = None
+        if request.conversation_history:
+            chat_history = [
+                ChatMessage(role=msg.role, content=msg.content)
+                for msg in request.conversation_history
+            ]
+
         ai_response = await self.ai_provider.generate(
             message=request.message,
             system_prompt=system_prompt,
+            conversation_history=chat_history,
         )
 
         # 6. フォローアップ質問生成
@@ -425,29 +444,31 @@ class CounselingService:
         return info
 
     def _get_crisis_instruction(self) -> str:
-        """危機対応の特別指示"""
+        """危機対応の特別指示 - 傾聴重視アプローチ"""
         # Note: 過去の危機履歴はZero-Knowledge設計のため参照不可（ノーログ）
         return """
-⚠️ 【最優先: 危機対応】
-この方は今、とても辛い状況にいる可能性があります。
+【重要: この方は辛い状況にいる可能性があります】
 
-1. まず安全の確認
-   - 「今、安全な場所にいますか？」
-   - 「誰か一緒にいる人はいますか？」
+あなたの最も大切な役割は「聴くこと」です。
 
-2. 寄り添いのメッセージ
-   - 「話してくれてありがとうございます」
-   - 「あなたは一人じゃありません」
-   - 「今の気持ちを聴かせてください」
+■ やるべきこと
+- 話を最後まで聴いてください
+- 相手の気持ちを自分の言葉で言い換えて確認してください
+- 「辛いですね」「それは苦しかったですね」など共感を示してください
+- 話してくれたことへの感謝を伝えてください
+- 沈黙も受け入れてください
 
-3. 必ず専門機関の情報を提供
-   - いのちの電話: 0570-783-556
-   - よりそいホットライン: 0120-279-338
-   - こころの健康相談統一ダイヤル: 0570-064-556
+■ やってはいけないこと
+- 解決策やアドバイスを急いで提示しない
+- 「頑張って」「前向きに」など励ましの言葉を使わない
+- 相談窓口や電話番号をいきなり案内しない
+- 話を遮ったり、話題を変えたりしない
+- 「気持ちはわかります」と安易に言わない（本当にはわからないから）
 
-4. フォローアップの約束
-   - 「また話しかけてください」
-   - 「あなたのことを心配しています」
+■ 専門機関の案内について
+相手から「どこに相談すればいい？」「誰かに話したい」と
+明確に聞かれた場合にのみ、自然な流れで案内してください。
+こちらから押し付けることは絶対にしないでください。
 """
 
     async def _update_user_state(

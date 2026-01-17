@@ -13,6 +13,13 @@ from pydantic import BaseModel, Field
 # === カウンセリング ===
 
 
+class ConversationMessage(BaseModel):
+    """会話履歴の1メッセージ"""
+
+    role: str = Field(..., description="user または assistant")
+    content: str = Field(..., description="メッセージ内容")
+
+
 class CounselingRequest(BaseModel):
     """カウンセリングリクエスト"""
 
@@ -20,6 +27,12 @@ class CounselingRequest(BaseModel):
     user_id: str = Field(..., min_length=1, description="ユーザーID")
     user_name: str | None = Field(None, description="表示名")
     session_id: str | None = Field(None, description="セッションID")
+    # セッション内文脈保持: クライアントが管理する会話履歴（最大10件推奨）
+    conversation_history: list[ConversationMessage] | None = Field(
+        None,
+        description="セッション内の会話履歴（クライアント管理、最大10件推奨）",
+        max_length=20,
+    )
 
 
 class EmotionAnalysisResponse(BaseModel):
