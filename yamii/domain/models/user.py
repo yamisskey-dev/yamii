@@ -45,8 +45,8 @@ class UserState:
     phase_history: list[PhaseTransition] = field(default_factory=list)
 
     # === 学習された好み ===
-    preferred_tone: ToneLevel = ToneLevel.BALANCED
-    preferred_depth: DepthLevel = DepthLevel.MEDIUM
+    preferred_tone: ToneLevel = ToneLevel.CASUAL  # デフォルトはカジュアル
+    preferred_depth: DepthLevel = DepthLevel.SHALLOW  # デフォルトは短め
 
     # トピック関心度
     topic_affinities: dict[str, TopicAffinity] = field(default_factory=dict)
@@ -169,8 +169,8 @@ class UserState:
                 PhaseTransition.from_dict(p) for p in data.get("phase_history", [])
             ],
             # 学習された好み
-            preferred_tone=ToneLevel(data.get("preferred_tone", "balanced")),
-            preferred_depth=DepthLevel(data.get("preferred_depth", "medium")),
+            preferred_tone=ToneLevel(data.get("preferred_tone", "casual")),
+            preferred_depth=DepthLevel(data.get("preferred_depth", "shallow")),
             topic_affinities={
                 k: TopicAffinity.from_dict(v)
                 for k, v in data.get("topic_affinities", {}).items()

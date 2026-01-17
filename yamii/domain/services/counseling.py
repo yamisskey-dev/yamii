@@ -323,96 +323,48 @@ class CounselingService:
 
     def _get_base_prompt(self, user: UserState) -> str:
         """ユーザーの好みに合わせた基本プロンプト"""
-        # トーン設定
-        tone_instructions = {
-            ToneLevel.WARM: "温かみのある言葉で、相手を包み込むように話してください。",
-            ToneLevel.PROFESSIONAL: "専門的かつ信頼感のある言葉遣いで対応してください。",
-            ToneLevel.CASUAL: "友達のように気軽で親しみやすい話し方をしてください。",
-            ToneLevel.BALANCED: "温かみがありつつも適度な距離感を保ってください。",
+        # トーン設定（シンプルに）
+        tone_map = {
+            ToneLevel.WARM: "優しく温かく",
+            ToneLevel.PROFESSIONAL: "丁寧に",
+            ToneLevel.CASUAL: "友達みたいに気軽に",
+            ToneLevel.BALANCED: "自然体で",
         }
 
-        # 深さ設定
-        depth_instructions = {
-            DepthLevel.SHALLOW: "短く簡潔に、1-2文程度で応答してください。",
-            DepthLevel.MEDIUM: "適度な長さで、2-3文（100-150文字）で応答してください。",
-            DepthLevel.DEEP: "丁寧に掘り下げて、3-4文（150-200文字）で応答してください。",
+        # 深さ設定（より短く）
+        depth_map = {
+            DepthLevel.SHALLOW: "1-2文で短く",
+            DepthLevel.MEDIUM: "2-3文くらいで",
+            DepthLevel.DEEP: "3-4文でしっかり",
         }
 
-        tone = tone_instructions.get(
-            user.preferred_tone, tone_instructions[ToneLevel.BALANCED]
-        )
-        depth = depth_instructions.get(
-            user.preferred_depth, depth_instructions[DepthLevel.MEDIUM]
-        )
+        tone = tone_map.get(user.preferred_tone, "友達みたいに気軽に")
+        depth = depth_map.get(user.preferred_depth, "1-2文で短く")
 
-        return f"""あなたは相談者の話に寄り添う相談相手です。
-まず気持ちを受け止め、必要に応じて一緒に考えます。
-
-【トーン】{tone}
-【長さ】{depth}
-【重要】SNSでの会話なので自然で読みやすく。"""
+        return f"""相談相手として話を聴いてください。{tone}、{depth}返してね。
+SNSの会話なので堅くならず自然に。アドバイスより共感優先。"""
 
     def _get_phase_specific_instruction(self, user: UserState) -> str:
-        """フェーズに応じた詳細な指示"""
-        match user.phase:
-            case RelationshipPhase.STRANGER:
-                return """【初対面の対応】
-- 丁寧な言葉遣いを心がける
-- まずは安心感を与える
-- 押しつけがましいアドバイスは避ける
-- 「よかったら教えてください」など配慮のある言い回しを使う"""
-
-            case RelationshipPhase.ACQUAINTANCE:
-                return """【顔見知りとしての対応】
-- 前回の会話を軽く参照してよい
-- 少し親しみを込めた言葉遣いが可能
-- 「以前〇〇とおっしゃっていましたね」など過去の文脈を活かす
-- ただし踏み込みすぎない"""
-
-            case RelationshipPhase.FAMILIAR:
-                return """【親しい関係としての対応】
-- 自然体で会話できる
-- 過去の会話を積極的に参照
-- 「〇〇さんらしいですね」など相手をよく知っている前提で話す
-- 具体的なアドバイスも可能"""
-
-            case RelationshipPhase.TRUSTED:
-                return """【信頼関係に基づく対応】
-- 率直で正直なやり取りが可能
-- 必要であれば厳しいことも伝えられる
-- 長期的な視点でのアドバイスが可能
-- 相手の成長を見守る姿勢で"""
+        """フェーズに応じた指示（シンプル版）"""
+        # 初対面以外は特別な指示不要（自然に会話できる）
+        if user.phase == RelationshipPhase.STRANGER:
+            return "初めての人なので、押しつけがましくならないように。"
+        return ""  # 他のフェーズは特別な指示不要
 
     def _get_personalization_instruction(self, user: UserState) -> str:
-        """ユーザーの好みに基づくパーソナライゼーション"""
-        instructions = []
+        """ユーザーの好みに基づくパーソナライゼーション（シンプル版）"""
+        # 学習の確信度が低いうちは指示を出さない
+        if user.confidence_score < 0.3:
+            return ""
 
-        # 共感重視度
-        if user.likes_empathy > 0.7:
-            instructions.append("- 感情に深く寄り添い、共感を丁寧に示す")
-        elif user.likes_empathy < 0.4:
-            instructions.append("- 感情面は軽めに触れ、実用的な対話を心がける")
+        hints = []
+        if user.likes_advice > 0.7:
+            hints.append("アドバイス多め")
+        if user.likes_questions > 0.7:
+            hints.append("質問で掘り下げる")
 
-        # アドバイス志向
-        if user.likes_advice > 0.6:
-            instructions.append("- 具体的なアドバイスや提案を積極的に行う")
-        elif user.likes_advice < 0.4:
-            instructions.append("- アドバイスは控えめに、傾聴を重視する")
-
-        # 質問志向
-        if user.likes_questions > 0.6:
-            instructions.append("- 掘り下げる質問を積極的に投げかける")
-        elif user.likes_questions < 0.4:
-            instructions.append("- 質問は最小限に、相手のペースを尊重する")
-
-        # 詳細志向
-        if user.likes_detail > 0.6:
-            instructions.append("- 詳細な説明や背景情報を含める")
-        elif user.likes_detail < 0.4:
-            instructions.append("- シンプルで簡潔な表現を心がける")
-
-        if instructions:
-            return "【この方の好み】\n" + "\n".join(instructions)
+        if hints:
+            return f"この人は{', '.join(hints)}が好み。"
         return ""
 
     def _get_context_info(
@@ -421,56 +373,25 @@ class CounselingService:
         emotion_analysis: EmotionAnalysis,
         advice_type: str,
     ) -> str:
-        """コンテキスト情報"""
-        now = datetime.now().strftime("%Y年%m月%d日 %H:%M")
+        """コンテキスト情報（シンプル版）"""
+        # 名前があれば使う
+        name_part = f"（{user.display_name}さん）" if user.display_name else ""
 
-        info = f"""【現在の状況】
-現在日時: {now}
-相談者: {user.display_name or "（名前未設定）"}
-関係性: {user.phase.value}（{user.total_interactions}回目の対話）
-検出された感情: {emotion_analysis.primary_emotion.value}（強度: {emotion_analysis.intensity:.1f}）
-相談カテゴリ: {advice_type}"""
+        # 感情が強い場合のみ言及
+        emotion_part = ""
+        if emotion_analysis.intensity > 0.5:
+            emotion_part = f"今{emotion_analysis.primary_emotion.value}な様子。"
 
-        # 既知の情報
-        if user.known_facts:
-            facts_text = "\n".join(f"  - {fact}" for fact in user.known_facts[:5])
-            info += f"\n\n【この方について知っていること】\n{facts_text}"
-
-        # 関心のあるトピック
-        top_topics = user.get_top_topics(3)
-        if top_topics:
-            topics_text = ", ".join(t.topic for t in top_topics)
-            info += f"\n\n【よく話題にすること】{topics_text}"
-
-        return info
+        if name_part or emotion_part:
+            return f"{name_part}{emotion_part}"
+        return ""
 
     def _get_crisis_instruction(self) -> str:
         """危機対応の特別指示 - 傾聴重視アプローチ"""
-        # Note: 過去の危機履歴はZero-Knowledge設計のため参照不可（ノーログ）
-        return """
-【重要: この方は辛い状況にいる可能性があります】
-
-あなたの最も大切な役割は「聴くこと」です。
-
-■ やるべきこと
-- 話を最後まで聴いてください
-- 相手の気持ちを自分の言葉で言い換えて確認してください
-- 「辛いですね」「それは苦しかったですね」など共感を示してください
-- 話してくれたことへの感謝を伝えてください
-- 沈黙も受け入れてください
-
-■ やってはいけないこと
-- 解決策やアドバイスを急いで提示しない
-- 「頑張って」「前向きに」など励ましの言葉を使わない
-- 相談窓口や電話番号をいきなり案内しない
-- 話を遮ったり、話題を変えたりしない
-- 「気持ちはわかります」と安易に言わない（本当にはわからないから）
-
-■ 専門機関の案内について
-相手から「どこに相談すればいい？」「誰かに話したい」と
-明確に聞かれた場合にのみ、自然な流れで案内してください。
-こちらから押し付けることは絶対にしないでください。
-"""
+        return """【辛そうな状況です】
+とにかく聴くことに徹して。「辛いね」「それは苦しかったね」など共感を。
+アドバイス・励まし・相談窓口の案内は絶対にしない（聞かれたら別）。
+「気持ちわかる」も言わない。ただ寄り添って。"""
 
     async def _update_user_state(
         self,
