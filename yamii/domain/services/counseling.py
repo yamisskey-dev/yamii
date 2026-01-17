@@ -235,7 +235,8 @@ class CounselingService:
     ):
         self.ai_provider = ai_provider
         self.storage = storage
-        self.emotion_service = emotion_service or EmotionService()
+        # EmotionServiceにもAIプロバイダーを渡して婉曲表現検出を有効化
+        self.emotion_service = emotion_service or EmotionService(ai_provider=ai_provider)
         self.advice_classifier = AdviceTypeClassifier()
         self.follow_up_generator = FollowUpGenerator()
 
@@ -250,8 +251,8 @@ class CounselingService:
         if user is None:
             user = UserState(user_id=request.user_id)
 
-        # 2. 感情分析
-        emotion_analysis = self.emotion_service.analyze(request.message)
+        # 2. 感情分析（LLM併用で婉曲表現も検出）
+        emotion_analysis = await self.emotion_service.analyze_with_llm(request.message)
 
         # 3. アドバイスタイプ分類
         advice_type = self.advice_classifier.classify(

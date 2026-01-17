@@ -52,10 +52,11 @@ def get_ai_provider() -> IAIProvider:
 
 
 def get_emotion_service() -> EmotionService:
-    """感情分析サービスを取得"""
+    """感情分析サービスを取得（LLM併用で婉曲表現検出可能）"""
     global _emotion_service
     if _emotion_service is None:
-        _emotion_service = EmotionService()
+        # AIプロバイダーを渡してLLM併用分析を有効化
+        _emotion_service = EmotionService(ai_provider=get_ai_provider())
     return _emotion_service
 
 

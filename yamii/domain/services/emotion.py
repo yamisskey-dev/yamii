@@ -1,9 +1,14 @@
 """
 統合感情分析サービス
 複数の感情分析システムを統合した単一サービス（最適化版）
+LLM併用で婉曲表現も検出可能
 """
 
+from __future__ import annotations
+
+import json
 import re
+from typing import TYPE_CHECKING
 
 from ..models.emotion import (
     NEGATIVE_EMOTIONS,
@@ -12,6 +17,9 @@ from ..models.emotion import (
     EmotionType,
 )
 from ..models.user import UserState
+
+if TYPE_CHECKING:
+    from ..ports.ai_port import IAIProvider
 
 
 class EmotionService:
@@ -22,9 +30,48 @@ class EmotionService:
     - 正規表現パターンを事前コンパイル
     - 危機キーワードの早期検出
     - キーワードセットによる高速マッチング
+
+    LLM併用機能:
+    - キーワード分析が曖昧なケースでLLMに依頼
+    - 婉曲表現（「もういいかな」等）を検出
     """
 
-    def __init__(self):
+    def __init__(self, ai_provider: IAIProvider | None = None):
+        # LLM併用のためのAIプロバイダー（オプション）
+        self._ai_provider = ai_provider
+
+        # 婉曲表現パターン（LLM分析のトリガー）
+        self._euphemism_patterns: list[re.Pattern] = [
+            re.compile(r"もういい(かな|や|よね|のかな)"),
+            re.compile(r"疲れた(かな|な|ね|よ)"),
+            re.compile(r"(どうでも|何も|全部)いい"),
+            re.compile(r"(意味|価値)(ない|がない|なんて)"),
+            re.compile(r"(誰も|何も)(わかって|理解して)くれない"),
+            re.compile(r"(いなく|消えて)(なりたい|しまいたい)"),
+            re.compile(r"楽になりたい"),
+            re.compile(r"(もう|全部)(終わり|おしまい)"),
+            re.compile(r"(生きて|いて)(も|て)(意味|仕方)"),
+            re.compile(r"(休み|眠り)たい(?!.*仕事|.*疲れ)"),  # 仕事疲れ以外の文脈
+        ]
+
+        # LLM分析用プロンプト
+        self._llm_analysis_prompt = """あなたは感情分析の専門家です。以下のメッセージの感情を分析してください。
+
+特に以下の婉曲表現に注意してください:
+- 「もういいかな」「疲れた」→ 絶望や危機的状況を示唆する可能性
+- 「どうでもいい」「意味がない」→ 無気力や抑うつの兆候
+- 「楽になりたい」「消えたい」→ 自傷・自殺念慮の可能性
+
+JSON形式で回答してください:
+{
+  "primary_emotion": "happiness|sadness|anxiety|anger|loneliness|depression|stress|confusion|hope|neutral",
+  "intensity": 0.0-1.0,
+  "is_crisis": true/false,
+  "reasoning": "判断理由（日本語で簡潔に）"
+}
+
+メッセージ: """
+
         # 感情キーワード辞書（拡張版）
         self._emotion_keywords = {
             EmotionType.HAPPINESS: {
@@ -239,7 +286,7 @@ class EmotionService:
 
     def analyze(self, message: str) -> EmotionAnalysis:
         """
-        メッセージの感情を分析
+        メッセージの感情を分析（同期版・キーワードベースのみ）
 
         Args:
             message: 分析するメッセージ
@@ -247,6 +294,40 @@ class EmotionService:
         Returns:
             EmotionAnalysis: 分析結果
         """
+        return self._analyze_keyword_based(message)
+
+    async def analyze_with_llm(self, message: str) -> EmotionAnalysis:
+        """
+        メッセージの感情を分析（LLM併用版）
+
+        キーワード分析で信頼度が低いまたは婉曲表現を検出した場合、
+        LLMに依頼してより深い分析を行う。
+
+        Args:
+            message: 分析するメッセージ
+
+        Returns:
+            EmotionAnalysis: 分析結果
+        """
+        # まずキーワードベースの高速分析
+        keyword_result = self._analyze_keyword_based(message)
+
+        # LLMが設定されていない場合はキーワード分析のみ
+        if self._ai_provider is None:
+            return keyword_result
+
+        # LLM分析が必要かどうか判定
+        needs_llm = self._needs_llm_analysis(message, keyword_result)
+
+        if not needs_llm:
+            return keyword_result
+
+        # LLMで深い分析を実行
+        llm_result = await self._analyze_with_llm(message, keyword_result)
+        return llm_result
+
+    def _analyze_keyword_based(self, message: str) -> EmotionAnalysis:
+        """キーワードベースの感情分析（内部用）"""
         if not message or not message.strip():
             return EmotionAnalysis.neutral()
 
@@ -282,6 +363,124 @@ class EmotionService:
             is_crisis=is_crisis,
             all_emotions={k.value: v for k, v in emotion_scores.items()},
             confidence=confidence,
+        )
+
+    def _needs_llm_analysis(self, message: str, keyword_result: EmotionAnalysis) -> bool:
+        """LLM分析が必要かどうか判定"""
+        # 1. 婉曲表現パターンにマッチした場合
+        for pattern in self._euphemism_patterns:
+            if pattern.search(message):
+                return True
+
+        # 2. キーワード分析の信頼度が低い場合
+        if keyword_result.confidence < 0.3:
+            return True
+
+        # 3. 中性だが一定の長さがある場合（感情が隠れている可能性）
+        if (
+            keyword_result.primary_emotion == EmotionType.NEUTRAL
+            and len(message) > 30
+        ):
+            return True
+
+        return False
+
+    async def _analyze_with_llm(
+        self, message: str, keyword_result: EmotionAnalysis
+    ) -> EmotionAnalysis:
+        """LLMを使った深い感情分析"""
+        try:
+            prompt = self._llm_analysis_prompt + message
+
+            response = await self._ai_provider.generate(
+                message=prompt,
+                system_prompt="あなたは感情分析AIです。JSON形式のみで回答してください。",
+                max_tokens=200,
+            )
+
+            # JSONをパース
+            llm_analysis = self._parse_llm_response(response)
+
+            if llm_analysis is None:
+                # パース失敗時はキーワード分析を返す
+                return keyword_result
+
+            # LLM結果とキーワード結果を統合
+            return self._merge_analyses(keyword_result, llm_analysis)
+
+        except Exception:
+            # エラー時はキーワード分析を返す
+            return keyword_result
+
+    def _parse_llm_response(self, response: str) -> dict | None:
+        """LLMレスポンスからJSONをパース"""
+        try:
+            # JSON部分を抽出（マークダウンコードブロック対応）
+            response = response.strip()
+            if response.startswith("```"):
+                # ```json ... ``` を除去
+                lines = response.split("\n")
+                json_lines = []
+                in_json = False
+                for line in lines:
+                    if line.startswith("```"):
+                        in_json = not in_json
+                        continue
+                    if in_json:
+                        json_lines.append(line)
+                response = "\n".join(json_lines)
+
+            return json.loads(response)
+        except (json.JSONDecodeError, ValueError):
+            return None
+
+    def _merge_analyses(
+        self, keyword_result: EmotionAnalysis, llm_analysis: dict
+    ) -> EmotionAnalysis:
+        """キーワード分析とLLM分析を統合"""
+        # LLMの感情タイプを取得
+        llm_emotion_str = llm_analysis.get("primary_emotion", "neutral")
+        try:
+            llm_emotion = EmotionType(llm_emotion_str)
+        except ValueError:
+            llm_emotion = EmotionType.NEUTRAL
+
+        llm_intensity = float(llm_analysis.get("intensity", 0.5))
+        llm_is_crisis = bool(llm_analysis.get("is_crisis", False))
+
+        # 危機判定: どちらかがTrueならTrue
+        merged_is_crisis = keyword_result.is_crisis or llm_is_crisis
+
+        # LLMが危機を検出した場合はLLMの判断を優先
+        if llm_is_crisis:
+            return EmotionAnalysis(
+                primary_emotion=llm_emotion,
+                intensity=max(llm_intensity, keyword_result.intensity),
+                stability=keyword_result.stability,
+                is_crisis=True,
+                all_emotions=keyword_result.all_emotions,
+                confidence=0.8,  # LLM分析は高信頼度
+            )
+
+        # キーワード分析が何も検出していない場合はLLMを優先
+        if keyword_result.primary_emotion == EmotionType.NEUTRAL:
+            return EmotionAnalysis(
+                primary_emotion=llm_emotion,
+                intensity=llm_intensity,
+                stability=keyword_result.stability,
+                is_crisis=merged_is_crisis,
+                all_emotions=keyword_result.all_emotions,
+                confidence=0.7,
+            )
+
+        # それ以外はキーワード分析を基本として信頼度を上げる
+        return EmotionAnalysis(
+            primary_emotion=keyword_result.primary_emotion,
+            intensity=keyword_result.intensity,
+            stability=keyword_result.stability,
+            is_crisis=merged_is_crisis,
+            all_emotions=keyword_result.all_emotions,
+            confidence=min(keyword_result.confidence + 0.2, 1.0),
         )
 
     def _detect_crisis_fast(self, message_lower: str) -> bool:

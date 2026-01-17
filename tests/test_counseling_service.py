@@ -22,6 +22,7 @@ from yamii.domain.services.counseling import (
     CounselingService,
     FollowUpGenerator,
 )
+from yamii.domain.services.emotion import EmotionService
 
 # === モッククラス ===
 
@@ -466,3 +467,152 @@ class TestEdgeCases:
 
         user = await service.storage.load_user(user_id)
         assert user.total_interactions == 10
+
+
+# === EmotionService LLM併用テスト ===
+
+
+class TestEmotionServiceLLM:
+    """EmotionService のLLM併用機能テスト"""
+
+    def test_keyword_analysis_only(self):
+        """AIプロバイダーなしでキーワード分析のみ動作"""
+        service = EmotionService()  # AIプロバイダーなし
+        result = service.analyze("今日はとても悲しい気持ちです")
+        assert result.primary_emotion == EmotionType.SADNESS
+        assert result.confidence > 0
+
+    def test_euphemism_detection_trigger(self):
+        """婉曲表現でLLM分析トリガーが検出される"""
+        service = EmotionService()
+
+        # 婉曲表現パターンにマッチするかテスト
+        test_messages = [
+            "もういいかな",
+            "疲れたな",
+            "どうでもいい",
+            "意味がないよ",
+            "楽になりたい",
+        ]
+
+        for msg in test_messages:
+            keyword_result = service._analyze_keyword_based(msg)
+            needs_llm = service._needs_llm_analysis(msg, keyword_result)
+            # 婉曲表現はLLM分析が必要と判定される
+            assert needs_llm, f"'{msg}' should trigger LLM analysis"
+
+    def test_no_llm_trigger_for_clear_keywords(self):
+        """明確なキーワードがある場合はLLM不要"""
+        service = EmotionService()
+
+        # 明確な感情キーワードがある場合
+        msg = "とても嬉しい！最高の気分です！"
+        keyword_result = service._analyze_keyword_based(msg)
+
+        # 信頼度が高い場合はLLM不要
+        if keyword_result.confidence >= 0.3:
+            needs_llm = service._needs_llm_analysis(msg, keyword_result)
+            # 明確なキーワードがあればLLM不要の可能性
+            # ただし婉曲表現がなく信頼度が高い場合
+            assert not needs_llm or keyword_result.confidence < 0.3
+
+    @pytest.mark.asyncio
+    async def test_analyze_with_llm_no_provider(self):
+        """AIプロバイダーなしでanalyze_with_llmを呼ぶとキーワード分析のみ"""
+        service = EmotionService()  # AIプロバイダーなし
+        result = await service.analyze_with_llm("もういいかな")
+
+        # LLMが無いのでキーワード分析の結果が返る
+        assert result is not None
+        assert result.primary_emotion is not None
+
+    @pytest.mark.asyncio
+    async def test_analyze_with_llm_provider(self):
+        """AIプロバイダーありでLLM分析が実行される"""
+        # LLM用のモック（JSON形式で感情分析結果を返す）
+        mock_llm_response = """{
+            "primary_emotion": "depression",
+            "intensity": 0.8,
+            "is_crisis": true,
+            "reasoning": "「もういいかな」は諦めや絶望を示唆する表現"
+        }"""
+        mock_provider = MockAIProvider(response=mock_llm_response)
+        service = EmotionService(ai_provider=mock_provider)
+
+        result = await service.analyze_with_llm("もういいかな")
+
+        # LLMが危機を検出したので危機フラグがTrue
+        assert result.is_crisis is True
+        # LLMの判断が反映される
+        assert result.primary_emotion == EmotionType.DEPRESSION
+
+    @pytest.mark.asyncio
+    async def test_llm_response_parsing(self):
+        """LLMレスポンスのパース処理"""
+        service = EmotionService()
+
+        # 正常なJSON
+        valid_json = '{"primary_emotion": "sadness", "intensity": 0.7, "is_crisis": false}'
+        result = service._parse_llm_response(valid_json)
+        assert result is not None
+        assert result["primary_emotion"] == "sadness"
+
+        # マークダウンコードブロック付き
+        markdown_json = '```json\n{"primary_emotion": "anxiety", "intensity": 0.5}\n```'
+        result = service._parse_llm_response(markdown_json)
+        assert result is not None
+        assert result["primary_emotion"] == "anxiety"
+
+        # 不正なJSON
+        invalid_json = "これはJSONではありません"
+        result = service._parse_llm_response(invalid_json)
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_llm_error_fallback(self):
+        """LLMエラー時はキーワード分析にフォールバック"""
+
+        class ErrorAIProvider(IAIProvider):
+            async def generate(self, *args, **kwargs) -> str:
+                raise Exception("API Error")
+
+            async def health_check(self) -> bool:
+                return False
+
+            @property
+            def model_name(self) -> str:
+                return "error-mock"
+
+        service = EmotionService(ai_provider=ErrorAIProvider())
+        result = await service.analyze_with_llm("もういいかな")
+
+        # エラーでもキーワード分析結果が返る
+        assert result is not None
+
+    def test_merge_analyses_crisis_priority(self):
+        """分析統合時に危機フラグが優先される"""
+        service = EmotionService()
+
+        from yamii.domain.models.emotion import EmotionAnalysis
+
+        keyword_result = EmotionAnalysis(
+            primary_emotion=EmotionType.NEUTRAL,
+            intensity=0.0,
+            stability=1.0,
+            is_crisis=False,
+            all_emotions={},
+            confidence=0.2,
+        )
+
+        llm_analysis = {
+            "primary_emotion": "depression",
+            "intensity": 0.9,
+            "is_crisis": True,
+        }
+
+        merged = service._merge_analyses(keyword_result, llm_analysis)
+
+        # LLMが危機を検出したら優先
+        assert merged.is_crisis is True
+        assert merged.primary_emotion == EmotionType.DEPRESSION
+        assert merged.confidence == 0.8  # LLM分析は高信頼度
