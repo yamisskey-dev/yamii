@@ -9,6 +9,7 @@ services:
       - .env
     volumes:
       - yamii_data:/app/data
+      - ./config/YAMII.md:/app/config/YAMII.md:ro
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8000/v1/health || exit 1"]

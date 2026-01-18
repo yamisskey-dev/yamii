@@ -49,8 +49,10 @@ COPY --from=builder /app/.venv /app/.venv
 
 # Copy application code
 COPY yamii/ ./yamii/
-COPY config/ ./config/
 COPY README.md ./
+
+# Create config directory (YAMII.md is mounted via docker-compose)
+RUN mkdir -p /app/config
 
 # Create directories for data persistence
 RUN mkdir -p /app/data /app/data/blobs && chown -R yamii:yamii /app
