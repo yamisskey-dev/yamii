@@ -49,6 +49,7 @@ COPY --from=builder /app/.venv /app/.venv
 
 # Copy application code
 COPY yamii/ ./yamii/
+COPY config/ ./config/
 COPY README.md ./
 
 # Create directories for data persistence
