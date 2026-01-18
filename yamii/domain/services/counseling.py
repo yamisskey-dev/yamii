@@ -6,7 +6,9 @@
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Any
+import re
 
 from ..models.emotion import EmotionAnalysis, EmotionType
 from ..models.relationship import (
@@ -18,6 +20,39 @@ from ..models.user import UserState
 from ..ports.ai_port import ChatMessage, IAIProvider
 from ..ports.storage_port import IStorage
 from .emotion import EmotionService
+
+
+# プロンプトファイルのパス
+CONFIG_DIR = Path(__file__).parent.parent.parent.parent / "config"
+DEFAULT_PROMPT_FILE = CONFIG_DIR / "YAMII.md"
+
+
+def _load_prompt_from_markdown(file_path: Path) -> str:
+    """
+    Markdownファイルからプロンプトを読み込む
+
+    - フロントマター（---で囲まれた部分）は除外
+    - # で始まるタイトル行は除外
+    - 残りのコンテンツを結合して返す
+    """
+    if not file_path.exists():
+        return ""
+
+    content = file_path.read_text(encoding="utf-8")
+
+    # フロントマターを除去（---で囲まれた部分）
+    content = re.sub(r"^---\n.*?\n---\n", "", content, flags=re.DOTALL)
+
+    # 最初の # タイトル行を除去
+    lines = content.strip().split("\n")
+    if lines and lines[0].startswith("# "):
+        lines = lines[1:]
+
+    # 空行で始まる場合は除去
+    while lines and not lines[0].strip():
+        lines = lines[1:]
+
+    return "\n".join(lines).strip()
 
 
 @dataclass
@@ -307,6 +342,7 @@ class CounselingService:
         """
         # 各セクションを収集（空文字列は除外）
         # Note: エピソードコンテキストはZero-Knowledge設計のため削除（ノーログ）
+        # Note: 危機対応はYAMII.mdに統合されているため、別途追加しない
         sections = [
             self._get_base_prompt(user),
             self._get_explicit_profile(user),
@@ -315,16 +351,16 @@ class CounselingService:
             self._get_context_info(user, emotion_analysis, advice_type),
         ]
 
-        # 危機対応（最優先で末尾に追加）
-        if emotion_analysis.is_crisis:
-            sections.append(self._get_crisis_instruction())
-
         # 空文字列を除外して結合
         return "\n\n".join(s for s in sections if s)
 
     def _get_base_prompt(self, user: UserState) -> str:
-        """最小限の基本プロンプト"""
-        return "SNSでの会話です。自然に応答してください。"
+        """外部ファイル(YAMII.md)からプロンプトを読み込む"""
+        prompt = _load_prompt_from_markdown(DEFAULT_PROMPT_FILE)
+        # ファイルが存在しない場合のフォールバック
+        if not prompt:
+            return "SNSでの会話です。自然に応答してください。"
+        return prompt
 
     def _get_explicit_profile(self, user: UserState) -> str:
         """ユーザーが設定したカスタム指示"""
@@ -358,13 +394,6 @@ class CounselingService:
         if name_part or emotion_part:
             return f"{name_part}{emotion_part}"
         return ""
-
-    def _get_crisis_instruction(self) -> str:
-        """危機対応の特別指示 - 傾聴重視アプローチ"""
-        return """【辛そうな状況です】
-とにかく聴くことに徹して。「辛いね」「それは苦しかったね」など共感を。
-アドバイス・励まし・相談窓口の案内は絶対にしない（聞かれたら別）。
-「気持ちわかる」も言わない。ただ寄り添って。"""
 
     async def _update_user_state(
         self,
