@@ -1,6 +1,8 @@
 """
 システム設定エンドポイント
-デフォルトプロンプトの取得・更新
+デフォルトプロンプトの取得（閲覧のみ）
+
+編集機能はYAMI DAO連携後に開放予定
 """
 
 from datetime import datetime
@@ -25,12 +27,6 @@ class PromptResponse(BaseModel):
     source: str  # "file"
 
 
-class PromptUpdateRequest(BaseModel):
-    """プロンプト更新リクエスト"""
-
-    prompt: str
-
-
 def _load_prompt_from_file() -> tuple[str, bool]:
     """
     YAMII.mdからプロンプトを読み込む
@@ -45,18 +41,10 @@ def _load_prompt_from_file() -> tuple[str, bool]:
     return content.strip(), True
 
 
-def _save_prompt_to_file(prompt: str) -> None:
-    """
-    プロンプトをYAMII.mdに保存
-    """
-    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-    DEFAULT_PROMPT_FILE.write_text(prompt, encoding="utf-8")
-
-
 @router.get("/prompt", response_model=PromptResponse)
 async def get_prompt() -> PromptResponse:
     """
-    デフォルトプロンプトを取得
+    デフォルトプロンプトを取得（閲覧のみ）
 
     YAMII.mdファイルから読み込む。
     """
@@ -79,20 +67,36 @@ async def get_prompt() -> PromptResponse:
     )
 
 
-@router.put("/prompt", response_model=PromptResponse)
-async def update_prompt(request: PromptUpdateRequest) -> PromptResponse:
-    """
-    デフォルトプロンプトを更新
-
-    YAMII.mdファイルに保存する。
-    """
-    if not request.prompt.strip():
-        raise HTTPException(status_code=400, detail="Prompt cannot be empty")
-
-    _save_prompt_to_file(request.prompt)
-
-    return PromptResponse(
-        prompt=request.prompt,
-        updated_at=datetime.now(),
-        source="file",
-    )
+# ============================================================
+# 以下の編集機能はYAMI DAO連携後に開放予定
+# ============================================================
+#
+# class PromptUpdateRequest(BaseModel):
+#     """プロンプト更新リクエスト"""
+#     prompt: str
+#
+#
+# def _save_prompt_to_file(prompt: str) -> None:
+#     """プロンプトをYAMII.mdに保存"""
+#     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+#     DEFAULT_PROMPT_FILE.write_text(prompt, encoding="utf-8")
+#
+#
+# @router.put("/prompt", response_model=PromptResponse)
+# async def update_prompt(request: PromptUpdateRequest) -> PromptResponse:
+#     """デフォルトプロンプトを更新"""
+#     if not request.prompt.strip():
+#         raise HTTPException(status_code=400, detail="Prompt cannot be empty")
+#     _save_prompt_to_file(request.prompt)
+#     return PromptResponse(
+#         prompt=request.prompt,
+#         updated_at=datetime.now(),
+#         source="file",
+#     )
+#
+#
+# @router.post("/prompt/reset", response_model=PromptResponse)
+# async def reset_prompt() -> PromptResponse:
+#     """デフォルトプロンプトを初期状態にリセット"""
+#     # INITIAL_PROMPT定数に戻す
+#     pass
