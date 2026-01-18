@@ -323,27 +323,8 @@ class CounselingService:
         return "\n\n".join(s for s in sections if s)
 
     def _get_base_prompt(self, user: UserState) -> str:
-        """ユーザーの好みに合わせた基本プロンプト"""
-        # トーン設定（シンプルに）
-        tone_map = {
-            ToneLevel.WARM: "優しく温かく",
-            ToneLevel.PROFESSIONAL: "丁寧に",
-            ToneLevel.CASUAL: "友達みたいに気軽に",
-            ToneLevel.BALANCED: "自然体で",
-        }
-
-        # 深さ設定（より短く）
-        depth_map = {
-            DepthLevel.SHALLOW: "1-2文で短く",
-            DepthLevel.MEDIUM: "2-3文くらいで",
-            DepthLevel.DEEP: "3-4文でしっかり",
-        }
-
-        tone = tone_map.get(user.preferred_tone, "友達みたいに気軽に")
-        depth = depth_map.get(user.preferred_depth, "1-2文で短く")
-
-        return f"""相談相手として話を聴いてください。{tone}、{depth}返してね。
-SNSの会話なので堅くならず自然に。アドバイスより共感優先。"""
+        """最小限の基本プロンプト"""
+        return "SNSでの会話です。自然に応答してください。"
 
     def _get_explicit_profile(self, user: UserState) -> str:
         """ユーザーが設定したカスタム指示"""
@@ -352,26 +333,11 @@ SNSの会話なので堅くならず自然に。アドバイスより共感優�
         return ""
 
     def _get_phase_specific_instruction(self, user: UserState) -> str:
-        """フェーズに応じた指示（シンプル版）"""
-        # 初対面以外は特別な指示不要（自然に会話できる）
-        if user.phase == RelationshipPhase.STRANGER:
-            return "初めての人なので、押しつけがましくならないように。"
-        return ""  # 他のフェーズは特別な指示不要
+        """フェーズに応じた指示（未使用 - カスタムプロンプトで対応）"""
+        return ""
 
     def _get_personalization_instruction(self, user: UserState) -> str:
-        """ユーザーの好みに基づくパーソナライゼーション（シンプル版）"""
-        # 学習の確信度が低いうちは指示を出さない
-        if user.confidence_score < 0.3:
-            return ""
-
-        hints = []
-        if user.likes_advice > 0.7:
-            hints.append("アドバイス多め")
-        if user.likes_questions > 0.7:
-            hints.append("質問で掘り下げる")
-
-        if hints:
-            return f"この人は{', '.join(hints)}が好み。"
+        """パーソナライゼーション指示（未使用 - カスタムプロンプトで対応）"""
         return ""
 
     def _get_context_info(
