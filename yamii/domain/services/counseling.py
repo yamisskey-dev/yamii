@@ -3,12 +3,12 @@
 メンタルファースト: 寄り添いと安全を最優先
 """
 
+import os
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from pathlib import Path
 from typing import Any
-import re
+import httpx
 
 from ..models.emotion import EmotionAnalysis, EmotionType
 from ..models.relationship import (
@@ -22,37 +22,48 @@ from ..ports.storage_port import IStorage
 from .emotion import EmotionService
 
 
-# プロンプトファイルのパス
-CONFIG_DIR = Path(__file__).parent.parent.parent.parent / "config"
-DEFAULT_PROMPT_FILE = CONFIG_DIR / "YAMII.md"
+# YamixのAPIエンドポイント（環境変数で設定可能）
+YAMIX_API_URL = os.getenv("YAMIX_API_URL", "http://localhost:3000")
+
+# プロンプトキャッシュ（APIコールを減らすため）
+_prompt_cache: dict[str, tuple[str, datetime]] = {}
+_CACHE_TTL = timedelta(minutes=5)
 
 
-def _load_prompt_from_markdown(file_path: Path) -> str:
+async def _fetch_prompt_from_api() -> str | None:
     """
-    Markdownファイルからプロンプトを読み込む
+    YamixのAPIからデフォルトプロンプトを取得
 
-    - フロントマター（---で囲まれた部分）は除外
-    - # で始まるタイトル行は除外
-    - 残りのコンテンツを結合して返す
+    キャッシュを使用してAPIコールを減らす
     """
-    if not file_path.exists():
-        return ""
+    cache_key = "default_prompt"
+    now = datetime.now()
 
-    content = file_path.read_text(encoding="utf-8")
+    # キャッシュチェック
+    if cache_key in _prompt_cache:
+        cached_prompt, cached_at = _prompt_cache[cache_key]
+        if now - cached_at < _CACHE_TTL:
+            return cached_prompt
 
-    # フロントマターを除去（---で囲まれた部分）
-    content = re.sub(r"^---\n.*?\n---\n", "", content, flags=re.DOTALL)
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.get(f"{YAMIX_API_URL}/api/system/prompt")
+            if response.status_code == 200:
+                data = response.json()
+                prompt = data.get("prompt", "")
+                if prompt:
+                    _prompt_cache[cache_key] = (prompt, now)
+                    return prompt
+    except Exception:
+        # APIエラー時はキャッシュがあればそれを返す
+        if cache_key in _prompt_cache:
+            return _prompt_cache[cache_key][0]
 
-    # 最初の # タイトル行を除去
-    lines = content.strip().split("\n")
-    if lines and lines[0].startswith("# "):
-        lines = lines[1:]
+    return None
 
-    # 空行で始まる場合は除去
-    while lines and not lines[0].strip():
-        lines = lines[1:]
 
-    return "\n".join(lines).strip()
+# API取得失敗時の最小限フォールバック（本来はDBのシードから取得される）
+_FALLBACK_PROMPT = "SNS上での対話です。相手の話を聴いて、自然に応答してください。"
 
 
 @dataclass
@@ -295,7 +306,7 @@ class CounselingService:
         )
 
         # 4. パーソナライズされたシステムプロンプト構築
-        system_prompt = self._build_personalized_prompt(
+        system_prompt = await self._build_personalized_prompt(
             user, emotion_analysis, advice_type
         )
 
@@ -328,7 +339,7 @@ class CounselingService:
             follow_up_questions=follow_up_questions,
         )
 
-    def _build_personalized_prompt(
+    async def _build_personalized_prompt(
         self,
         user: UserState,
         emotion_analysis: EmotionAnalysis,
@@ -340,11 +351,14 @@ class CounselingService:
         メンタルファースト: ユーザーの好みと状態に合わせる
         最適化: リスト結合で空セクションを除外
         """
+        # ベースプロンプトを取得（API優先、ファイルフォールバック）
+        base_prompt = await self._get_base_prompt(user)
+
         # 各セクションを収集（空文字列は除外）
         # Note: エピソードコンテキストはZero-Knowledge設計のため削除（ノーログ）
         # Note: 危機対応はYAMII.mdに統合されているため、別途追加しない
         sections = [
-            self._get_base_prompt(user),
+            base_prompt,
             self._get_explicit_profile(user),
             self._get_phase_specific_instruction(user),
             self._get_personalization_instruction(user),
@@ -354,13 +368,21 @@ class CounselingService:
         # 空文字列を除外して結合
         return "\n\n".join(s for s in sections if s)
 
-    def _get_base_prompt(self, user: UserState) -> str:
-        """外部ファイル(YAMII.md)からプロンプトを読み込む"""
-        prompt = _load_prompt_from_markdown(DEFAULT_PROMPT_FILE)
-        # ファイルが存在しない場合のフォールバック
-        if not prompt:
-            return "SNSでの会話です。自然に応答してください。"
-        return prompt
+    async def _get_base_prompt(self, user: UserState) -> str:
+        """
+        デフォルトプロンプトを取得
+
+        優先順位:
+        1. YamixのAPI（DBに保存されたコミュニティ編集版）
+        2. ハードコードされたフォールバック
+        """
+        # 1. APIから取得を試みる
+        api_prompt = await _fetch_prompt_from_api()
+        if api_prompt:
+            return api_prompt
+
+        # 2. フォールバック
+        return _FALLBACK_PROMPT
 
     def _get_explicit_profile(self, user: UserState) -> str:
         """ユーザーが設定したカスタム指示"""
