@@ -3,12 +3,11 @@
 メンタルファースト: 寄り添いと安全を最優先
 """
 
-import os
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
+from pathlib import Path
 from typing import Any
-import httpx
 
 from ..models.emotion import EmotionAnalysis, EmotionType
 from ..models.relationship import (
@@ -22,48 +21,26 @@ from ..ports.storage_port import IStorage
 from .emotion import EmotionService
 
 
-# YamixのAPIエンドポイント（環境変数で設定可能）
-YAMIX_API_URL = os.getenv("YAMIX_API_URL", "http://localhost:3000")
-
-# プロンプトキャッシュ（APIコールを減らすため）
-_prompt_cache: dict[str, tuple[str, datetime]] = {}
-_CACHE_TTL = timedelta(minutes=5)
+# プロンプトファイルのパス
+CONFIG_DIR = Path(__file__).parent.parent.parent.parent / "config"
+DEFAULT_PROMPT_FILE = CONFIG_DIR / "YAMII.md"
 
 
-async def _fetch_prompt_from_api() -> str | None:
+def _load_prompt_from_file() -> str:
     """
-    YamixのAPIからデフォルトプロンプトを取得
+    YAMII.mdからデフォルトプロンプトを読み込む
 
-    キャッシュを使用してAPIコールを減らす
+    Raises:
+        FileNotFoundError: YAMII.mdが存在しない場合
     """
-    cache_key = "default_prompt"
-    now = datetime.now()
+    if not DEFAULT_PROMPT_FILE.exists():
+        raise FileNotFoundError(
+            f"YAMII.md not found at {DEFAULT_PROMPT_FILE}. "
+            "Please create config/YAMII.md with the system prompt."
+        )
 
-    # キャッシュチェック
-    if cache_key in _prompt_cache:
-        cached_prompt, cached_at = _prompt_cache[cache_key]
-        if now - cached_at < _CACHE_TTL:
-            return cached_prompt
-
-    try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            response = await client.get(f"{YAMIX_API_URL}/api/system/prompt")
-            if response.status_code == 200:
-                data = response.json()
-                prompt = data.get("prompt", "")
-                if prompt:
-                    _prompt_cache[cache_key] = (prompt, now)
-                    return prompt
-    except Exception:
-        # APIエラー時はキャッシュがあればそれを返す
-        if cache_key in _prompt_cache:
-            return _prompt_cache[cache_key][0]
-
-    return None
-
-
-# API取得失敗時の最小限フォールバック（本来はDBのシードから取得される）
-_FALLBACK_PROMPT = "SNS上での対話です。相手の話を聴いて、自然に応答してください。"
+    content = DEFAULT_PROMPT_FILE.read_text(encoding="utf-8")
+    return content.strip()
 
 
 @dataclass
@@ -306,7 +283,7 @@ class CounselingService:
         )
 
         # 4. パーソナライズされたシステムプロンプト構築
-        system_prompt = await self._build_personalized_prompt(
+        system_prompt = self._build_personalized_prompt(
             user, emotion_analysis, advice_type
         )
 
@@ -339,7 +316,7 @@ class CounselingService:
             follow_up_questions=follow_up_questions,
         )
 
-    async def _build_personalized_prompt(
+    def _build_personalized_prompt(
         self,
         user: UserState,
         emotion_analysis: EmotionAnalysis,
@@ -351,8 +328,8 @@ class CounselingService:
         メンタルファースト: ユーザーの好みと状態に合わせる
         最適化: リスト結合で空セクションを除外
         """
-        # ベースプロンプトを取得（API優先、ファイルフォールバック）
-        base_prompt = await self._get_base_prompt(user)
+        # ベースプロンプトを取得（ファイル優先、フォールバック）
+        base_prompt = self._get_base_prompt(user)
 
         # 各セクションを収集（空文字列は除外）
         # Note: エピソードコンテキストはZero-Knowledge設計のため削除（ノーログ）
@@ -368,21 +345,14 @@ class CounselingService:
         # 空文字列を除外して結合
         return "\n\n".join(s for s in sections if s)
 
-    async def _get_base_prompt(self, user: UserState) -> str:
+    def _get_base_prompt(self, user: UserState) -> str:
         """
         デフォルトプロンプトを取得
 
-        優先順位:
-        1. YamixのAPI（DBに保存されたコミュニティ編集版）
-        2. ハードコードされたフォールバック
+        YAMII.mdファイルから読み込む。
+        ファイルがない場合はFileNotFoundErrorが発生する。
         """
-        # 1. APIから取得を試みる
-        api_prompt = await _fetch_prompt_from_api()
-        if api_prompt:
-            return api_prompt
-
-        # 2. フォールバック
-        return _FALLBACK_PROMPT
+        return _load_prompt_from_file()
 
     def _get_explicit_profile(self, user: UserState) -> str:
         """ユーザーが設定したカスタム指示"""
