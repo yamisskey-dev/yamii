@@ -69,7 +69,7 @@ class CounselingResponse(BaseModel):
 class UserProfileRequest(BaseModel):
     """ユーザープロファイル設定リクエスト"""
 
-    explicit_profile: str | None = Field(None, max_length=1000)
+    explicit_profile: str | None = Field(None, max_length=3000)
     display_name: str | None = Field(None, max_length=100)
 
 

@@ -55,6 +55,7 @@ async def get_user(
         "days_since_first": days_since_first,
         "top_topics": top_topics,
         "display_name": user.display_name,
+        "explicit_profile": user.explicit_profile,
     }
 
 
@@ -65,17 +66,11 @@ async def update_user(
     storage: IStorage = Depends(get_storage),
 ) -> dict:
     """
-    ユーザープロファイルを更新
+    ユーザープロファイルを更新（存在しない場合は作成）
     """
     user = await storage.load_user(user_id)
     if user is None:
-        raise HTTPException(
-            status_code=404,
-            detail={
-                "message": "まだお話ししたことがないようです。先にお話ししてからプロフィールを設定できます。",
-                "user_id": user_id,
-            },
-        )
+        user = UserState(user_id=user_id)
 
     if request.explicit_profile is not None:
         user.explicit_profile = request.explicit_profile

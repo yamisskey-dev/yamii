@@ -309,6 +309,7 @@ class CounselingService:
         # Note: エピソードコンテキストはZero-Knowledge設計のため削除（ノーログ）
         sections = [
             self._get_base_prompt(user),
+            self._get_explicit_profile(user),
             self._get_phase_specific_instruction(user),
             self._get_personalization_instruction(user),
             self._get_context_info(user, emotion_analysis, advice_type),
@@ -343,6 +344,12 @@ class CounselingService:
 
         return f"""相談相手として話を聴いてください。{tone}、{depth}返してね。
 SNSの会話なので堅くならず自然に。アドバイスより共感優先。"""
+
+    def _get_explicit_profile(self, user: UserState) -> str:
+        """ユーザーが設定したカスタム指示"""
+        if user.explicit_profile:
+            return f"【ユーザーからの指示】\n{user.explicit_profile}"
+        return ""
 
     def _get_phase_specific_instruction(self, user: UserState) -> str:
         """フェーズに応じた指示（シンプル版）"""
