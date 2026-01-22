@@ -24,7 +24,6 @@ from .dependencies import get_ai_provider, get_storage
 from .routes import (
     auth_router,
     commands_router,
-    config_router,
     counseling_router,
     user_data_router,
     user_router,
@@ -104,7 +103,6 @@ def create_app() -> FastAPI:
 
     # ルーター登録
     application.include_router(auth_router)
-    application.include_router(config_router)
     application.include_router(counseling_router)
     application.include_router(user_router)
     application.include_router(user_data_router)
