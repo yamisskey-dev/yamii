@@ -3,6 +3,7 @@
 メンタルファースト: 寄り添いと安全を最優先
 """
 
+import os
 import uuid
 from dataclasses import dataclass
 from datetime import datetime
@@ -22,7 +23,13 @@ from .emotion import EmotionService
 
 
 # プロンプトファイルのパス
-CONFIG_DIR = Path(__file__).parent.parent.parent.parent / "config"
+# 環境変数で設定可能、デフォルトは /app/config（Docker環境用）
+# 開発環境では相対パスも自動で解決
+_config_dir_str = os.environ.get("YAMII_CONFIG_DIR", "/app/config")
+CONFIG_DIR = Path(_config_dir_str)
+# 相対パスの場合は、プロジェクトルートからの相対として解決
+if not CONFIG_DIR.is_absolute():
+    CONFIG_DIR = Path(__file__).parent.parent.parent.parent / _config_dir_str
 DEFAULT_PROMPT_FILE = CONFIG_DIR / "YAMII.md"
 
 
