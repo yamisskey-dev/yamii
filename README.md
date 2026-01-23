@@ -4,28 +4,33 @@ Zero-Knowledge メンタルヘルスAI相談API
 
 ## 特徴
 
-- **Zero-Knowledge**: サーバーは会話内容を保存・閲覧しない
-- **クライアント側暗号化**: ユーザーデータはユーザーのみ復号可能
-- **ノーログ**: 会話履歴はセッション中のみ保持
-- **Misskey OAuth**: Misskeyアカウントで認証
+- **Zero-Knowledge（オプション）**: `/v1/user-data/blob`でクライアント側暗号化データ保存に対応
+- **ノーログ**: 会話履歴はサーバーに保存しない（クライアント管理）
+- **Misskey OAuth**: Misskeyアカウントで認証可能
+- **API Key認証**: シンプルなAPI Key認証もサポート
 - **汎用API**: 任意のフロントエンドから利用可能
+- **GDPR対応**: データエクスポート・削除機能を標準実装
 
 ## アーキテクチャ
 
 ```
 Yamix（または、任意のWebアプリ）
-    ├── Misskeyログイン（OAuth）
-    ├── クライアント側暗号化（Web Crypto API）
-    └── 会話はブラウザ内のみ（ノーログ）
+    ├── Misskeyログイン（OAuth） or API Key認証
+    ├── クライアント側暗号化（Web Crypto API、オプション）
+    └── 会話履歴はクライアント管理（ノーログ）
               ↓
-Yamii API v3.0.0
+Yamii API v3.0.0 (FastAPI)
     ├── /v1/auth/*       - Misskey OAuth認証
-    ├── /v1/user-data/*  - 暗号化Blob保存（Zero-Knowledge）
     ├── /v1/counseling   - AIカウンセリング（ノーログ）
-    └── /v1/health       - ヘルスチェック
+    ├── /v1/users/*      - ユーザー管理（GDPR対応）
+    ├── /v1/user-data/*  - 暗号化Blob保存（Zero-Knowledge）
+    ├── /v1/commands/*   - Botコマンド処理
+    └── /v1/health, /docs, /redoc
               ↓
 OpenAI API
 ```
+
+詳細なエンドポイントは [Swagger UI](http://localhost:8000/docs) で確認できます。
 
 ## 関連プロジェクト
 
@@ -35,6 +40,22 @@ OpenAI API
 | [**Yamix**](https://github.com/yamisskey-dev/yamix) | 公式フロントエンド Webアプリ |
 
 Yamiiは汎用的なAPIサーバーとして設計されているため、Yamix以外のフロントエンドからも利用できます。
+
+### Yamixとの統合
+
+YamixはYamiiを以下のように利用します：
+
+- **認証方式**: API Key認証（`X-API-Key` ヘッダー）
+  - Yamix自体のユーザー認証はMisskey MiAuthを使用
+  - Yamii APIへのアクセスはYamixサーバー経由でAPI Key認証
+- **使用エンドポイント**:
+  - `POST /v1/counseling` - AI相談機能
+  - `GET /v1/users/{userId}` - ユーザー情報取得
+  - `PUT /v1/users/{userId}` - プロファイル更新
+  - `DELETE /v1/users/{userId}` - AI学習データ削除
+  - `GET /v1/health` - ヘルスチェック
+- **会話履歴管理**: Yamixのデータベースで管理（Yamiiはノーログ）
+- **Zero-Knowledge Blob**: 現在未使用（将来的な拡張用）
 
 ## デプロイ（Docker）
 
@@ -67,57 +88,35 @@ uv run fastapi dev yamii/api/main.py
 
 ## APIドキュメント
 
-サーバー起動後、以下のURLでAPIドキュメントを確認できます：
+Yamii APIは **OpenAPI 3.0** 標準に準拠しています。FastAPIが自動生成する対話的なAPIドキュメントをご利用ください。
 
-- **Swagger UI**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
+- **Swagger UI**: http://localhost:8000/docs - 対話的なAPIドキュメント
+- **ReDoc**: http://localhost:8000/redoc - 見やすいリファレンス
 
-## 主要エンドポイント
+### 認証方式
 
-### 認証
+**1. Misskey OAuth (MiAuth):**
+- `/v1/user-data/*` エンドポイントで使用
+- OAuth Bearer トークンが必要
 
-```
-POST /v1/auth/start     # Misskey OAuth開始
-POST /v1/auth/callback  # OAuth コールバック
-GET  /v1/auth/session   # セッション情報取得
-POST /v1/auth/logout    # ログアウト
-```
+**2. API Key認証:**
+- `/v1/counseling`, `/v1/users/*`, `/v1/commands/*` で使用
+- `X-API-Key` ヘッダーで認証
 
-### ユーザーデータ（Zero-Knowledge）
-
-```
-PUT    /v1/user-data/blob   # 暗号化データ保存
-GET    /v1/user-data/blob   # 暗号化データ取得
-DELETE /v1/user-data/blob   # データ削除（GDPR対応）
+```bash
+curl -H "X-API-Key: your-api-key" http://localhost:8000/v1/counseling
 ```
 
-### カウンセリング
+### 主要な概念
 
-```
-POST /v1/counseling
-```
+**ノーログ設計:**
+- 会話履歴はサーバーに保存されません
+- `conversation_history` パラメータでクライアント側から送信
+- セッション中のみ使用され、永続化されません
 
-**リクエスト:**
-```json
-{
-  "message": "相談内容",
-  "user_id": "ユーザーID",
-  "custom_prompt": "（オプション）ユーザーについての情報"
-}
-```
-
-**レスポンス:**
-```json
-{
-  "response": "AIの応答",
-  "session_id": "セッションID",
-  "emotion_analysis": {
-    "primary_emotion": "stress",
-    "intensity": 0.6,
-    "is_crisis": false
-  }
-}
-```
+**Zero-Knowledge (オプション):**
+- `/v1/user-data/blob` でクライアント側暗号化データを保存可能
+- サーバーは暗号文の内容を知ることができません
 
 ## 主要機能
 
@@ -148,6 +147,10 @@ OpenAI APIへの送信前に個人情報を自動マスク:
 - 電話番号、メールアドレス、住所
 - 生年月日、名前
 - マイナンバー、カード番号
+
+### Botコマンド（オプション）
+
+`/v1/commands/*` エンドポイントは、Botプラットフォーム統合用の便利機能です（help, status, classify, export, clear_data）。一般的なWebアプリでは不要です。
 
 ## 環境変数
 
