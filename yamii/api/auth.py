@@ -275,11 +275,10 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         # リクエスト開始時刻
         start_time = time.time()
 
-        # リクエスト情報
+        # リクエスト情報（プライバシーファースト: IPアドレス・User-Agentは記録しない）
         request_id = request.headers.get(
             "X-Request-ID", f"req_{int(start_time * 1000)}"
         )
-        client_ip = self._get_client_ip(request)
 
         # リクエストログ
         logger.info(
@@ -289,8 +288,6 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
                 "request_id": request_id,
                 "method": request.method,
                 "path": request.url.path,
-                "client_ip": client_ip,
-                "user_agent": request.headers.get("User-Agent", ""),
             },
         )
 
@@ -332,12 +329,3 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         response.headers["X-Request-ID"] = request_id
 
         return response
-
-    def _get_client_ip(self, request: Request) -> str:
-        """クライアントIPを取得"""
-        forwarded = request.headers.get("X-Forwarded-For")
-        if forwarded:
-            return forwarded.split(",")[0].strip()
-        if request.client:
-            return request.client.host
-        return "unknown"
