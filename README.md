@@ -1,11 +1,11 @@
 # Yamii
 
-Zero-Knowledge メンタルヘルスAI相談API
+プライバシーファースト メンタルヘルスAI相談API
 
 ## 特徴
 
-- **Zero-Knowledge（オプション）**: `/v1/user-data/blob`でクライアント側暗号化データ保存に対応
-- **ノーログ**: 会話履歴はサーバーに保存しない（クライアント管理）
+- **ノーログ設計**: IPアドレス・メッセージ内容を記録しない
+- **暗号化Blob保存**: `/v1/user-data/blob`でクライアント側暗号化データ保存に対応
 - **Misskey OAuth**: Misskeyアカウントで認証可能
 - **API Key認証**: シンプルなAPI Key認証もサポート
 - **汎用API**: 任意のフロントエンドから利用可能
@@ -16,18 +16,18 @@ Zero-Knowledge メンタルヘルスAI相談API
 ```
 Yamix（または、任意のWebアプリ）
     ├── Misskeyログイン（OAuth） or API Key認証
-    ├── クライアント側暗号化（Web Crypto API、オプション）
-    └── 会話履歴はクライアント管理（ノーログ）
+    ├── メッセージ暗号化（AES-256-GCM、サーバー側）
+    └── 会話履歴はYamixのDB管理（暗号化保存）
               ↓
 Yamii API v3.0.0 (FastAPI)
     ├── /v1/auth/*       - Misskey OAuth認証
     ├── /v1/counseling   - AIカウンセリング（ノーログ）
     ├── /v1/users/*      - ユーザー管理（GDPR対応）
-    ├── /v1/user-data/*  - 暗号化Blob保存（Zero-Knowledge）
+    ├── /v1/user-data/*  - 暗号化Blob保存
     ├── /v1/commands/*   - Botコマンド処理
     └── /v1/health, /docs, /redoc
               ↓
-OpenAI API
+OpenAI API（メッセージ処理のため平文で送信）
 ```
 
 詳細なエンドポイントは [Swagger UI](http://localhost:8000/docs) で確認できます。
@@ -36,7 +36,7 @@ OpenAI API
 
 | プロジェクト | 説明 |
 |-------------|------|
-| **Yamii** (このリポジトリ) | Zero-Knowledge API サーバー |
+| **Yamii** (このリポジトリ) | プライバシーファースト API サーバー |
 | [**Yamix**](https://github.com/yamisskey-dev/yamix) | 公式フロントエンド Webアプリ |
 
 Yamiiは汎用的なAPIサーバーとして設計されているため、Yamix以外のフロントエンドからも利用できます。
@@ -54,8 +54,8 @@ YamixはYamiiを以下のように利用します：
   - `PUT /v1/users/{userId}` - プロファイル更新
   - `DELETE /v1/users/{userId}` - AI学習データ削除
   - `GET /v1/health` - ヘルスチェック
-- **会話履歴管理**: Yamixのデータベースで管理（Yamiiはノーログ）
-- **Zero-Knowledge Blob**: 現在未使用（将来的な拡張用）
+- **会話履歴管理**: Yamixのデータベースで暗号化保存（Yamiiはノーログ）
+- **暗号化Blob**: 現在未使用（将来的な拡張用）
 
 ## デプロイ（Docker）
 
@@ -110,13 +110,15 @@ curl -H "X-API-Key: your-api-key" http://localhost:8000/v1/counseling
 ### 主要な概念
 
 **ノーログ設計:**
-- 会話履歴はサーバーに保存されません
+- IPアドレス・User-Agentは記録しません
+- メッセージ内容はログに出力されません
 - `conversation_history` パラメータでクライアント側から送信
-- セッション中のみ使用され、永続化されません
+- セッション中のみ使用され、Yamii側では永続化されません
 
-**Zero-Knowledge (オプション):**
-- `/v1/user-data/blob` でクライアント側暗号化データを保存可能
-- サーバーは暗号文の内容を知ることができません
+**プライバシーに関する注意:**
+- AI相談機能を提供するため、メッセージはOpenAI APIに平文で送信されます
+- これは技術的に不可避であり、真のエンドツーエンド暗号化（E2EE）ではありません
+- `/v1/user-data/blob` でクライアント側暗号化データを保存可能（サーバーは内容を知ることができません）
 
 ## 主要機能
 
