@@ -5,6 +5,7 @@
 
 import os
 import uuid
+from collections.abc import AsyncGenerator
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -107,6 +108,22 @@ class CounselingResponse:
             "is_crisis": self.is_crisis,
             "timestamp": self.timestamp.isoformat(),
         }
+
+
+@dataclass
+class CounselingStreamContext:
+    """ストリーミング応答のメタデータコンテキスト"""
+
+    session_id: str
+    emotion_analysis: EmotionAnalysis
+    advice_type: str
+    follow_up_questions: list[str]
+    user: UserState
+    request: CounselingRequest
+
+    @property
+    def is_crisis(self) -> bool:
+        return self.emotion_analysis.is_crisis
 
 
 class AdviceTypeClassifier:
@@ -321,6 +338,70 @@ class CounselingService:
             emotion_analysis=emotion_analysis,
             advice_type=advice_type,
             follow_up_questions=follow_up_questions,
+        )
+
+    async def generate_response_stream(
+        self, request: CounselingRequest
+    ) -> tuple[AsyncGenerator[str, None], "CounselingStreamContext"]:
+        """
+        カウンセリングレスポンスをストリーミング生成
+
+        Returns:
+            tuple: (AI応答チャンクのAsyncGenerator, メタデータコンテキスト)
+        """
+        # 1. ユーザー状態を取得または作成
+        user = await self.storage.load_user(request.user_id)
+        if user is None:
+            user = UserState(user_id=request.user_id)
+
+        # 2. 感情分析（LLM併用で婉曲表現も検出）
+        emotion_analysis = await self.emotion_service.analyze_with_llm(request.message)
+
+        # 3. アドバイスタイプ分類
+        advice_type = self.advice_classifier.classify(
+            request.message, emotion_analysis.primary_emotion
+        )
+
+        # 4. パーソナライズされたシステムプロンプト構築
+        system_prompt = self._build_personalized_prompt(
+            user, emotion_analysis, advice_type
+        )
+
+        # 5. フォローアップ質問生成
+        follow_up_questions = self.follow_up_generator.generate(advice_type)
+
+        # コンテキストオブジェクトを構築
+        context = CounselingStreamContext(
+            session_id=request.session_id or str(uuid.uuid4()),
+            emotion_analysis=emotion_analysis,
+            advice_type=advice_type,
+            follow_up_questions=follow_up_questions,
+            user=user,
+            request=request,
+        )
+
+        # 6. AI応答をストリーミング生成
+        chat_history: list[ChatMessage] | None = None
+        if request.conversation_history:
+            chat_history = [
+                ChatMessage(role=msg.role, content=msg.content)
+                for msg in request.conversation_history
+            ]
+
+        stream = self.ai_provider.generate_stream(
+            message=request.message,
+            system_prompt=system_prompt,
+            conversation_history=chat_history,
+        )
+
+        return stream, context
+
+    async def finalize_stream(
+        self, context: "CounselingStreamContext"
+    ) -> None:
+        """ストリーム完了後にユーザー状態を更新"""
+        await self._update_user_state(
+            context.user, context.request, context.emotion_analysis, context.advice_type
         )
 
     def _build_personalized_prompt(

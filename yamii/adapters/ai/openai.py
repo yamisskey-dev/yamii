@@ -4,6 +4,10 @@ OpenAI API (GPT-4.1等) への接続実装
 PII匿名化機能付き
 """
 
+import json
+import re
+from collections.abc import AsyncGenerator
+
 import aiohttp
 
 from ...core.anonymizer import PIIAnonymizer, get_anonymizer
@@ -158,6 +162,124 @@ class OpenAIAdapter(IAIProvider):
 
                 return response_text
 
+    async def generate_stream(
+        self,
+        message: str,
+        system_prompt: str,
+        max_tokens: int | None = None,
+        conversation_history: list[ChatMessage] | None = None,
+    ) -> AsyncGenerator[str, None]:
+        """AI応答をストリーミング生成（PII匿名化/復元付き）"""
+        mapping: dict[str, str] = {}
+        processed_message = message
+        processed_history: list[ChatMessage] | None = None
+
+        if self.enable_anonymization:
+            result = self.anonymizer.anonymize(message)
+            processed_message = result.anonymized_text
+            mapping = result.mapping
+
+            if conversation_history:
+                processed_history = []
+                for msg in conversation_history:
+                    history_result = self.anonymizer.anonymize(msg.content)
+                    processed_history.append(
+                        ChatMessage(role=msg.role, content=history_result.anonymized_text)
+                    )
+                    mapping.update(history_result.mapping)
+        else:
+            processed_history = conversation_history
+
+        if mapping:
+            # PII復元が必要な場合、バッファリングして復元
+            # プレースホルダーパターン: [PERSON_1] 等
+            placeholder_pattern = re.compile(r"\[[A-Z_]+\d*\]")
+            buffer = ""
+            async for chunk in self._call_api_stream(
+                processed_message, system_prompt, max_tokens, processed_history
+            ):
+                buffer += chunk
+                # バッファにプレースホルダーの開始 '[' があり、まだ閉じていない場合は保留
+                if "[" in buffer and "]" not in buffer.split("[")[-1]:
+                    continue
+                # 復元してyield
+                restored = placeholder_pattern.sub(
+                    lambda m: mapping.get(m.group(0), m.group(0)), buffer
+                )
+                yield restored
+                buffer = ""
+            # 残りのバッファをflush
+            if buffer:
+                restored = placeholder_pattern.sub(
+                    lambda m: mapping.get(m.group(0), m.group(0)), buffer
+                )
+                yield restored
+        else:
+            async for chunk in self._call_api_stream(
+                processed_message, system_prompt, max_tokens, processed_history
+            ):
+                yield chunk
+
+    async def _call_api_stream(
+        self,
+        message: str,
+        system_prompt: str,
+        max_tokens: int | None = None,
+        conversation_history: list[ChatMessage] | None = None,
+    ) -> AsyncGenerator[str, None]:
+        """OpenAI APIをストリーミングで呼び出し"""
+        messages = [{"role": "system", "content": system_prompt}]
+
+        if conversation_history:
+            for msg in conversation_history:
+                messages.append({"role": msg.role, "content": msg.content})
+
+        messages.append({"role": "user", "content": message})
+
+        request_body: dict = {
+            "model": self.model,
+            "messages": messages,
+            "stream": True,
+        }
+
+        if max_tokens:
+            request_body["max_tokens"] = max_tokens
+
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+
+        timeout = aiohttp.ClientTimeout(total=self.timeout)
+
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.post(
+                f"{self.base_url}/chat/completions",
+                headers=headers,
+                json=request_body,
+            ) as response:
+                if response.status != 200:
+                    error_text = await response.text()
+                    raise Exception(
+                        f"OpenAI API error: HTTP {response.status} - {error_text}"
+                    )
+
+                async for line in response.content:
+                    decoded = line.decode("utf-8").strip()
+                    if not decoded or not decoded.startswith("data: "):
+                        continue
+                    data_str = decoded[6:]  # Remove "data: " prefix
+                    if data_str == "[DONE]":
+                        break
+                    try:
+                        data = json.loads(data_str)
+                        delta = data.get("choices", [{}])[0].get("delta", {})
+                        content = delta.get("content")
+                        if content:
+                            yield content
+                    except json.JSONDecodeError:
+                        continue
+
     async def health_check(self) -> bool:
         """
         OpenAI APIの健全性チェック
@@ -216,3 +338,19 @@ class OpenAIAdapterWithFallback(OpenAIAdapter):
             )
         except Exception:
             return self.fallback_message
+
+    async def generate_stream(
+        self,
+        message: str,
+        system_prompt: str,
+        max_tokens: int | None = None,
+        conversation_history: list[ChatMessage] | None = None,
+    ) -> AsyncGenerator[str, None]:
+        """AI応答をストリーミング生成（フォールバック付き）"""
+        try:
+            async for chunk in super().generate_stream(
+                message, system_prompt, max_tokens, conversation_history
+            ):
+                yield chunk
+        except Exception:
+            yield self.fallback_message

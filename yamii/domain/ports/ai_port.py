@@ -4,6 +4,7 @@ LLM APIへのアクセスを抽象化
 """
 
 from abc import ABC, abstractmethod
+from collections.abc import AsyncGenerator
 from dataclasses import dataclass
 
 
@@ -43,6 +44,28 @@ class IAIProvider(ABC):
         Returns:
             str: AI応答テキスト
         """
+
+    @abstractmethod
+    async def generate_stream(
+        self,
+        message: str,
+        system_prompt: str,
+        max_tokens: int | None = None,
+        conversation_history: list[ChatMessage] | None = None,
+    ) -> AsyncGenerator[str, None]:
+        """
+        AI応答をストリーミング生成
+
+        Args:
+            message: ユーザーメッセージ
+            system_prompt: システムプロンプト
+            max_tokens: 最大トークン数（オプション）
+            conversation_history: 会話履歴（オプション、セッション内文脈保持用）
+
+        Yields:
+            str: AI応答テキストのチャンク
+        """
+        yield ""  # type hint helper
 
     @abstractmethod
     async def health_check(self) -> bool:

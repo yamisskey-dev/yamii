@@ -2,7 +2,11 @@
 カウンセリングエンドポイント
 """
 
+import json
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 
 from ...domain.services.counseling import (
     ConversationMessage as DomainConversationMessage,
@@ -111,4 +115,87 @@ async def counseling(
                 "suggestion": "しばらく待ってからもう一度お試しください。問題が続く場合は、直接相談窓口へのご連絡もご検討ください。",
                 "resources": CRISIS_RESOURCES,
             },
+        )
+
+
+@router.post("/stream")
+async def counseling_stream(
+    request: CounselingRequest,
+    service: CounselingService = Depends(get_counseling_service),
+) -> StreamingResponse:
+    """
+    カウンセリングストリーミングエンドポイント
+
+    SSE形式でAI応答をチャンクごとに返す。
+    感情分析等のメタデータはストリーム完了時に送信。
+    """
+    try:
+        conversation_history = None
+        if request.conversation_history:
+            conversation_history = [
+                DomainConversationMessage(role=msg.role, content=msg.content)
+                for msg in request.conversation_history
+            ]
+
+        domain_request = DomainRequest(
+            message=request.message,
+            user_id=request.user_id,
+            session_id=request.session_id,
+            user_name=request.user_name,
+            conversation_history=conversation_history,
+        )
+
+        stream, context = await service.generate_response_stream(domain_request)
+
+        async def event_generator():
+            try:
+                async for chunk in stream:
+                    yield f"data: {json.dumps({'chunk': chunk}, ensure_ascii=False)}\n\n"
+
+                # ストリーム完了後にユーザー状態を更新
+                await service.finalize_stream(context)
+
+                # メタデータを最終イベントとして送信
+                crisis_resources = CRISIS_RESOURCES if context.is_crisis else None
+                done_data = {
+                    "done": True,
+                    "session_id": context.session_id,
+                    "timestamp": datetime.now().isoformat(),
+                    "emotion_analysis": {
+                        "primary_emotion": context.emotion_analysis.primary_emotion.value,
+                        "intensity": context.emotion_analysis.intensity,
+                        "stability": context.emotion_analysis.stability,
+                        "is_crisis": context.emotion_analysis.is_crisis,
+                        "all_emotions": context.emotion_analysis.all_emotions,
+                        "confidence": context.emotion_analysis.confidence,
+                    },
+                    "advice_type": context.advice_type,
+                    "follow_up_questions": context.follow_up_questions,
+                    "is_crisis": context.is_crisis,
+                    "crisis_resources": crisis_resources,
+                }
+                yield f"data: {json.dumps(done_data, ensure_ascii=False)}\n\n"
+            except Exception as e:
+                error_data = {"error": str(e)}
+                yield f"data: {json.dumps(error_data, ensure_ascii=False)}\n\n"
+
+        return StreamingResponse(
+            event_generator(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",
+            },
+        )
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail={"message": "うまく受け取れませんでした。", "error": str(e)},
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail={"message": "申し訳ありません。一時的な問題が発生しました。", "error": str(e)},
         )
