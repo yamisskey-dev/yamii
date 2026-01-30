@@ -85,6 +85,18 @@ class HealthResponse(BaseModel):
     components: dict[str, bool]
 
 
+class SummarizeTitleRequest(BaseModel):
+    """タイトル生成リクエスト"""
+
+    message: str = Field(..., min_length=1, max_length=10000, description="タイトルを生成する元メッセージ")
+
+
+class SummarizeTitleResponse(BaseModel):
+    """タイトル生成レスポンス"""
+
+    title: str = Field(..., description="生成されたタイトル")
+
+
 class APIInfoResponse(BaseModel):
     """API情報レスポンス"""
 

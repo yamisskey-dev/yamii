@@ -41,8 +41,17 @@ async def verify_api_key(
     """
     settings = get_settings()
 
-    # API キーが設定されていない場合は認証をスキップ
+    # API キーが設定されていない場合
     if not settings.security.api_keys:
+        if not settings.debug:
+            # 本番環境では API キー必須
+            raise HTTPException(
+                status_code=401,
+                detail={
+                    "error": "server_misconfigured",
+                    "message": "API キーが未設定です",
+                },
+            )
         return "development-mode"
 
     if not api_key:
