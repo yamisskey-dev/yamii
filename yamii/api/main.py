@@ -63,7 +63,13 @@ async def lifespan(app: FastAPI):
 
     yield
 
-    # 終了時
+    # 終了時: リソースクリーンアップ
+    try:
+        ai = get_ai_provider()
+        if hasattr(ai, "close"):
+            await ai.close()
+    except Exception:
+        pass
     logger.info("Yamii API shutting down...")
 
 
@@ -85,9 +91,10 @@ def create_app() -> FastAPI:
 
     # ミドルウェア（実行順序: 下から上）
     # 1. CORS（フロントエンドからのアクセスを許可）
+    settings = get_settings()
     application.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],  # フロントエンドのデプロイ先に応じて設定
+        allow_origins=[settings.frontend_url],
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         allow_headers=["*"],

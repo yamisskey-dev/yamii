@@ -17,6 +17,7 @@ from ...domain.services.counseling import (
 from ...domain.services.counseling import (
     CounselingService,
 )
+from ...core.logging import get_logger
 from ..auth import verify_api_key
 from ..dependencies import get_counseling_service
 from ..schemas import (
@@ -24,6 +25,8 @@ from ..schemas import (
     CounselingResponse,
     EmotionAnalysisResponse,
 )
+
+logger = get_logger(__name__)
 
 router = APIRouter(
     prefix="/v1/counseling",
@@ -96,22 +99,22 @@ async def counseling(
         )
 
     except ValueError as e:
-        # メンタルファースト: 入力エラーも温かく
+        logger.warning(f"Counseling validation error: {e}")
         raise HTTPException(
             status_code=400,
             detail={
                 "message": "うまく受け取れませんでした。もう一度お試しください。",
-                "error": str(e),
+                "error": "validation_error",
                 "suggestion": "メッセージが空でないか確認してください。",
             },
         )
     except Exception as e:
-        # メンタルファースト: システムエラーでも安心感を
+        logger.error(f"Counseling error: {e}", exc_info=True)
         raise HTTPException(
             status_code=500,
             detail={
                 "message": "申し訳ありません。一時的な問題が発生しました。",
-                "error": str(e),
+                "error": "internal_error",
                 "suggestion": "しばらく待ってからもう一度お試しください。問題が続く場合は、直接相談窓口へのご連絡もご検討ください。",
                 "resources": CRISIS_RESOURCES,
             },
@@ -176,7 +179,8 @@ async def counseling_stream(
                 }
                 yield f"data: {json.dumps(done_data, ensure_ascii=False)}\n\n"
             except Exception as e:
-                error_data = {"error": str(e)}
+                logger.error(f"Stream error: {e}", exc_info=True)
+                error_data = {"error": "stream_error"}
                 yield f"data: {json.dumps(error_data, ensure_ascii=False)}\n\n"
 
         return StreamingResponse(
@@ -190,12 +194,14 @@ async def counseling_stream(
         )
 
     except ValueError as e:
+        logger.warning(f"Stream validation error: {e}")
         raise HTTPException(
             status_code=400,
-            detail={"message": "うまく受け取れませんでした。", "error": str(e)},
+            detail={"message": "うまく受け取れませんでした。", "error": "validation_error"},
         )
     except Exception as e:
+        logger.error(f"Stream setup error: {e}", exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail={"message": "申し訳ありません。一時的な問題が発生しました。", "error": str(e)},
+            detail={"message": "申し訳ありません。一時的な問題が発生しました。", "error": "internal_error"},
         )

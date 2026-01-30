@@ -118,6 +118,15 @@ class RateLimiter:
         current_time = time.time()
         client_id = self._get_client_id(request, api_key)
 
+        # メモリ保護: エントリ数が上限を超えたら古いものをパージ
+        if len(self._requests) > 10000:
+            cutoff = current_time - self.window_seconds
+            self._requests = defaultdict(list, {
+                k: [t for t in v if t > cutoff]
+                for k, v in self._requests.items()
+                if any(t > cutoff for t in v)
+            })
+
         self._cleanup_old_requests(client_id, current_time)
 
         request_count = len(self._requests[client_id])

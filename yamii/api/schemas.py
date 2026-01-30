@@ -17,13 +17,13 @@ class ConversationMessage(BaseModel):
     """会話履歴の1メッセージ"""
 
     role: str = Field(..., description="user または assistant")
-    content: str = Field(..., description="メッセージ内容")
+    content: str = Field(..., max_length=5000, description="メッセージ内容")
 
 
 class CounselingRequest(BaseModel):
     """カウンセリングリクエスト"""
 
-    message: str = Field(..., min_length=1, description="相談メッセージ")
+    message: str = Field(..., min_length=1, max_length=10000, description="相談メッセージ")
     user_id: str = Field(..., min_length=1, description="ユーザーID")
     user_name: str | None = Field(None, description="表示名")
     session_id: str | None = Field(None, description="セッションID")

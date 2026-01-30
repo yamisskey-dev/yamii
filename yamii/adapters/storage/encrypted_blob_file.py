@@ -9,6 +9,7 @@ Zero-Knowledge アーキテクチャ用
 from __future__ import annotations
 
 import json
+import re
 from datetime import datetime
 from pathlib import Path
 
@@ -36,9 +37,13 @@ class EncryptedBlobFileAdapter(IEncryptedBlobStorage):
 
     def _get_blob_path(self, user_id: str) -> Path:
         """ユーザーのBlobファイルパスを取得"""
-        # ユーザーIDをファイル名として安全に使用
-        safe_id = user_id.replace("/", "_").replace("\\", "_")
-        return self.data_dir / f"{safe_id}.blob.json"
+        # ユーザーIDをファイル名として安全にサニタイズ
+        safe_id = re.sub(r"[^a-zA-Z0-9@._-]", "_", user_id)
+        blob_path = self.data_dir / f"{safe_id}.blob.json"
+        # パストラバーサル防止
+        if not blob_path.resolve().is_relative_to(self.data_dir.resolve()):
+            raise ValueError(f"Invalid user_id: {user_id}")
+        return blob_path
 
     async def save_blob(self, user_id: str, encrypted_data: str, nonce: str) -> None:
         """暗号化されたBlobを保存"""

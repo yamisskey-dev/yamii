@@ -8,8 +8,11 @@ import json
 from datetime import datetime
 from pathlib import Path
 
+from ...core.logging import get_logger
 from ...domain.models.user import UserState
 from ...domain.ports.storage_port import IStorage
+
+logger = get_logger(__name__)
 
 
 class FileStorageAdapter(IStorage):
@@ -51,12 +54,12 @@ class FileStorageAdapter(IStorage):
 
         try:
             # 大きなファイルはスレッドプールで処理
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             data = await loop.run_in_executor(None, self._read_json_file)
             for user_id, user_data in data.get("users", {}).items():
                 self._users[user_id] = UserState.from_dict(user_data)
         except (json.JSONDecodeError, KeyError) as e:
-            print(f"データ読み込みエラー: {e}")
+            logger.error(f"データ読み込みエラー: {e}")
             self._users = {}
 
     def _read_json_file(self) -> dict:
@@ -96,7 +99,7 @@ class FileStorageAdapter(IStorage):
 
         async with self._lock:
             # スレッドプールで書き込み
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             await loop.run_in_executor(None, self._write_json_file, temp_file, data)
             # アトミックに置換
             temp_file.replace(self.data_file)

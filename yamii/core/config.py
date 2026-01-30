@@ -32,8 +32,10 @@ class AISettings(BaseSettings):
     def validate_api_key(cls, v: str) -> str:
         """API キーの形式を簡易チェック"""
         if v and not v.startswith("sk-"):
-            # 警告のみ（テスト環境等で別形式を使う場合があるため）
-            pass
+            import logging
+            logging.getLogger(__name__).warning(
+                "OpenAI API key does not start with 'sk-' - may be invalid"
+            )
         return v
 
 

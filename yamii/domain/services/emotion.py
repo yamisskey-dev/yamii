@@ -508,8 +508,9 @@ JSON形式で回答してください:
         """修飾語による感情スコアの高速調整"""
         modified_scores = scores.copy()
 
-        # 否定語の検出（セット使用で高速）
-        has_negation = bool(self._negation_words & set(message))
+        # 否定語の検出（単語単位でセット比較）
+        message_words = set(message.split())
+        has_negation = bool(self._negation_words & message_words)
         if has_negation:
             modified_scores[EmotionType.HAPPINESS] = max(
                 0, modified_scores[EmotionType.HAPPINESS] - 2
@@ -517,8 +518,8 @@ JSON形式で回答してください:
             modified_scores[EmotionType.SADNESS] += 1
             modified_scores[EmotionType.ANXIETY] += 1
 
-        # 強調語の検出（セット使用で高速）
-        has_emphasis = bool(self._emphasis_words & set(message))
+        # 強調語の検出（単語単位でセット比較）
+        has_emphasis = bool(self._emphasis_words & message_words)
         if has_emphasis:
             for emotion in modified_scores:
                 if emotion != EmotionType.NEUTRAL:

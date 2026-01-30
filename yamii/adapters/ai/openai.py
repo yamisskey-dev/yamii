@@ -37,6 +37,19 @@ class OpenAIAdapter(IAIProvider):
         self.base_url = base_url
         self.enable_anonymization = enable_anonymization
         self._anonymizer: PIIAnonymizer | None = None
+        self._session: aiohttp.ClientSession | None = None
+
+    async def _get_session(self) -> aiohttp.ClientSession:
+        """共有HTTPセッションを取得（遅延初期化）"""
+        if self._session is None or self._session.closed:
+            timeout = aiohttp.ClientTimeout(total=self.timeout)
+            self._session = aiohttp.ClientSession(timeout=timeout)
+        return self._session
+
+    async def close(self) -> None:
+        """HTTPセッションを閉じる"""
+        if self._session and not self._session.closed:
+            await self._session.close()
 
     @property
     def anonymizer(self) -> PIIAnonymizer:
@@ -132,35 +145,33 @@ class OpenAIAdapter(IAIProvider):
             "Content-Type": "application/json",
         }
 
-        timeout = aiohttp.ClientTimeout(total=self.timeout)
+        session = await self._get_session()
+        async with session.post(
+            f"{self.base_url}/chat/completions",
+            headers=headers,
+            json=request_body,
+        ) as response:
+            if response.status != 200:
+                error_text = await response.text()
+                raise Exception(
+                    f"OpenAI API error: HTTP {response.status} - {error_text}"
+                )
 
-        async with aiohttp.ClientSession(timeout=timeout) as session:
-            async with session.post(
-                f"{self.base_url}/chat/completions",
-                headers=headers,
-                json=request_body,
-            ) as response:
-                if response.status != 200:
-                    error_text = await response.text()
-                    raise Exception(
-                        f"OpenAI API error: HTTP {response.status} - {error_text}"
-                    )
+            response_data = await response.json()
 
-                response_data = await response.json()
+            if "choices" not in response_data or not response_data["choices"]:
+                raise Exception("No choices in OpenAI response")
 
-                if "choices" not in response_data or not response_data["choices"]:
-                    raise Exception("No choices in OpenAI response")
+            choice = response_data["choices"][0]
+            if "message" not in choice or "content" not in choice["message"]:
+                raise Exception("Invalid response structure from OpenAI API")
 
-                choice = response_data["choices"][0]
-                if "message" not in choice or "content" not in choice["message"]:
-                    raise Exception("Invalid response structure from OpenAI API")
+            response_text = choice["message"]["content"]
 
-                response_text = choice["message"]["content"]
+            if not response_text or not response_text.strip():
+                raise Exception("Empty response from OpenAI API")
 
-                if not response_text or not response_text.strip():
-                    raise Exception("Empty response from OpenAI API")
-
-                return response_text
+            return response_text
 
     async def generate_stream(
         self,
@@ -250,21 +261,19 @@ class OpenAIAdapter(IAIProvider):
             "Content-Type": "application/json",
         }
 
-        timeout = aiohttp.ClientTimeout(total=self.timeout)
+        session = await self._get_session()
+        async with session.post(
+            f"{self.base_url}/chat/completions",
+            headers=headers,
+            json=request_body,
+        ) as response:
+            if response.status != 200:
+                error_text = await response.text()
+                raise Exception(
+                    f"OpenAI API error: HTTP {response.status} - {error_text}"
+                )
 
-        async with aiohttp.ClientSession(timeout=timeout) as session:
-            async with session.post(
-                f"{self.base_url}/chat/completions",
-                headers=headers,
-                json=request_body,
-            ) as response:
-                if response.status != 200:
-                    error_text = await response.text()
-                    raise Exception(
-                        f"OpenAI API error: HTTP {response.status} - {error_text}"
-                    )
-
-                async for line in response.content:
+            async for line in response.content:
                     decoded = line.decode("utf-8").strip()
                     if not decoded or not decoded.startswith("data: "):
                         continue
