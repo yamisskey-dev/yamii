@@ -19,7 +19,7 @@ Yamix（または、任意のWebアプリ）
     ├── メッセージ暗号化（AES-256-GCM、サーバー側）
     └── 会話履歴はYamixのDB管理（暗号化保存）
               ↓
-Yamii API v3.0.0 (FastAPI)
+Yamii API v1.0.0 (FastAPI)
     ├── /v1/auth/*       - Misskey OAuth認証
     ├── /v1/counseling   - AIカウンセリング（ノーログ）
     ├── /v1/users/*      - ユーザー管理（GDPR対応）
