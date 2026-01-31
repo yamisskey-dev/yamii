@@ -7,9 +7,12 @@ Yamii - Zero-Knowledge メンタルヘルスAI相談システム
 - ノーログ: 会話履歴はセッション中のみ保持
 """
 
-from importlib.metadata import version as _pkg_version
+from pathlib import Path
+import tomllib
 
-__version__ = _pkg_version("yamii")
+_pyproject = Path(__file__).resolve().parent.parent / "pyproject.toml"
+with _pyproject.open("rb") as _f:
+    __version__: str = tomllib.load(_f)["project"]["version"]
 
 # ===== Domain Models =====
 from .domain.models import (

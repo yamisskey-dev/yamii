@@ -48,6 +48,7 @@ WORKDIR /app
 COPY --from=builder /app/.venv /app/.venv
 
 # Copy application code
+COPY pyproject.toml ./
 COPY yamii/ ./yamii/
 COPY README.md ./
 
