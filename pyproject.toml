@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "yamii"
-version = "3.0.0"
+version = "1.0.0"
 description = "Yamii - Zero-Knowledge Mental Health AI API"
 requires-python = ">=3.11"
 dependencies = [

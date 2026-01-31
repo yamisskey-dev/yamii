@@ -7,7 +7,9 @@ Yamii - Zero-Knowledge メンタルヘルスAI相談システム
 - ノーログ: 会話履歴はセッション中のみ保持
 """
 
-__version__ = "3.0.0"
+from importlib.metadata import version as _pkg_version
+
+__version__ = _pkg_version("yamii")
 
 # ===== Domain Models =====
 from .domain.models import (

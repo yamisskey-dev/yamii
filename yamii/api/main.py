@@ -36,7 +36,7 @@ YamiiLogger.configure()
 logger = get_logger("api.main")
 
 # バージョン
-API_VERSION = "3.0.0"
+from yamii import __version__ as API_VERSION
 
 
 class APIVersionMiddleware(BaseHTTPMiddleware):
