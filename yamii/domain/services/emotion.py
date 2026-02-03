@@ -252,6 +252,23 @@ JSON形式で回答してください:
             "終わりにしたい",
         }
 
+        # 誤検知を防ぐための除外パターン
+        # 誇張表現（「死にたいくらい美味しい」など）
+        self._exaggeration_patterns: list[re.Pattern] = [
+            re.compile(r"死にたい(くらい|ほど|程)"),
+            re.compile(r"死ぬ(くらい|ほど|程)"),
+            re.compile(r"(美味し|嬉し|楽し|可愛|綺麗|素敵|最高).{0,5}(死にたい|死ぬ)"),
+            re.compile(r"(死にたい|死ぬ).{0,5}(美味し|嬉し|楽し|可愛|綺麗|素敵|最高)"),
+        ]
+
+        # 哲学的・質問形式のパターン（「生きる意味って何？」など）
+        self._philosophical_patterns: list[re.Pattern] = [
+            re.compile(r"(生きる意味|人生の意味|存在意義).{0,5}(って|とは|は).{0,5}(何|なに|なん)"),
+            re.compile(r"(何|なに|なん).{0,5}(だと思|と思|でしょう|かな)"),
+            re.compile(r"(意味|価値).{0,5}(ある|あるの|教えて|知りたい)"),
+            re.compile(r"(哲学|考え|思想)"),
+        ]
+
         # 強調語・修飾語（セットで高速検索）
         self._emphasis_words: set[str] = {
             "すごく",
@@ -346,9 +363,13 @@ JSON形式で回答してください:
         # 主要感情を特定
         primary_emotion, intensity = self._determine_primary_emotion(emotion_scores)
 
-        # うつ病感情の高スコアも危機として扱う
-        if not is_crisis and emotion_scores.get(EmotionType.DEPRESSION, 0) > 0:
-            is_crisis = True
+        # うつ病感情の高スコアも危機として扱う（閾値を設定して誤検知を減らす）
+        # スコア3.0以上 = 明確な危機キーワードが含まれている場合のみ
+        depression_score = emotion_scores.get(EmotionType.DEPRESSION, 0)
+        if not is_crisis and depression_score >= 3.0:
+            # ただし哲学的質問の場合は除外
+            if not self._is_philosophical_question(message):
+                is_crisis = True
 
         # 安定性を計算
         stability = self._calculate_stability(emotion_scores)
@@ -484,8 +505,38 @@ JSON形式で回答してください:
         )
 
     def _detect_crisis_fast(self, message_lower: str) -> bool:
-        """危機状況の高速検出（一度のマッチで全キーワードチェック）"""
-        return bool(self._crisis_pattern.search(message_lower))
+        """
+        危機状況の高速検出（文脈を考慮）
+
+        誇張表現や哲学的質問の場合は危機として扱わない
+        """
+        # まず危機キーワードがあるかチェック
+        if not self._crisis_pattern.search(message_lower):
+            return False
+
+        # 誇張表現の場合は危機として扱わない
+        if self._is_exaggeration_context(message_lower):
+            return False
+
+        # 哲学的質問の場合は危機として扱わない
+        if self._is_philosophical_question(message_lower):
+            return False
+
+        return True
+
+    def _is_exaggeration_context(self, message: str) -> bool:
+        """誇張表現かどうかを判定（「死にたいくらい美味しい」など）"""
+        for pattern in self._exaggeration_patterns:
+            if pattern.search(message):
+                return True
+        return False
+
+    def _is_philosophical_question(self, message: str) -> bool:
+        """哲学的質問かどうかを判定（「生きる意味って何？」など）"""
+        for pattern in self._philosophical_patterns:
+            if pattern.search(message):
+                return True
+        return False
 
     def _calculate_emotion_scores_fast(
         self, message_lower: str
