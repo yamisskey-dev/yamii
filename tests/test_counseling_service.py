@@ -42,6 +42,15 @@ class MockAIProvider(IAIProvider):
     ) -> str:
         return self._response
 
+    async def generate_stream(
+        self,
+        message: str,
+        system_prompt: str,
+        max_tokens: int | None = None,
+        conversation_history: list[ChatMessage] | None = None,
+    ):
+        yield self._response
+
     async def health_check(self) -> bool:
         return True
 
@@ -575,6 +584,10 @@ class TestEmotionServiceLLM:
         class ErrorAIProvider(IAIProvider):
             async def generate(self, *args, **kwargs) -> str:
                 raise Exception("API Error")
+
+            async def generate_stream(self, *args, **kwargs):
+                raise Exception("API Error")
+                yield  # AsyncGenerator にするためのダミー
 
             async def health_check(self) -> bool:
                 return False
