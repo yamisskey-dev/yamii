@@ -7,12 +7,8 @@ Yamii - Zero-Knowledge メンタルヘルスAI相談システム
 - ノーログ: 会話履歴はセッション中のみ保持
 """
 
-from pathlib import Path
 import tomllib
-
-_pyproject = Path(__file__).resolve().parent.parent / "pyproject.toml"
-with _pyproject.open("rb") as _f:
-    __version__: str = tomllib.load(_f)["project"]["version"]
+from pathlib import Path
 
 # ===== Domain Models =====
 from .domain.models import (
@@ -40,6 +36,10 @@ from .domain.services import (
     CounselingService,
     EmotionService,
 )
+
+_pyproject = Path(__file__).resolve().parent.parent / "pyproject.toml"
+with _pyproject.open("rb") as _f:
+    __version__: str = tomllib.load(_f)["project"]["version"]
 
 
 # ===== Adapters (lazy import) =====

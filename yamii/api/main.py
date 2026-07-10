@@ -13,6 +13,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 
+from yamii import __version__ as API_VERSION
+
 from ..core.config import get_settings
 from ..core.logging import YamiiLogger, get_logger
 from .auth import (
@@ -34,9 +36,6 @@ from .schemas import APIInfoResponse, HealthResponse
 # ログシステムを初期化
 YamiiLogger.configure()
 logger = get_logger("api.main")
-
-# バージョン
-from yamii import __version__ as API_VERSION
 
 
 class APIVersionMiddleware(BaseHTTPMiddleware):
