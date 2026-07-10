@@ -13,15 +13,12 @@ from typing import Any
 
 from ..models.emotion import EmotionAnalysis, EmotionType
 from ..models.relationship import (
-    DepthLevel,
     RelationshipPhase,
-    ToneLevel,
 )
 from ..models.user import UserState
 from ..ports.ai_port import ChatMessage, IAIProvider
 from ..ports.storage_port import IStorage
 from .emotion import EmotionService
-
 
 # プロンプトファイルのパス
 # 環境変数で設定可能、デフォルトは /app/config（Docker環境用）

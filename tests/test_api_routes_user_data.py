@@ -5,20 +5,17 @@ Zero-Knowledge 暗号化Blobストレージ
 
 import tempfile
 from datetime import datetime, timedelta
-from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from yamii.adapters.storage.encrypted_blob_file import EncryptedBlobFileAdapter
 from yamii.api.routes.auth import _sessions
 from yamii.api.routes.user_data import (
-    _blob_storage,
     get_blob_storage,
     router,
 )
-from yamii.adapters.storage.encrypted_blob_file import EncryptedBlobFileAdapter
 
 
 @pytest.fixture

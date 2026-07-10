@@ -3,7 +3,6 @@
 Misskey OAuth認証エンドポイント
 """
 
-import hashlib
 import secrets
 from datetime import datetime, timedelta
 from urllib.parse import urlencode
