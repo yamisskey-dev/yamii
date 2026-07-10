@@ -8,6 +8,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 
+from ...core.logging import get_logger
 from ...domain.services.counseling import (
     ConversationMessage as DomainConversationMessage,
 )
@@ -17,7 +18,6 @@ from ...domain.services.counseling import (
 from ...domain.services.counseling import (
     CounselingService,
 )
-from ...core.logging import get_logger
 from ..auth import verify_api_key
 from ..dependencies import get_counseling_service
 from ..schemas import (
