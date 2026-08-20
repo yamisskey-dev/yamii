@@ -215,11 +215,13 @@ class TestSecuritySettings:
         settings = SecuritySettings()
         assert settings.api_keys == ["single-key"]
 
-    def test_empty_api_keys(self):
+    def test_empty_api_keys(self, monkeypatch):
         """空の API キー設定"""
         from yamii.core.config import SecuritySettings
 
-        settings = SecuritySettings()
+        # ローカルの .env や環境変数に依存しないよう隔離する
+        monkeypatch.delenv("YAMII_API_KEYS", raising=False)
+        settings = SecuritySettings(_env_file=None)
         assert settings.api_keys == []
 
     def test_rate_limit_enabled_by_default(self):
