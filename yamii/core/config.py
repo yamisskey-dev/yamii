@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from pydantic import Field, field_validator
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -26,17 +26,26 @@ class AISettings(BaseSettings):
     openai_model: str = Field(
         default="gpt-4.1", alias="OPENAI_MODEL", description="OpenAI モデル"
     )
+    openai_base_url: str = Field(
+        default="https://api.openai.com/v1",
+        alias="OPENAI_BASE_URL",
+        description="OpenAI 互換 API のベース URL（OpenRouter / ローカル LLM 等に切り替え可能）",
+    )
 
-    @field_validator("openai_api_key")
-    @classmethod
-    def validate_api_key(cls, v: str) -> str:
-        """API キーの形式を簡易チェック"""
-        if v and not v.startswith("sk-"):
+    @model_validator(mode="after")
+    def validate_api_key(self) -> AISettings:
+        """API キーの形式を簡易チェック（OpenAI 公式エンドポイント使用時のみ）"""
+        if (
+            self.openai_api_key
+            and self.openai_base_url == "https://api.openai.com/v1"
+            and not self.openai_api_key.startswith("sk-")
+        ):
             import logging
+
             logging.getLogger(__name__).warning(
                 "OpenAI API key does not start with 'sk-' - may be invalid"
             )
-        return v
+        return self
 
 
 class SecuritySettings(BaseSettings):

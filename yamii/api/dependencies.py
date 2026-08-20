@@ -38,7 +38,7 @@ def get_storage() -> IStorage:
 
 
 def get_ai_provider() -> IAIProvider:
-    """AIプロバイダーを取得（OpenAI GPT-4.1）"""
+    """AIプロバイダーを取得（OpenAI 互換 API）"""
     global _ai_provider
     if _ai_provider is None:
         settings = get_settings()
@@ -47,6 +47,7 @@ def get_ai_provider() -> IAIProvider:
         _ai_provider = OpenAIAdapterWithFallback(
             api_key=settings.ai.openai_api_key,
             model=settings.ai.openai_model,
+            base_url=settings.ai.openai_base_url,
         )
     return _ai_provider
 

@@ -230,3 +230,23 @@ class TestSecuritySettings:
 
         settings = SecuritySettings()
         assert settings.rate_limit_enabled is True
+
+
+class TestAISettings:
+    """AI プロバイダー設定のテスト"""
+
+    def test_default_base_url_is_openai(self, monkeypatch):
+        """デフォルトの base_url は OpenAI"""
+        from yamii.core.config import AISettings
+
+        monkeypatch.delenv("OPENAI_BASE_URL", raising=False)
+        settings = AISettings(_env_file=None)
+        assert settings.openai_base_url == "https://api.openai.com/v1"
+
+    def test_custom_base_url_for_openai_compatible_api(self, monkeypatch):
+        """OPENAI_BASE_URL で OpenRouter 等の互換 API に切り替えられる"""
+        from yamii.core.config import AISettings
+
+        monkeypatch.setenv("OPENAI_BASE_URL", "https://openrouter.ai/api/v1")
+        settings = AISettings(_env_file=None)
+        assert settings.openai_base_url == "https://openrouter.ai/api/v1"
