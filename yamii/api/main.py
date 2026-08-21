@@ -5,6 +5,7 @@ Zero-Knowledge アーキテクチャ対応 FastAPI アプリケーション
 
 from __future__ import annotations
 
+import time
 from contextlib import asynccontextmanager
 from datetime import datetime
 
@@ -72,6 +73,33 @@ async def lifespan(app: FastAPI):
     except Exception:
         pass
     logger.info("Yamii API shutting down...")
+
+
+# AI プロバイダーのヘルスチェック結果キャッシュ
+# /v1/health は docker-compose から 30 秒間隔で叩かれるが、AI チェックは
+# 実際に LLM を 1 回呼ぶ（課金・レイテンシが発生する）ため、
+# 実呼び出しを TTL 内で 1 回に抑える
+_AI_HEALTH_TTL_SECONDS = 600
+_ai_health_cache: dict = {"checked_at": None, "ok": True}
+
+
+def _reset_ai_health_cache() -> None:
+    """テスト用: キャッシュをリセット"""
+    _ai_health_cache["checked_at"] = None
+    _ai_health_cache["ok"] = True
+
+
+async def _check_ai_provider_cached() -> bool:
+    now = time.monotonic()
+    checked_at = _ai_health_cache["checked_at"]
+    if checked_at is not None and now - checked_at < _AI_HEALTH_TTL_SECONDS:
+        return _ai_health_cache["ok"]
+
+    ai = get_ai_provider()
+    ok = await ai.health_check()
+    _ai_health_cache["checked_at"] = now
+    _ai_health_cache["ok"] = ok
+    return ok
 
 
 def create_app() -> FastAPI:
@@ -150,8 +178,7 @@ def create_app() -> FastAPI:
             components["storage"] = False
 
         try:
-            ai = get_ai_provider()
-            components["ai_provider"] = await ai.health_check()
+            components["ai_provider"] = await _check_ai_provider_cached()
         except Exception:
             components["ai_provider"] = False
 
