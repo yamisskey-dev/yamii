@@ -66,6 +66,8 @@ class CounselingRequest:
     user_name: str | None = None
     # セッション内文脈保持: クライアントが管理する会話履歴
     conversation_history: list[ConversationMessage] | None = None
+    # 会話メモリ: 履歴ウィンドウから溢れた過去の相談内容の要約（クライアント管理）
+    context_summary: str | None = None
 
     def __post_init__(self):
         if not self.message or not self.message.strip():
@@ -305,7 +307,7 @@ class CounselingService:
 
         # 4. パーソナライズされたシステムプロンプト構築
         system_prompt = self._build_personalized_prompt(
-            user, emotion_analysis, advice_type
+            user, emotion_analysis, advice_type, request.context_summary
         )
 
         # 5. AI応答生成（セッション内文脈保持）
@@ -361,7 +363,7 @@ class CounselingService:
 
         # 4. パーソナライズされたシステムプロンプト構築
         system_prompt = self._build_personalized_prompt(
-            user, emotion_analysis, advice_type
+            user, emotion_analysis, advice_type, request.context_summary
         )
 
         # 5. フォローアップ質問生成
@@ -406,6 +408,7 @@ class CounselingService:
         user: UserState,
         emotion_analysis: EmotionAnalysis,
         advice_type: str,
+        context_summary: str | None = None,
     ) -> str:
         """
         パーソナライズされたシステムプロンプトを構築
@@ -419,9 +422,13 @@ class CounselingService:
         # 各セクションを収集（空文字列は除外）
         # Note: エピソードコンテキストはZero-Knowledge設計のため削除（ノーログ）
         # Note: 危機対応はYAMII.mdに統合されているため、別途追加しない
+        # NOTE: 並び順はプレフィックスキャッシュ効率のため「静的 → 安定 → 揮発」を維持する
+        # （base は全リクエスト共通、profile はユーザー毎に安定、summary は要約更新時のみ変化、
+        #   context_info はメッセージ毎に変化）
         sections = [
             base_prompt,
             self._get_explicit_profile(user),
+            self._get_context_summary_section(context_summary),
             self._get_phase_specific_instruction(user),
             self._get_personalization_instruction(user),
             self._get_context_info(user, emotion_analysis, advice_type),
@@ -443,6 +450,12 @@ class CounselingService:
         """ユーザーが設定したカスタム指示"""
         if user.explicit_profile:
             return f"【ユーザーからの指示】\n{user.explicit_profile}"
+        return ""
+
+    def _get_context_summary_section(self, context_summary: str | None) -> str:
+        """会話メモリ: 履歴ウィンドウから溢れた過去の相談の要約"""
+        if context_summary:
+            return f"【これまでの相談の経緯（要約）】\n{context_summary}"
         return ""
 
     def _get_phase_specific_instruction(self, user: UserState) -> str:

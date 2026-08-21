@@ -33,6 +33,10 @@ class CounselingRequest(BaseModel):
         description="セッション内の会話履歴（クライアント管理、最大10件推奨）",
         max_length=20,
     )
+    # 会話メモリ: 履歴ウィンドウから溢れた過去の相談内容の要約（クライアント管理）
+    context_summary: str | None = Field(
+        None, max_length=4000, description="過去の相談内容のローリング要約"
+    )
 
 
 class EmotionAnalysisResponse(BaseModel):
@@ -95,6 +99,23 @@ class SummarizeTitleResponse(BaseModel):
     """タイトル生成レスポンス"""
 
     title: str = Field(..., description="生成されたタイトル")
+
+
+class SummarizeContextRequest(BaseModel):
+    """会話コンテキスト要約リクエスト"""
+
+    previous_summary: str | None = Field(
+        None, max_length=4000, description="これまでの要約（あれば統合して更新）"
+    )
+    messages: list[ConversationMessage] = Field(
+        ..., min_length=1, max_length=40, description="要約対象の会話メッセージ"
+    )
+
+
+class SummarizeContextResponse(BaseModel):
+    """会話コンテキスト要約レスポンス"""
+
+    summary: str = Field(..., description="更新された要約")
 
 
 class APIInfoResponse(BaseModel):

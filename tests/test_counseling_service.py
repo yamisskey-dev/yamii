@@ -424,6 +424,64 @@ class TestCounselingServiceIntegration:
         assert "career" in user.known_topics
 
 
+# === 会話メモリ（コンテキスト要約）テスト ===
+
+
+class CapturingAIProvider(MockAIProvider):
+    """system_prompt をキャプチャするテスト用プロバイダー"""
+
+    def __init__(self, response: str = "お気持ち、わかります。"):
+        super().__init__(response)
+        self.last_system_prompt: str | None = None
+
+    async def generate(
+        self,
+        message: str,
+        system_prompt: str,
+        max_tokens: int | None = None,
+        conversation_history: list[ChatMessage] | None = None,
+    ) -> str:
+        self.last_system_prompt = system_prompt
+        return await super().generate(
+            message, system_prompt, max_tokens, conversation_history
+        )
+
+
+class TestContextSummary:
+    """context_summary（ローリング要約）のテスト"""
+
+    @pytest.mark.asyncio
+    async def test_summary_is_included_in_system_prompt(self):
+        """context_summary がシステムプロンプトに含まれる"""
+        ai = CapturingAIProvider()
+        service = CounselingService(ai_provider=ai, storage=MockStorage())
+
+        await service.generate_response(
+            CounselingRequest(
+                message="続きを相談したいです",
+                user_id="user-1",
+                context_summary="転職について悩んでおり、前回は家族への伝え方を相談した。",
+            )
+        )
+
+        assert ai.last_system_prompt is not None
+        assert "これまでの相談の経緯" in ai.last_system_prompt
+        assert "転職について悩んでおり" in ai.last_system_prompt
+
+    @pytest.mark.asyncio
+    async def test_no_summary_section_without_context_summary(self):
+        """context_summary なしでは要約セクションが含まれない"""
+        ai = CapturingAIProvider()
+        service = CounselingService(ai_provider=ai, storage=MockStorage())
+
+        await service.generate_response(
+            CounselingRequest(message="はじめまして", user_id="user-1")
+        )
+
+        assert ai.last_system_prompt is not None
+        assert "これまでの相談の経緯" not in ai.last_system_prompt
+
+
 # === エッジケーステスト ===
 
 

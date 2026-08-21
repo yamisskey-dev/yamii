@@ -68,6 +68,7 @@ async def counseling(
             session_id=request.session_id,
             user_name=request.user_name,
             conversation_history=conversation_history,
+            context_summary=request.context_summary,
         )
 
         # カウンセリング実行
@@ -146,6 +147,7 @@ async def counseling_stream(
             session_id=request.session_id,
             user_name=request.user_name,
             conversation_history=conversation_history,
+            context_summary=request.context_summary,
         )
 
         stream, context = await service.generate_response_stream(domain_request)
