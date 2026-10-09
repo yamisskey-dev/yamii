@@ -27,7 +27,7 @@ Yamii API v1.0.0 (FastAPI)
     ├── /v1/commands/*   - Botコマンド処理
     └── /v1/health, /docs, /redoc
               ↓
-OpenAI API（メッセージ処理のため平文で送信）
+Claude API（メッセージ処理のため平文で送信）
 ```
 
 詳細なエンドポイントは [Swagger UI](http://localhost:8000/docs) で確認できます。
@@ -62,7 +62,7 @@ YamixはYamiiを以下のように利用します：
 ```bash
 # 1. 環境変数を設定
 cp .env.example .env
-nano .env  # OPENAI_API_KEY を設定
+nano .env  # ANTHROPIC_API_KEY を設定
 
 # 2. 起動
 docker compose up -d
@@ -73,7 +73,7 @@ curl http://localhost:8000/v1/health
 
 **必須環境変数** (`.env`):
 ```bash
-OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxxxxxx
+ANTHROPIC_API_KEY=your-claude-api-key
 ```
 
 ## ローカル開発
@@ -116,7 +116,7 @@ curl -H "X-API-Key: your-api-key" http://localhost:8000/v1/counseling
 - セッション中のみ使用され、Yamii側では永続化されません
 
 **プライバシーに関する注意:**
-- AI相談機能を提供するため、メッセージはOpenAI APIに平文で送信されます
+- AI相談機能を提供するため、メッセージはClaude APIに平文で送信されます
 - これは技術的に不可避であり、真のエンドツーエンド暗号化（E2EE）ではありません
 - `/v1/user-data/blob` でクライアント側暗号化データを保存可能（サーバーは内容を知ることができません）
 
@@ -145,7 +145,7 @@ curl -H "X-API-Key: your-api-key" http://localhost:8000/v1/counseling
 
 ### PII匿名化
 
-OpenAI APIへの送信前に個人情報を自動マスク:
+Claude APIへの送信前に個人情報を自動マスク:
 - 電話番号、メールアドレス、住所
 - 生年月日、名前
 - マイナンバー、カード番号
@@ -158,8 +158,8 @@ OpenAI APIへの送信前に個人情報を自動マスク:
 
 | 変数 | 必須 | デフォルト | 説明 |
 |------|------|-----------|------|
-| `OPENAI_API_KEY` | ✅ | - | OpenAI APIキー |
-| `OPENAI_MODEL` | - | gpt-4.1 | 使用モデル |
+| `ANTHROPIC_API_KEY` | ✅ | - | Claude APIキー（Claude Console で発行） |
+| `ANTHROPIC_MODEL` | - | claude-sonnet-5-5 | 使用モデル |
 | `YAMII_DATA_DIR` | - | data | データ保存先 |
 | `YAMII_DEBUG` | - | false | デバッグモード |
 | `YAMII_API_KEYS` | - | - | API認証キー（カンマ区切り） |
@@ -190,7 +190,7 @@ yamii/
 │   ├── services/     # Emotion, Counseling
 │   └── ports/        # インターフェース定義
 ├── adapters/         # 外部サービス実装
-│   ├── ai/           # OpenAI（PII匿名化付き）
+│   ├── ai/           # Claude（PII匿名化付き）
 │   └── storage/      # ファイル / 暗号化Blobストレージ
 └── core/             # ログ、設定
 ```

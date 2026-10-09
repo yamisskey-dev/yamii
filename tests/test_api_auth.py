@@ -235,18 +235,26 @@ class TestSecuritySettings:
 class TestAISettings:
     """AI プロバイダー設定のテスト"""
 
-    def test_default_base_url_is_openai(self, monkeypatch):
-        """デフォルトの base_url は OpenAI"""
+    def test_default_model_is_sonnet(self, monkeypatch):
+        """デフォルトのモデルは Claude Sonnet 5.5"""
         from yamii.core.config import AISettings
 
-        monkeypatch.delenv("OPENAI_BASE_URL", raising=False)
+        monkeypatch.delenv("ANTHROPIC_MODEL", raising=False)
         settings = AISettings(_env_file=None)
-        assert settings.openai_base_url == "https://api.openai.com/v1"
+        assert settings.anthropic_model == "claude-sonnet-5-5"
 
-    def test_custom_base_url_for_openai_compatible_api(self, monkeypatch):
-        """OPENAI_BASE_URL で OpenRouter 等の互換 API に切り替えられる"""
+    def test_model_can_be_overridden(self, monkeypatch):
+        """ANTHROPIC_MODEL でモデルを切り替えられる"""
         from yamii.core.config import AISettings
 
-        monkeypatch.setenv("OPENAI_BASE_URL", "https://openrouter.ai/api/v1")
+        monkeypatch.setenv("ANTHROPIC_MODEL", "claude-haiku-5-5")
         settings = AISettings(_env_file=None)
-        assert settings.openai_base_url == "https://openrouter.ai/api/v1"
+        assert settings.anthropic_model == "claude-haiku-5-5"
+
+    def test_api_key_from_env(self, monkeypatch):
+        """ANTHROPIC_API_KEY を読み込む"""
+        from yamii.core.config import AISettings
+
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
+        settings = AISettings(_env_file=None)
+        assert settings.anthropic_api_key == "sk-ant-test"

@@ -1,6 +1,6 @@
 """
 PII（個人識別情報）匿名化サービス
-OpenAIに送信前に個人情報をマスクし、応答後に復元する
+Claude API に送信前に個人情報をマスクし、応答後に復元する
 """
 
 from __future__ import annotations
