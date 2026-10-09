@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 
-from pydantic import Field, model_validator
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -20,32 +20,12 @@ class AISettings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=".env", env_prefix="", extra="ignore")
 
-    openai_api_key: str = Field(
-        default="", alias="OPENAI_API_KEY", description="OpenAI API キー"
+    anthropic_api_key: str = Field(
+        default="", alias="ANTHROPIC_API_KEY", description="Claude API キー"
     )
-    openai_model: str = Field(
-        default="gpt-4.1", alias="OPENAI_MODEL", description="OpenAI モデル"
+    anthropic_model: str = Field(
+        default="claude-sonnet-5-5", alias="ANTHROPIC_MODEL", description="Claude モデル"
     )
-    openai_base_url: str = Field(
-        default="https://api.openai.com/v1",
-        alias="OPENAI_BASE_URL",
-        description="OpenAI 互換 API のベース URL（OpenRouter / ローカル LLM 等に切り替え可能）",
-    )
-
-    @model_validator(mode="after")
-    def validate_api_key(self) -> AISettings:
-        """API キーの形式を簡易チェック（OpenAI 公式エンドポイント使用時のみ）"""
-        if (
-            self.openai_api_key
-            and self.openai_base_url == "https://api.openai.com/v1"
-            and not self.openai_api_key.startswith("sk-")
-        ):
-            import logging
-
-            logging.getLogger(__name__).warning(
-                "OpenAI API key does not start with 'sk-' - may be invalid"
-            )
-        return self
 
 
 class SecuritySettings(BaseSettings):
@@ -131,7 +111,7 @@ def get_settings() -> YamiiSettings:
 
     使用例:
         settings = get_settings()
-        print(settings.ai.openai_api_key)
+        print(settings.ai.anthropic_model)
     """
     return YamiiSettings.load()
 

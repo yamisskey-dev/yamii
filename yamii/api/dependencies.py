@@ -5,7 +5,7 @@ API Dependencies
 
 from __future__ import annotations
 
-from ..adapters.ai.openai import OpenAIAdapterWithFallback
+from ..adapters.ai.anthropic import AnthropicAdapterWithFallback
 from ..adapters.storage.file import FileStorageAdapter
 from ..core.config import get_settings
 from ..domain.ports.ai_port import IAIProvider
@@ -38,16 +38,15 @@ def get_storage() -> IStorage:
 
 
 def get_ai_provider() -> IAIProvider:
-    """AIプロバイダーを取得（OpenAI 互換 API）"""
+    """AIプロバイダーを取得（Claude API）"""
     global _ai_provider
     if _ai_provider is None:
         settings = get_settings()
-        if not settings.ai.openai_api_key:
-            raise ValueError("OPENAI_API_KEY is required")
-        _ai_provider = OpenAIAdapterWithFallback(
-            api_key=settings.ai.openai_api_key,
-            model=settings.ai.openai_model,
-            base_url=settings.ai.openai_base_url,
+        if not settings.ai.anthropic_api_key:
+            raise ValueError("ANTHROPIC_API_KEY is required")
+        _ai_provider = AnthropicAdapterWithFallback(
+            api_key=settings.ai.anthropic_api_key,
+            model=settings.ai.anthropic_model,
         )
     return _ai_provider
 

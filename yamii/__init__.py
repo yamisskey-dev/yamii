@@ -44,10 +44,10 @@ with _pyproject.open("rb") as _f:
 
 # ===== Adapters (lazy import) =====
 # アダプターは依存関係が多いため遅延インポート
-def get_openai_adapter():
-    from .adapters.ai.openai import OpenAIAdapter
+def get_anthropic_adapter():
+    from .adapters.ai.anthropic import AnthropicAdapter
 
-    return OpenAIAdapter
+    return AnthropicAdapter
 
 
 def get_file_storage_adapter():
@@ -100,7 +100,7 @@ __all__ = [
     "IAIProvider",
     "IPlatformAdapter",
     # Adapters (lazy)
-    "get_openai_adapter",
+    "get_anthropic_adapter",
     "get_file_storage_adapter",
     "get_encrypted_blob_storage",
     # API (lazy)

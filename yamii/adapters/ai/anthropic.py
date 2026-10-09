@@ -1,55 +1,71 @@
 """
-OpenAI AIアダプター
-OpenAI API (GPT-4.1等) への接続実装
+Anthropic AIアダプター
+Claude API (Messages API) への接続実装
 PII匿名化機能付き
 """
 
-import json
 import re
 from collections.abc import AsyncGenerator
 
-import aiohttp
+import anthropic
 
 from ...core.anonymizer import PIIAnonymizer, get_anonymizer
 from ...domain.ports.ai_port import ChatMessage, IAIProvider
 
+DEFAULT_MAX_TOKENS = 16000
 
-class OpenAIAdapter(IAIProvider):
+# 拒否（refusal）時にサーバー側で別モデルへフォールバックさせる
+FALLBACK_BETA = "server-side-fallback-2026-07-01"
+
+
+class AnthropicAdapter(IAIProvider):
     """
-    OpenAI AIアダプター
+    Anthropic AIアダプター
 
-    OpenAI APIを使用してAI応答を生成。
-    GPT-4.1をデフォルトモデルとして使用。
+    Claude API を使用してAI応答を生成。
+    Claude Sonnet 5.5 をデフォルトモデルとして使用。
     PII匿名化機能を内蔵。
     """
 
     def __init__(
         self,
         api_key: str,
-        model: str = "gpt-4.1",
+        model: str = "claude-sonnet-5-5",
         timeout: int = 60,
-        base_url: str = "https://api.openai.com/v1",
         enable_anonymization: bool = True,
+        client: anthropic.AsyncAnthropic | None = None,
     ):
-        self.api_key = api_key
         self.model = model
-        self.timeout = timeout
-        self.base_url = base_url
         self.enable_anonymization = enable_anonymization
         self._anonymizer: PIIAnonymizer | None = None
-        self._session: aiohttp.ClientSession | None = None
-
-    async def _get_session(self) -> aiohttp.ClientSession:
-        """共有HTTPセッションを取得（遅延初期化）"""
-        if self._session is None or self._session.closed:
-            timeout = aiohttp.ClientTimeout(total=self.timeout)
-            self._session = aiohttp.ClientSession(timeout=timeout)
-        return self._session
+        self._client = client or anthropic.AsyncAnthropic(api_key=api_key, timeout=timeout)
 
     async def close(self) -> None:
-        """HTTPセッションを閉じる"""
-        if self._session and not self._session.closed:
-            await self._session.close()
+        """HTTPクライアントを閉じる"""
+        await self._client.close()
+
+    def _request_params(
+        self,
+        message: str,
+        system_prompt: str,
+        max_tokens: int | None,
+        conversation_history: list[ChatMessage] | None,
+    ) -> dict:
+        messages = [
+            {"role": msg.role, "content": msg.content}
+            for msg in conversation_history or []
+        ]
+        messages.append({"role": "user", "content": message})
+        return {
+            "model": self.model,
+            "max_tokens": max_tokens or DEFAULT_MAX_TOKENS,
+            "system": system_prompt,
+            "messages": messages,
+            # 短い max_tokens（タイトル生成等）でも応答が切れないよう thinking は使わない
+            "thinking": {"type": "between_tools"},
+            "fallbacks": "default",
+            "betas": [FALLBACK_BETA],
+        }
 
     @property
     def anonymizer(self) -> PIIAnonymizer:
@@ -120,58 +136,21 @@ class OpenAIAdapter(IAIProvider):
         max_tokens: int | None = None,
         conversation_history: list[ChatMessage] | None = None,
     ) -> str:
-        """OpenAI APIを呼び出し"""
-        # メッセージリストを構築
-        messages = [{"role": "system", "content": system_prompt}]
+        """Claude API を呼び出し"""
+        response = await self._client.beta.messages.create(
+            **self._request_params(message, system_prompt, max_tokens, conversation_history)
+        )
 
-        # 会話履歴があれば追加（セッション内文脈保持）
-        if conversation_history:
-            for msg in conversation_history:
-                messages.append({"role": msg.role, "content": msg.content})
+        if response.stop_reason == "refusal":
+            raise Exception("Claude API refusal")
 
-        # 現在のユーザーメッセージを追加
-        messages.append({"role": "user", "content": message})
+        response_text = "".join(
+            block.text for block in response.content if block.type == "text"
+        )
+        if not response_text.strip():
+            raise Exception("Empty response from Claude API")
 
-        request_body = {
-            "model": self.model,
-            "messages": messages,
-        }
-
-        if max_tokens:
-            request_body["max_tokens"] = max_tokens
-
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json",
-        }
-
-        session = await self._get_session()
-        async with session.post(
-            f"{self.base_url}/chat/completions",
-            headers=headers,
-            json=request_body,
-        ) as response:
-            if response.status != 200:
-                error_text = await response.text()
-                raise Exception(
-                    f"OpenAI API error: HTTP {response.status} - {error_text}"
-                )
-
-            response_data = await response.json()
-
-            if "choices" not in response_data or not response_data["choices"]:
-                raise Exception("No choices in OpenAI response")
-
-            choice = response_data["choices"][0]
-            if "message" not in choice or "content" not in choice["message"]:
-                raise Exception("Invalid response structure from OpenAI API")
-
-            response_text = choice["message"]["content"]
-
-            if not response_text or not response_text.strip():
-                raise Exception("Empty response from OpenAI API")
-
-            return response_text
+        return response_text
 
     async def generate_stream(
         self,
@@ -238,60 +217,16 @@ class OpenAIAdapter(IAIProvider):
         max_tokens: int | None = None,
         conversation_history: list[ChatMessage] | None = None,
     ) -> AsyncGenerator[str, None]:
-        """OpenAI APIをストリーミングで呼び出し"""
-        messages = [{"role": "system", "content": system_prompt}]
-
-        if conversation_history:
-            for msg in conversation_history:
-                messages.append({"role": msg.role, "content": msg.content})
-
-        messages.append({"role": "user", "content": message})
-
-        request_body: dict = {
-            "model": self.model,
-            "messages": messages,
-            "stream": True,
-        }
-
-        if max_tokens:
-            request_body["max_tokens"] = max_tokens
-
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json",
-        }
-
-        session = await self._get_session()
-        async with session.post(
-            f"{self.base_url}/chat/completions",
-            headers=headers,
-            json=request_body,
-        ) as response:
-            if response.status != 200:
-                error_text = await response.text()
-                raise Exception(
-                    f"OpenAI API error: HTTP {response.status} - {error_text}"
-                )
-
-            async for line in response.content:
-                    decoded = line.decode("utf-8").strip()
-                    if not decoded or not decoded.startswith("data: "):
-                        continue
-                    data_str = decoded[6:]  # Remove "data: " prefix
-                    if data_str == "[DONE]":
-                        break
-                    try:
-                        data = json.loads(data_str)
-                        delta = data.get("choices", [{}])[0].get("delta", {})
-                        content = delta.get("content")
-                        if content:
-                            yield content
-                    except json.JSONDecodeError:
-                        continue
+        """Claude API をストリーミングで呼び出し"""
+        async with self._client.beta.messages.stream(
+            **self._request_params(message, system_prompt, max_tokens, conversation_history)
+        ) as stream:
+            async for text in stream.text_stream:
+                yield text
 
     async def health_check(self) -> bool:
         """
-        OpenAI APIの健全性チェック
+        Claude API の健全性チェック
 
         Returns:
             bool: 正常に動作しているか
@@ -312,9 +247,9 @@ class OpenAIAdapter(IAIProvider):
         return self.model
 
 
-class OpenAIAdapterWithFallback(OpenAIAdapter):
+class AnthropicAdapterWithFallback(AnthropicAdapter):
     """
-    フォールバック付きOpenAIアダプター
+    フォールバック付きAnthropicアダプター
 
     API呼び出し失敗時にフォールバック応答を返す。
     """
@@ -322,13 +257,13 @@ class OpenAIAdapterWithFallback(OpenAIAdapter):
     def __init__(
         self,
         api_key: str,
-        model: str = "gpt-4.1",
+        model: str = "claude-sonnet-5-5",
         timeout: int = 60,
-        base_url: str = "https://api.openai.com/v1",
         enable_anonymization: bool = True,
+        client: anthropic.AsyncAnthropic | None = None,
         fallback_message: str = "申し訳ありません。今少し調子が悪いようです。",
     ):
-        super().__init__(api_key, model, timeout, base_url, enable_anonymization)
+        super().__init__(api_key, model, timeout, enable_anonymization, client)
         self.fallback_message = fallback_message
 
     async def generate(
