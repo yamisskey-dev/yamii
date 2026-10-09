@@ -86,17 +86,26 @@ async def test_fallback_adapter_returns_fallback_message_on_error():
     assert await adapter.generate("hi", "sys") == "fallback"
 
 
-@pytest.mark.asyncio
-async def test_generate_stream_yields_text():
+def _stream_client(chunks: list[str], stop_reason: str = "end_turn"):
     async def text_stream():
-        for chunk in ["こん", "にちは"]:
+        for chunk in chunks:
             yield chunk
 
+    message_stream = SimpleNamespace(
+        text_stream=text_stream(),
+        get_final_message=AsyncMock(return_value=_response("".join(chunks), stop_reason)),
+    )
     stream = MagicMock()
-    stream.__aenter__ = AsyncMock(return_value=SimpleNamespace(text_stream=text_stream()))
+    stream.__aenter__ = AsyncMock(return_value=message_stream)
     stream.__aexit__ = AsyncMock(return_value=None)
     client = MagicMock()
     client.beta.messages.stream = MagicMock(return_value=stream)
+    return client
+
+
+@pytest.mark.asyncio
+async def test_generate_stream_yields_text():
+    client = _stream_client(["こん", "にちは"])
     adapter = AnthropicAdapter(api_key="test", enable_anonymization=False, client=client)
 
     chunks = [c async for c in adapter.generate_stream("hi", "sys")]
@@ -104,6 +113,18 @@ async def test_generate_stream_yields_text():
     assert "".join(chunks) == "こんにちは"
     kwargs = client.beta.messages.stream.call_args.kwargs
     assert kwargs["thinking"] == {"type": "between_tools"}
+
+
+@pytest.mark.asyncio
+async def test_fallback_adapter_stream_returns_fallback_message_on_refusal():
+    client = _stream_client([], stop_reason="refusal")
+    adapter = AnthropicAdapterWithFallback(
+        api_key="test", enable_anonymization=False, client=client, fallback_message="fallback"
+    )
+
+    chunks = [c async for c in adapter.generate_stream("hi", "sys")]
+
+    assert "".join(chunks) == "fallback"
 
 
 def test_model_name():

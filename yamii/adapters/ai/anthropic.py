@@ -223,6 +223,9 @@ class AnthropicAdapter(IAIProvider):
         ) as stream:
             async for text in stream.text_stream:
                 yield text
+            final = await stream.get_final_message()
+            if final.stop_reason == "refusal":
+                raise Exception("Claude API refusal")
 
     async def health_check(self) -> bool:
         """
